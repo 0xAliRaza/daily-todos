@@ -22,22 +22,25 @@ Status on 2026-11-18: decisions and plan only, no code yet.
 
 **Tasks**
 
-- Flat, optional lists. No nesting, no sections. A task without a list sits in the Inbox.
+- Lists: simple named groups (Groceries, Events). One built-in default list, "Daily", holds every task not
+  filed elsewhere; it can be renamed but not deleted. No nesting, no sections.
 - Sub-tasks: one level of checkboxes inside a task.
 - Three priorities, optional. No labels.
-- Views: Today, Upcoming (with a week strip to jump between days), Inbox and the lists. Search.
+- Views: Today and Upcoming (with a week strip to jump between days) show dated tasks from every list;
+  then each list on its own. Search.
 - Undo on every action, multi-select, drag to reorder.
 - Sorting: inside a list, manual order with new tasks added at the bottom. In Today, overdue first, then
   timed tasks by time, then the rest in manual order.
 
 **Adding a task**
 
-- One line of natural language carries the date, time and priority ("Call bank tomorrow 4pm p1").
-  Date and time parsing is the most important part of the app.
+- One line of natural language carries the date, time, priority and list ("Call bank tomorrow 4pm p1",
+  "Milk #groceries"). Date and time parsing is the most important part of the app.
 - Recognised words are highlighted while typing; tapping one un-recognises it.
 - A task with a date and no time gets the default reminder time (10:00 unless changed).
-- A task with no date gets tomorrow at the default time. It shows as a chip while adding, so it can be
-  tapped away. Both defaults can be changed or switched off in settings.
+- A task with no date, added to the default list, gets tomorrow at the default time. It shows as a chip
+  while adding, so it can be tapped away. Tasks added to any other list stay undated, so a grocery list
+  does not fire a reminder per item. Both defaults can be changed or switched off in settings.
 
 **Reminders**
 
@@ -48,6 +51,8 @@ Status on 2026-11-18: decisions and plan only, no code yet.
 - A "Reminder health" screen checks every permission and battery setting, shows the steps for the phone's
   maker (Samsung, Xiaomi, Oppo, Vivo, OnePlus, Huawei, Tecno, Infinix, with a generic fallback) and can send
   a test reminder one minute out.
+- A reminder history on that screen lists recent reminders with when each was due and when it actually
+  fired, so a late or missed one can be seen and diagnosed. It stays on the device and stores no titles.
 - Optional setting: let reminders and timer ends break through Do Not Disturb.
 
 **Focus timer**
@@ -90,9 +95,10 @@ streaks, location reminders, importers for other apps' files, desktop and web ve
 ## Still open
 
 - Exact colour values, proposed with contrast checked when the theme is built.
-- Whether to keep lists at all, or have one single task list.
+- The questions listed at the end of `PLAN.md`.
 
 ## Platform and release
 
+- Application id: `com.aliraza.dailytasks`.
 - Minimum Android 8.0 (API 26).
 - Released on GitHub; F-Droid maybe later. Not planned for Google Play.

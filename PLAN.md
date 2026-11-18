@@ -44,8 +44,8 @@ test phone before the design depends on them.
 | `:core` | Pure Kotlin, no Android imports: domain model, quick-add parser, reminder maths (what is due when), sort rules, backup schema and validation | Fast JVM unit tests |
 | `:app` | Room, the scheduler, receivers, notifications, focus timer, Compose UI, settings, export and import | JVM tests (Robolectric where Android classes are needed) and instrumented tests |
 
-Put logic in `:core` whenever it does not need Android. The application id is an open decision (section
-11): a segment may not start with a digit, so `io.github.0xaliraza…` is not valid on Android.
+Put logic in `:core` whenever it does not need Android. The application id and base package are
+`com.aliraza.dailytasks`.
 
 ## 4. Data model
 
@@ -55,8 +55,12 @@ write a migration test from the first schema change.
 - `tasks`: `id` (UUID text), `title`, `notes`, `priority` (0 none, 1 to 3), `due_date` (ISO date, nullable),
   `due_time` (`HH:mm`, nullable), `position` (manual order), `snoozed_until` (epoch ms, nullable),
   `notified_for` (epoch ms of the reminder instant already posted, nullable), `completed_at`, `deleted_at`
-  (soft delete for undo), `created_at`, `updated_at`. `list_id` only if lists are kept (section 11).
+  (soft delete for undo), `created_at`, `updated_at`, `list_id` (required).
+- `lists`: `id`, `name`, `position`, `is_default`. Exactly one default list, created on first run and named
+  "Daily"; it can be renamed but not deleted.
 - `subtasks`: `id`, `task_id`, `title`, `done`, `position`. One level only.
+- `reminder_log`: `task_id`, due instant, fired-at instant, how it fired (alarm, catch-up, before unlock).
+  The newest 200 rows are kept. No titles.
 - `settings` (one row): default reminder time (10:00), "undated tasks get tomorrow" (on), "date-only tasks
   get a reminder" (on), Do Not Disturb override (off), focus minutes (25), break minutes (5), breaks
   enabled (on), timer signal (sound, vibrate, both), theme (system, light, dark), last backup time.
@@ -70,8 +74,9 @@ Rules that follow from the model:
 2. The reminder instant of a task is: `snoozed_until` if set; else `due_date` at `due_time`; else
    `due_date` at the default reminder time (if that setting is on); else none. It is computed, never stored,
    so changing the default time moves every date-only reminder.
-3. "Undated tasks get tomorrow" is applied when the task is created: `due_date` becomes tomorrow and
-   `due_time` stays empty, so rule 2 gives it the default time.
+3. "Undated tasks get tomorrow" is applied when a task is created in the default list: `due_date` becomes
+   tomorrow and `due_time` stays empty, so rule 2 gives it the default time. Tasks created in any other
+   list stay undated.
 4. A reminder is "already posted" when `notified_for` equals its current instant. Editing the date or time
    changes the instant, which makes it eligible again.
 
@@ -91,6 +96,12 @@ goes through one class, `ReminderScheduler`. There is no second mechanism.
    task, records `notified_for`, and arms the next alarm.
 4. Catch-up: every time the scheduler runs, anything due in the past and not yet posted is posted at once.
    This covers the phone having been off, or the app having been stopped.
+5. Every post writes a `reminder_log` row. The health screen shows it and flags anything that fired more
+   than a minute late.
+
+For reference, the best-known open-source Android to-do app schedules with `setExactAndAllowWhileIdle()`
+and has no before-unlock handling **(verified in its source, 2026-11-18)**, and its users report late
+reminders even with battery optimisation off. That is the failure this design avoids.
 
 **When the scheduler re-runs**: every task or timer write (through the repository, never from UI code),
 app process start, `BOOT_COMPLETED`, `LOCKED_BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, time change, time-zone
@@ -160,7 +171,7 @@ the app is opened again; catch-up then posts what was missed.
 ## 7. Quick-add parser (`:core`)
 
 Input: the typed line, the current date-time, and two locale flags (day-first dates, 24-hour clock).
-Output: title, date, time, priority, and the character ranges that were recognised (for highlighting).
+Output: title, date, time, priority, list, and the character ranges that were recognised (for highlighting).
 English only in v1.
 
 | Kind | Recognised |
@@ -171,6 +182,7 @@ English only in v1.
 | Date | 25 dec, dec 25, 25 december 2026, 25/12, 25/12/26, 2026-12-25 |
 | Time | 4pm, 4:30pm, 16:30, at 4, noon, midnight; morning 09:00, afternoon 14:00, evening 18:00, tonight 20:00 |
 | Priority | p1, p2, p3 as whole words |
+| List | `#name`, matched case-insensitively against existing list names; an unknown `#word` stays in the title |
 
 Rules:
 
@@ -189,9 +201,11 @@ Sam", "May I call back").
 
 ## 8. Screens
 
-1. Today: Overdue, then today's timed tasks by time, then the rest in manual order.
-2. Upcoming: a week strip at the top, tasks grouped by day.
-3. Inbox (and lists, if kept).
+1. Today: Overdue, then today's timed tasks by time, then the rest in manual order. Tasks from every list.
+2. Upcoming: a week strip at the top, tasks grouped by day. Tasks from every list.
+3. Lists: "Daily" first, then the user's lists; create, rename, reorder, delete. A row outside its own list
+   shows the list name. Adding from inside a list files the task there. Deleting a list asks first and
+   deletes its tasks, with undo (planner default).
 4. Add: a bottom sheet with the one-line field, live highlighting, and chips for what was recognised.
 5. Task sheet: title, notes, date, time, priority, sub-task checkboxes, "Start focus".
 6. Focus timer.
@@ -217,6 +231,7 @@ palette with contrast ratios computed, and get the owner's yes before building o
    are best-effort, wrapped so a missing screen falls back to the app's system settings page. Take the
    steps from dontkillmyapp.com and re-check them; do not invent them.
 5. "Send a test reminder in 1 minute".
+6. Reminder history from `reminder_log`: due time, fired time, and a flag on anything late.
 
 ## 9. Checks
 
@@ -245,7 +260,8 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
   the emulator and the A54.
 - [ ] **M1 Core.** Domain model, parser with its table tests, reminder maths (next due, catch-up), sort
   rules. Done when the tests pass with no Android dependency in `:core`.
-- [ ] **M2 Storage.** Entities, DAOs, repository, settings row, soft delete, schema export.
+- [ ] **M2 Storage.** Entities, DAOs, repository, settings row, the default list, soft delete, schema
+  export.
 - [ ] **M3 Reminder engine.** Start with a one-day spike on the A54 answering every **(verify)** in section
   5, and write the answers back into this file. Then the scheduler, receivers, notifications with actions,
   the schedule mirror and catch-up, with a bare add field to create tasks. Done when the matrix below
@@ -253,7 +269,7 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
 - [ ] **M4 Task screens.** Section 8 items 1 to 5 and 7.
 - [ ] **M5 Reminder health** and the first-run permission flow.
 - [ ] **M6 Focus timer.**
-- [ ] **M7 Lists**, only if the owner keeps them (section 11).
+- [ ] **M7 Lists.** The lists screen and `#list` in quick add. Until then every task lives in "Daily".
 - [ ] **M8 Export, import, settings.** Export through the system "create document" picker and import
   through "open document", so no storage permission is needed. Treat the imported file as hostile: size
   cap, strict schema and version check, length and count caps, and one transaction that replaces
@@ -281,12 +297,15 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
 
 ## 11. Open decisions for the owner
 
-1. **Application id.** `0xaliraza` cannot be a segment because it starts with a digit. Planner's
-   suggestion: `io.github.zeroxaliraza.dailytasks`. It cannot change after the first release.
-2. **Lists.** Keep simple named lists (Groceries, Work), or have one single task list.
-3. **Alarm icon.** Accept the status-bar alarm icon that comes with the most reliable scheduling.
+1. **Alarm icon.** Planned as accepted. Show the owner the status-bar icon on the A54 during the M3 spike;
+   they can veto it then, which switches to the fallback in section 5.
+2. **Early heads-up.** Whether a timed task (an event at 16:00) should be able to remind some minutes
+   before its time, or only at its time. Not built until answered.
+3. **Overdue tasks.** Whether a task left undone reminds again the next morning, or only sits in Overdue
+   at the top of Today. Planned as: no second reminder.
 4. **Planner defaults**, changeable on request: snooze lengths (10 min, 1 hour); named times of day
-   (section 7); the timer waiting for a tap after each break (section 6).
+   (section 7); the timer waiting for a tap after each break (section 6); deleting a list deletes its
+   tasks (section 8).
 
 ## 12. Sources
 

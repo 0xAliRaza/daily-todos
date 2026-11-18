@@ -6,14 +6,17 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Compiled against the Java 8 API, which is what Android 8 (minSdk 26) offers: a call to a newer Java
+// API such as LocalDate.ofInstant (Android 14+) fails the build here instead of crashing old phones.
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
+        jvmTarget.set(JvmTarget.JVM_1_8)
+        freeCompilerArgs.add("-Xjdk-release=1.8")
     }
 }
 

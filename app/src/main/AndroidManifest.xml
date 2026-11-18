@@ -38,5 +38,31 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Receivers that can run before the first unlock after a restart (PLAN.md section 5). -->
+        <receiver
+            android:name=".reminder.AlarmReceiver"
+            android:directBootAware="true"
+            android:exported="false" />
+
+        <receiver
+            android:name=".reminder.SystemEventReceiver"
+            android:directBootAware="true"
+            android:exported="true">
+            <!-- System broadcasts only; other apps cannot send these actions. -->
+            <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".reminder.ReminderActionReceiver"
+            android:directBootAware="true"
+            android:exported="false" />
     </application>
 </manifest>

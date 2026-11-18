@@ -281,6 +281,9 @@ Rules a machine can check are checks, not sentences.
 - Migration test for every schema change.
 - `./scripts/device-test.sh` runs instrumented tests on the connected phone or emulator.
 - `./scripts/stop-dev.sh` stops Gradle daemons, the emulator and the adb server.
+- `:core` compiles against the Java 8 API (`-Xjdk-release=1.8`), the level Android 8 offers, so a newer
+  Java call (for example `LocalDate.ofInstant`, Android 14+) fails the build instead of crashing old
+  phones. Android lint checks the same thing in `:app`.
 - A bug fix ships with a test that was seen failing before the fix.
 
 ## 10. Milestones
@@ -298,7 +301,8 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
 - [x] **M2 Storage.** Entities, DAOs, repository, settings row, the default list, soft delete, schema
   export. Writes go through `TaskRepository`, `ListRepository` and `SettingsRepository`; each write that
   can move a reminder calls the one scheduler hook. Soft-deleted rows are purged after one day.
-- [ ] **M3 Reminder engine.** Start with a one-day spike on the A54 answering every **(verify)** in section
+- [ ] **M3 Reminder engine.** (2026-11-18: engine code and its JVM tests are in; the A54 spike and the
+  device matrix are still to do, so this stays open.) Start with a one-day spike on the A54 answering every **(verify)** in section
   5, and write the answers back into this file. Then the scheduler, receivers, notifications with actions,
   the schedule mirror and catch-up, with a bare add field to create tasks. Done when the matrix below
   passes on the A54.

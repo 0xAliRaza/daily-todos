@@ -17,4 +17,9 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    companion object {
+        /** Set when the activity is opened from a reminder. */
+        const val EXTRA_TASK_ID = "task_id"
+    }
 }

@@ -34,14 +34,15 @@ class ReminderPlanTest {
         )
         val plan = ReminderPlan.compute(tasks, Settings(), at(12, 0), zone)
         assertEquals(listOf("missed"), plan.due.map { it.task.id })
-        assertEquals(at(11, 0), plan.due.single().dueAt)
+        assertEquals(at(11, 0), plan.due.single().at)
+        assertEquals(listOf("sooner", "later", "missed"), plan.upcoming.map { it.task.id })
         assertEquals(at(14, 30), plan.nextAt)
     }
 
     @Test
     fun nothingPendingMeansNoAlarm() {
         val plan = ReminderPlan.compute(listOf(task()), Settings(), at(12, 0), zone)
-        assertEquals(emptyList<ReminderPlan.DueReminder>(), plan.due)
+        assertEquals(emptyList<ReminderPlan.Reminder>(), plan.due)
         assertNull(plan.nextAt)
     }
 }

@@ -6,29 +6,33 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * One scheduler pass: what to post now and when to wake up next.
+ * One scheduler pass: what to post now and what comes next.
  *
  * @property due tasks to notify now, each with the instant it was due (stored as `notifiedFor` once posted).
- * @property nextAt the earliest future reminder after those are posted, or null when nothing is pending.
+ * @property upcoming every task's next future reminder after those are posted, earliest first.
  */
-data class ReminderPlan(val due: List<DueReminder>, val nextAt: Instant?) {
+data class ReminderPlan(val due: List<Reminder>, val upcoming: List<Reminder>) {
 
-    data class DueReminder(val task: Task, val dueAt: Instant)
+    data class Reminder(val task: Task, val at: Instant)
+
+    /** When the alarm must next wake the app, or null when nothing is pending. */
+    val nextAt: Instant? get() = upcoming.firstOrNull()?.at
 
     companion object {
         fun compute(tasks: List<Task>, settings: Settings, now: Instant, zone: ZoneId): ReminderPlan {
-            val due = mutableListOf<DueReminder>()
-            val upcoming = tasks.mapNotNull { task ->
+            val due = mutableListOf<Reminder>()
+            val upcoming = mutableListOf<Reminder>()
+            tasks.forEach { task ->
                 val dueAt = ReminderRules.due(task, settings, now, zone)
                 val afterPosting = if (dueAt != null) {
-                    due += DueReminder(task, dueAt)
+                    due += Reminder(task, dueAt)
                     task.copy(notifiedFor = dueAt)
                 } else {
                     task
                 }
-                ReminderRules.next(afterPosting, settings, now, zone)
+                ReminderRules.next(afterPosting, settings, now, zone)?.let { upcoming += Reminder(afterPosting, it) }
             }
-            return ReminderPlan(due.sortedBy { it.dueAt }, upcoming.minOrNull())
+            return ReminderPlan(due.sortedBy { it.at }, upcoming.sortedBy { it.at })
         }
     }
 }

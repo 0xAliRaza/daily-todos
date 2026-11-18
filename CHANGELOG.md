@@ -14,3 +14,6 @@ versioning.
 - Sort rules for Today, Upcoming days and lists.
 - Local storage: tasks, lists with the default "Daily" list, sub-tasks, settings, reminder history and
   timer state, with soft delete for undo.
+- Reminder engine: one exact alarm-clock alarm for the earliest reminder, one notification per task with
+  Done, 10 min and 1 hour, catch-up after the phone was off, re-arming after restart, app update and
+  clock or time-zone changes, and reminders from a device-protected copy before the first unlock.

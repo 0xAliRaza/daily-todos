@@ -41,7 +41,7 @@ object ReminderRules {
         val handled = task.notifiedFor
         val isPending = { instant: Instant -> handled == null || instant.isAfter(handled) }
         task.snoozedUntil?.takeIf(isPending)?.let { return listOf(it) }
-        return candidates(task, settings, LocalDate.ofInstant(now, zone))
+        return candidates(task, settings, now.atZone(zone).toLocalDate())
             .map { it.atZone(zone).toInstant() }
             .filter(isPending)
     }

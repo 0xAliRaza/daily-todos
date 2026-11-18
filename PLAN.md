@@ -60,12 +60,13 @@ write a migration test from the first schema change.
   `due_time` (`HH:mm`, nullable), `position` (manual order), `snoozed_until` (epoch ms, nullable),
   `notified_for` (epoch ms of the reminder instant already posted, nullable), `completed_at`, `deleted_at`
   (soft delete for undo), `created_at`, `updated_at`, `list_id` (required).
-- `lists`: `id`, `name`, `position`, `is_default`. Exactly one default list, created on first run and named
-  "Daily"; it can be renamed but not deleted.
+- `lists`: `id`, `name`, `position`, `is_default`, `deleted_at` (soft delete, so deleting a list can be
+  undone). Exactly one default list, id `default`, created on first run and named "Daily"; it can be
+  renamed but not deleted.
 - `subtasks`: `id`, `task_id`, `title`, `done`, `position`. One level only.
 - `reminder_log`: `task_id`, due instant, fired-at instant, how it fired (alarm, catch-up, before unlock).
   The newest 200 rows are kept. No titles.
-- `settings` (one row): default reminder time (10:00), "undated tasks get tomorrow" (on), "date-only tasks
+- `settings` (one row, written on the first change; a missing row means all defaults): default reminder time (10:00), "undated tasks get tomorrow" (on), "date-only tasks
   get a reminder" (on), early heads-up minutes (0, 10, 30 or 60; default 0), overdue reminders (on), overdue
   reminder time (09:00), Do Not Disturb override (off), focus minutes (25), break minutes (5), breaks
   enabled (on), timer signal (sound, vibrate, both), theme (system, light, dark), last backup time.
@@ -294,8 +295,9 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
   the emulator and the A54.
 - [x] **M1 Core.** Domain model, parser with its table tests, reminder maths (next due, catch-up), sort
   rules. Done when the tests pass with no Android dependency in `:core`.
-- [ ] **M2 Storage.** Entities, DAOs, repository, settings row, the default list, soft delete, schema
-  export.
+- [x] **M2 Storage.** Entities, DAOs, repository, settings row, the default list, soft delete, schema
+  export. Writes go through `TaskRepository`, `ListRepository` and `SettingsRepository`; each write that
+  can move a reminder calls the one scheduler hook. Soft-deleted rows are purged after one day.
 - [ ] **M3 Reminder engine.** Start with a one-day spike on the A54 answering every **(verify)** in section
   5, and write the answers back into this file. Then the scheduler, receivers, notifications with actions,
   the schedule mirror and catch-up, with a bare add field to create tasks. Done when the matrix below

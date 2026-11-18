@@ -12,3 +12,5 @@ versioning.
 - Quick-add parser for dates, times, priorities and lists, with highlighting ranges and tap-to-exclude.
 - Reminder rules: default and overdue times, early heads-up, snooze, catch-up of missed reminders.
 - Sort rules for Today, Upcoming days and lists.
+- Local storage: tasks, lists with the default "Daily" list, sub-tasks, settings, reminder history and
+  timer state, with soft delete for undo.

@@ -44,6 +44,7 @@ internal object Vocabulary {
         "morning" to LocalTime.of(9, 0),
         "afternoon" to LocalTime.of(14, 0),
         "evening" to LocalTime.of(18, 0),
+        "night" to LocalTime.of(21, 0),
     )
 
     val namedTimes: Map<String, LocalTime> = mapOf("noon" to LocalTime.NOON, "midnight" to LocalTime.MIDNIGHT)

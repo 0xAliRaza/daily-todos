@@ -58,7 +58,11 @@ internal object DateMatchers {
     private fun weekday(ctx: ParseContext, at: Int, prefix: String?): Hit? {
         val word = ctx.word(at) ?: return null
         val day = Vocabulary.fullWeekdays[word]
-            ?: Vocabulary.shortWeekdays[word]?.takeIf { prefix != null || ctx.isLastWord(at) }
+            ?: Vocabulary.shortWeekdays[word]?.takeIf {
+                prefix != null || ctx.isLastWord(
+                    at,
+                ) || TimeMatchers.startsAt(ctx, at + 1)
+            }
             ?: return null
         var ahead = (day.value - ctx.today.dayOfWeek.value + DAYS_IN_WEEK) % DAYS_IN_WEEK
         if (ahead == 0 && prefix == "next") ahead = DAYS_IN_WEEK

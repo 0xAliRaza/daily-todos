@@ -51,7 +51,7 @@ class QuickAddParserTableTest(private val row: Row) {
 
         @JvmStatic
         @Parameterized.Parameters(name = "{0}")
-        fun rows(): List<Row> = relativeDays + weekdays + dates + times + dayParts + offsets + tags + mixed
+        fun rows(): List<Row> = relativeDays + weekdays + dates + times + dayParts + offsets + tags + mixed + sentences
 
         private val relativeDays = listOf(
             Row("Call bank tomorrow", "Call bank", TOMORROW),
@@ -275,6 +275,22 @@ class QuickAddParserTableTest(private val row: Row) {
             none("Milk # groceries"),
             none("#groceries"),
             none("p1"),
+        )
+
+        /** A date and a time anywhere in the line make one moment; a clock time beats a day part. */
+        private val sentences = listOf(
+            Row("Take out trash on wednesday evening 9pm", "Take out trash", TODAY, "21:00"),
+            Row("Take out trash wednesday evening", "Take out trash", TODAY, "18:00"),
+            Row("Wednesday when Sam comes, do the dishes at 9pm", "when Sam comes, do the dishes", TODAY, "21:00"),
+            Row("Run tomorrow evening at 7", "Run", TOMORROW, "19:00"),
+            Row("Run at 7 in the evening tomorrow", "Run", TOMORROW, "19:00"),
+            Row("Call mum evening 8pm", "Call mum", TODAY, "20:00"),
+            Row("Dinner tomorrow night", "Dinner", TOMORROW, "21:00"),
+            Row("Gym fri 7:30am", "Gym", FRIDAY, "07:30"),
+            Row("Gym sat 9am", "Gym", "2026-11-21", "09:00"),
+            Row("Call tom at 5", "Call tom", TODAY, "17:00"),
+            Row("Morning run 7am", "Morning run", TOMORROW, "07:00"),
+            Row("Night shift tomorrow", "Night shift", TOMORROW),
         )
 
         private val mixed = listOf(

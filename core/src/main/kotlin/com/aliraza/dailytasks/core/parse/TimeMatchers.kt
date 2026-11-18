@@ -53,19 +53,47 @@ internal object TimeMatchers {
         )
     }
 
-    /** "tomorrow morning", "friday evening": a day part directly after a recognised date. */
+    /**
+     * "tomorrow morning", "friday evening": a day part directly after a recognised date. A clock time
+     * right after it wins and is taken with it: "wednesday evening 9pm" is 21:00, "evening at 7" is 19:00.
+     */
     private fun dayPartAfterDate(ctx: ParseContext, index: Int): Candidate? {
         if (index != ctx.dateEnd) return null
-        val time = Vocabulary.dayParts[ctx.word(index)] ?: return null
-        return Candidate(SpanKind.TIME, index, index + 1, time = TimeValue.Exact(time))
+        val part = Vocabulary.dayParts[ctx.word(index)] ?: return null
+        val clock = readClock(ctx, index + 1)
+            ?: return Candidate(SpanKind.TIME, index, index + 1, time = TimeValue.Exact(part))
+        return Candidate(SpanKind.TIME, index, clock.first, time = settle(clock.second, part))
+    }
+
+    /**
+     * True when a clock time starts at [index], so a short weekday before it ("fri 7:30am") is a date.
+     * A day part is not enough: "Fri night drinks" stays a title.
+     */
+    fun startsAt(ctx: ParseContext, index: Int): Boolean = readClock(ctx, index) != null
+
+    /** A day part as a word ("evening") or as "in the evening": its usual time and where it ends. */
+    private fun dayPartAt(ctx: ParseContext, index: Int): Pair<LocalTime, Int>? {
+        Vocabulary.dayParts[ctx.word(index)]?.let { return it to index + 1 }
+        if (ctx.word(index) != "in" || ctx.word(index + 1) != "the") return null
+        val partAt = index + 2
+        return Vocabulary.dayParts[ctx.word(partAt)]?.let { it to partAt + 1 }
+    }
+
+    /** A day part only settles am or pm: an exact clock time wins over it. */
+    private fun settle(clock: TimeValue, part: LocalTime): TimeValue = when (clock) {
+        is TimeValue.Exact -> clock
+
+        is TimeValue.Ambiguous -> {
+            val pm = part.hour >= HALF_DAY
+            TimeValue.Exact(LocalTime.of(clock.hour % HALF_DAY + if (pm) HALF_DAY else 0, clock.minute))
+        }
     }
 
     /** "in the morning". A day part on its own ("Morning run") is not a time. */
     private fun inTheDayPart(ctx: ParseContext, index: Int): Candidate? {
-        if (ctx.word(index) != "in" || ctx.word(index + 1) != "the") return null
-        val dayPartAt = index + 2
-        val time = Vocabulary.dayParts[ctx.word(dayPartAt)] ?: return null
-        return Candidate(SpanKind.TIME, index, dayPartAt + 1, time = TimeValue.Exact(time))
+        if (ctx.word(index) != "in") return null
+        val (time, end) = dayPartAt(ctx, index) ?: return null
+        return Candidate(SpanKind.TIME, index, end, time = TimeValue.Exact(time))
     }
 
     /** "noon", "at midnight". */
@@ -75,8 +103,25 @@ internal object TimeMatchers {
         return Candidate(SpanKind.TIME, index, at + 1, time = TimeValue.Exact(time))
     }
 
-    /** "4pm", "4:30 pm", "16:30", "at 4", "at 4.30". A bare number without "at" is not a time. */
+    /**
+     * "4pm", "4:30 pm", "16:30", "at 4", "at 4.30". A bare number without "at" is not a time. A day part
+     * right before or after is taken with it and settles am or pm: "evening 8pm", "at 7 in the evening".
+     */
     private fun clockTime(ctx: ParseContext, index: Int): Candidate? {
+        val (end, time) = readClock(ctx, index) ?: return null
+        val after = dayPartAt(ctx, end)
+        val before = Vocabulary.dayParts[ctx.word(index - 1)]?.takeIf { after == null }
+        val part = after?.first ?: before
+        return Candidate(
+            SpanKind.TIME,
+            if (before != null) index - 1 else index,
+            after?.second ?: end,
+            time = part?.let { settle(time, it) } ?: time,
+        )
+    }
+
+    /** A clock time at [index], with an optional "at": where it ends and its value. */
+    private fun readClock(ctx: ParseContext, index: Int): Pair<Int, TimeValue>? {
         val hasAt = ctx.word(index) == "at"
         val at = if (hasAt) index + 1 else index
         val word = ctx.word(at) ?: return null
@@ -85,7 +130,7 @@ internal object TimeMatchers {
             inline != null -> (at + 1) to inline.let { (hour, minute, marker) -> meridiem(hour, minute, marker) }
             else -> clockWithoutInlineMeridiem(ctx, at, word, hasAt) ?: return null
         }
-        return time?.let { Candidate(SpanKind.TIME, index, end, time = it) }
+        return time?.let { end to it }
     }
 
     private fun clockWithoutInlineMeridiem(

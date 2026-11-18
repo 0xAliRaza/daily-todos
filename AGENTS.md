@@ -46,8 +46,14 @@ Status on 2026-11-18: decisions and plan only, no code yet.
 
 - One notification per task, with Complete and Snooze. Never a summary or overview notification of our own.
   (Android stacking several notifications in the shade by itself is acceptable.)
+- Early heads-up: one setting makes timed tasks remind 0, 10, 30 or 60 minutes before their time. There is
+  no per-task choice.
+- Overdue: a task left undone reminds again on the following mornings, one notification per task, at its
+  own overdue time (separate from the default reminder time). The time can be changed and the whole thing
+  switched off in settings.
 - A reminder must never be missed because of battery saving: exact scheduling through the system alarm
   path, re-registered after reboot, app update, and time or time-zone change.
+- Settings has a direct "Battery optimisation" row that opens the phone's battery setting for this app.
 - A "Reminder health" screen checks every permission and battery setting, shows the steps for the phone's
   maker (Samsung, Xiaomi, Oppo, Vivo, OnePlus, Huawei, Tecno, Infinix, with a generic fallback) and can send
   a test reminder one minute out.
@@ -59,7 +65,8 @@ Status on 2026-11-18: decisions and plan only, no code yet.
 
 - Focus and break rounds, started from a task (runs until the task is done) or on its own.
 - The start screen has quick adjusters for focus length and break length, and a switch to turn breaks off.
-- End signal: sound, vibrate, or both. Vibrate-only matters for office use.
+- End signal: sound, vibrate, or both. Vibrate-only matters for office use. The signal behaves like an
+  alarm, not a single blip: it keeps going until dismissed, with a cap so it stops by itself.
 - The end of each round is scheduled like a reminder, so it fires even if the app is killed. The countdown
   on screen is only a display.
 - Built right after tasks and reminders are solid.

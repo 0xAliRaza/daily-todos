@@ -62,7 +62,8 @@ write a migration test from the first schema change.
 - `reminder_log`: `task_id`, due instant, fired-at instant, how it fired (alarm, catch-up, before unlock).
   The newest 200 rows are kept. No titles.
 - `settings` (one row): default reminder time (10:00), "undated tasks get tomorrow" (on), "date-only tasks
-  get a reminder" (on), Do Not Disturb override (off), focus minutes (25), break minutes (5), breaks
+  get a reminder" (on), early heads-up minutes (0, 10, 30 or 60; default 0), overdue reminders (on), overdue
+  reminder time (09:00), Do Not Disturb override (off), focus minutes (25), break minutes (5), breaks
   enabled (on), timer signal (sound, vibrate, both), theme (system, light, dark), last backup time.
 - `timer_state` (one row): phase (focus, break, idle), `ends_at`, `task_id` (nullable), paused remainder,
   round number. Persisted so the timer survives the process being killed.
@@ -71,14 +72,18 @@ Rules that follow from the model:
 
 1. Dates and times are wall-clock values with no time zone. A reminder set for 16:00 fires at 16:00
    wherever the phone is.
-2. The reminder instant of a task is: `snoozed_until` if set; else `due_date` at `due_time`; else
-   `due_date` at the default reminder time (if that setting is on); else none. It is computed, never stored,
-   so changing the default time moves every date-only reminder.
+2. The reminder instant of a task is: `snoozed_until` if set; else `due_date` at `due_time` minus the
+   early heads-up minutes; else `due_date` at the default reminder time (if that setting is on); else none.
+   It is computed, never stored, so changing a setting moves every affected reminder.
 3. "Undated tasks get tomorrow" is applied when a task is created in the default list: `due_date` becomes
    tomorrow and `due_time` stays empty, so rule 2 gives it the default time. Tasks created in any other
    list stay undated.
 4. A reminder is "already posted" when `notified_for` equals its current instant. Editing the date or time
    changes the instant, which makes it eligible again.
+5. Overdue: while a task is undone and its `due_date` is before today, its reminder instant is today at
+   the overdue reminder time (if that setting is on). The instant moves forward each day, so rule 4 lets it
+   fire once per day until the task is done or re-dated. One notification per task, never a summary.
+   Undated tasks are never overdue.
 
 ## 5. Reminder engine
 
@@ -167,6 +172,12 @@ the app is opened again; catch-up then posts what was missed.
    one break.
 6. End signal follows the setting: sound, vibrate, or both. Verify vibrate-only in silent and vibrate
    ringer modes, and under Do Not Disturb with the override on.
+7. The end signal is alarm-like: it repeats until the user dismisses it or taps an action, and stops by
+   itself after 60 seconds (planner default). First try the notification "insistent" flag, with the
+   stop scheduled through `ReminderScheduler` as a silent replacement of the notification **(verify that
+   insistent repeats vibration as well as sound on the A54)**. If it does not, fall back to a short
+   foreground service started from the alarm receiver that plays on the alarm stream and vibrates; it
+   must stop itself at the cap. Task reminders stay ordinary single-alert notifications.
 
 ## 7. Quick-add parser (`:core`)
 
@@ -210,7 +221,8 @@ Sam", "May I call back").
 5. Task sheet: title, notes, date, time, priority, sub-task checkboxes, "Start focus".
 6. Focus timer.
 7. Search.
-8. Settings, including Reminder health and Export / Import.
+8. Settings, including Reminder health, Export / Import, and a direct "Battery optimisation" row that
+   opens the phone's battery setting for this app (the same action as the fix button on the health screen).
 
 Behaviour: swipe to complete; undo snackbar after complete, delete and bulk actions (soft delete, purged
 later); long-press for multi-select with bulk complete, re-date, priority and delete; drag to reorder inside
@@ -294,18 +306,21 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
 11. App placed in Samsung's sleeping and deep-sleeping lists: record what happens, and the health screen
     must flag it.
 12. Force-stop: nothing fires (documented limit); opening the app posts what was missed.
+13. A task left undone yesterday reminds at the overdue time today, one notification per task, and again
+    tomorrow if still undone.
+14. With the early heads-up at 10 minutes, a 16:00 task reminds at 15:50.
+
+The focus timer adds its own check in M6: the end signal keeps going until dismissed and stops by itself at
+the cap, in each of the three signal modes.
 
 ## 11. Open decisions for the owner
 
 1. **Alarm icon.** Planned as accepted. Show the owner the status-bar icon on the A54 during the M3 spike;
    they can veto it then, which switches to the fallback in section 5.
-2. **Early heads-up.** Whether a timed task (an event at 16:00) should be able to remind some minutes
-   before its time, or only at its time. Not built until answered.
-3. **Overdue tasks.** Whether a task left undone reminds again the next morning, or only sits in Overdue
-   at the top of Today. Planned as: no second reminder.
-4. **Planner defaults**, changeable on request: snooze lengths (10 min, 1 hour); named times of day
-   (section 7); the timer waiting for a tap after each break (section 6); deleting a list deletes its
-   tasks (section 8).
+2. **Planner defaults**, changeable on request: snooze lengths (10 min, 1 hour); named times of day
+   (section 7); the timer waiting for a tap after each break (section 6); overdue reminders repeating
+   every day at 09:00 until the task is done (section 4); the timer's end signal stopping by itself after
+   60 seconds (section 6).
 
 ## 12. Sources
 

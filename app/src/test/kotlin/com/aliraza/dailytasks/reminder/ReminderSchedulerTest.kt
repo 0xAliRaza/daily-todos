@@ -3,11 +3,11 @@ package com.aliraza.dailytasks.reminder
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aliraza.dailytasks.MutableClock
+import com.aliraza.dailytasks.core.model.FiredBy
 import com.aliraza.dailytasks.core.model.NewTask
 import com.aliraza.dailytasks.data.SettingsRepository
 import com.aliraza.dailytasks.data.TaskRepository
 import com.aliraza.dailytasks.data.db.AppDatabase
-import com.aliraza.dailytasks.data.db.FiredBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After

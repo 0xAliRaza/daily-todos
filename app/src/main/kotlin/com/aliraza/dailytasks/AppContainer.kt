@@ -1,11 +1,12 @@
 package com.aliraza.dailytasks
 
 import android.content.Context
+import com.aliraza.dailytasks.core.model.FiredBy
+import com.aliraza.dailytasks.data.BackupRepository
 import com.aliraza.dailytasks.data.ListRepository
 import com.aliraza.dailytasks.data.SettingsRepository
 import com.aliraza.dailytasks.data.TaskRepository
 import com.aliraza.dailytasks.data.db.AppDatabase
-import com.aliraza.dailytasks.data.db.FiredBy
 import com.aliraza.dailytasks.reminder.AndroidAlarmArmer
 import com.aliraza.dailytasks.reminder.AndroidReminderPoster
 import com.aliraza.dailytasks.reminder.BeforeUnlockReminders
@@ -37,6 +38,7 @@ class AppContainer(context: Context) {
     val settings: SettingsRepository by lazy { SettingsRepository(database.settings(), onScheduleChanged) }
     val lists: ListRepository by lazy { ListRepository(database.lists()) }
     val tasks: TaskRepository by lazy { TaskRepository(database, clock, settings, onScheduleChanged) }
+    val backup: BackupRepository by lazy { BackupRepository(database, settings, clock, onScheduleChanged) }
 
     val alarmArmer by lazy { AndroidAlarmArmer(appContext) }
     val reminderPoster by lazy { AndroidReminderPoster(appContext) }

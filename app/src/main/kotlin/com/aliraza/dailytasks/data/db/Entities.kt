@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.aliraza.dailytasks.core.model.FiredBy
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -64,9 +65,6 @@ data class SubtaskEntity(
     val done: Boolean,
     val position: Long,
 )
-
-/** How a reminder reached the user. */
-enum class FiredBy { ALARM, CATCH_UP, BEFORE_UNLOCK }
 
 /** One posted reminder, for the Reminder health history. Deliberately holds no title. */
 @Entity(tableName = "reminder_log", indices = [Index("fired_at")])

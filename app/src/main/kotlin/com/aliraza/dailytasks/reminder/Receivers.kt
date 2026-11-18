@@ -6,7 +6,7 @@ import android.content.Intent
 import androidx.core.os.UserManagerCompat
 import com.aliraza.dailytasks.AppContainer
 import com.aliraza.dailytasks.DailyTasksApp
-import com.aliraza.dailytasks.data.db.FiredBy
+import com.aliraza.dailytasks.core.model.FiredBy
 import kotlinx.coroutines.launch
 
 private val Context.container: AppContainer get() = (applicationContext as DailyTasksApp).container

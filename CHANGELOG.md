@@ -17,3 +17,5 @@ versioning.
 - Reminder engine: one exact alarm-clock alarm for the earliest reminder, one notification per task with
   Done, 10 min and 1 hour, catch-up after the phone was off, re-arming after restart, app update and
   clock or time-zone changes, and reminders from a device-protected copy before the first unlock.
+- Backup format (version 1, documented in `docs/backup-format.md`) with export, strict import checks and
+  a full replace on import. The settings screen and file pickers come later.

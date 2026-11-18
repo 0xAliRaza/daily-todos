@@ -42,5 +42,7 @@ data class Settings(
         val DEFAULT_OVERDUE_TIME: LocalTime = LocalTime.of(9, 0)
         const val DEFAULT_FOCUS_MINUTES = 25
         const val DEFAULT_BREAK_MINUTES = 5
+        val FOCUS_MINUTES_RANGE = 1..180
+        val BREAK_MINUTES_RANGE = 1..60
     }
 }

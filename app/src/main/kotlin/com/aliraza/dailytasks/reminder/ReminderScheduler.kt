@@ -1,10 +1,10 @@
 package com.aliraza.dailytasks.reminder
 
+import com.aliraza.dailytasks.core.model.FiredBy
 import com.aliraza.dailytasks.core.model.Settings
 import com.aliraza.dailytasks.core.reminder.ReminderPlan
 import com.aliraza.dailytasks.data.SettingsRepository
 import com.aliraza.dailytasks.data.TaskRepository
-import com.aliraza.dailytasks.data.db.FiredBy
 import com.aliraza.dailytasks.data.db.ReminderLogDao
 import com.aliraza.dailytasks.data.db.ReminderLogEntity
 import kotlinx.coroutines.sync.Mutex

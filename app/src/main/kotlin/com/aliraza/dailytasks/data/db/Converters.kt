@@ -1,6 +1,7 @@
 package com.aliraza.dailytasks.data.db
 
 import androidx.room.TypeConverter
+import com.aliraza.dailytasks.core.model.FiredBy
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime

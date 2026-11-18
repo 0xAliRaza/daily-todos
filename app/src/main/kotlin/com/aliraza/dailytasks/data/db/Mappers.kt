@@ -2,6 +2,7 @@ package com.aliraza.dailytasks.data.db
 
 import com.aliraza.dailytasks.core.model.HeadsUp
 import com.aliraza.dailytasks.core.model.Priority
+import com.aliraza.dailytasks.core.model.ReminderLogEntry
 import com.aliraza.dailytasks.core.model.Settings
 import com.aliraza.dailytasks.core.model.Subtask
 import com.aliraza.dailytasks.core.model.Task
@@ -46,6 +47,22 @@ fun Task.toEntity() = TaskEntity(
 )
 
 fun ListEntity.toDomain() = TaskList(id = id, name = name, position = position, isDefault = isDefault)
+
+fun TaskList.toEntity() = ListEntity(id = id, name = name, position = position, isDefault = isDefault)
+
+fun ReminderLogEntity.toDomain() = ReminderLogEntry(
+    taskId = taskId,
+    dueAt = dueAt,
+    firedAt = firedAt,
+    firedBy = firedBy,
+)
+
+fun ReminderLogEntry.toEntity() = ReminderLogEntity(
+    taskId = taskId,
+    dueAt = dueAt,
+    firedAt = firedAt,
+    firedBy = firedBy,
+)
 
 fun SubtaskEntity.toDomain() = Subtask(id = id, taskId = taskId, title = title, done = done, position = position)
 

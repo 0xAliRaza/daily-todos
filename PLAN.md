@@ -310,7 +310,8 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
 - [ ] **M5 Reminder health** and the first-run permission flow.
 - [ ] **M6 Focus timer.**
 - [ ] **M7 Lists.** The lists screen and `#list` in quick add. Until then every task lives in "Daily".
-- [ ] **M8 Export, import, settings.** Export through the system "create document" picker and import
+- [ ] **M8 Export, import, settings.** (2026-11-18: the backup format, hostile-file checks, export,
+  restore and the round-trip test are in; the pickers, confirmation and settings screen are still to do.) Export through the system "create document" picker and import
   through "open document", so no storage permission is needed. Treat the imported file as hostile: size
   cap, strict schema and version check, length and count caps, and one transaction that replaces
   everything after a confirmation. Re-run the scheduler after import. `allowBackup="false"` and data

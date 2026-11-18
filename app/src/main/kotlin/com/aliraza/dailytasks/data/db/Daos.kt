@@ -66,6 +66,19 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks WHERE deleted_at IS NOT NULL AND deleted_at < :before")
     suspend fun purgeDeletedBefore(before: Instant): Int
+
+    /** Every task that is not deleted, in a list that is not deleted: what a backup holds. */
+    @Query(
+        "SELECT tasks.* FROM tasks JOIN lists ON lists.id = tasks.list_id " +
+            "WHERE tasks.deleted_at IS NULL AND lists.deleted_at IS NULL",
+    )
+    suspend fun allKept(): List<TaskEntity>
+
+    @Insert
+    suspend fun insertAll(tasks: List<TaskEntity>)
+
+    @Query("DELETE FROM tasks")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -93,6 +106,12 @@ interface ListDao {
 
     @Query("DELETE FROM lists WHERE deleted_at IS NOT NULL AND deleted_at < :before")
     suspend fun purgeDeletedBefore(before: Instant): Int
+
+    @Insert
+    suspend fun insertAll(lists: List<ListEntity>)
+
+    @Query("DELETE FROM lists")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -108,6 +127,20 @@ interface SubtaskDao {
 
     @Query("DELETE FROM subtasks WHERE id = :id")
     suspend fun delete(id: String)
+
+    /** Sub-tasks of every task a backup holds. */
+    @Query(
+        "SELECT subtasks.* FROM subtasks JOIN tasks ON tasks.id = subtasks.task_id " +
+            "JOIN lists ON lists.id = tasks.list_id " +
+            "WHERE tasks.deleted_at IS NULL AND lists.deleted_at IS NULL",
+    )
+    suspend fun allKept(): List<SubtaskEntity>
+
+    @Insert
+    suspend fun insertAll(subtasks: List<SubtaskEntity>)
+
+    @Query("DELETE FROM subtasks")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -136,6 +169,15 @@ interface ReminderLogDao {
 
     @Query("SELECT * FROM reminder_log ORDER BY fired_at DESC, id DESC")
     fun observeAll(): Flow<List<ReminderLogEntity>>
+
+    @Query("SELECT * FROM reminder_log ORDER BY fired_at, id")
+    suspend fun all(): List<ReminderLogEntity>
+
+    @Insert
+    suspend fun insertAll(entries: List<ReminderLogEntity>)
+
+    @Query("DELETE FROM reminder_log")
+    suspend fun deleteAll()
 }
 
 @Dao

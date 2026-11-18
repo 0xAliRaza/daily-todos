@@ -2,7 +2,7 @@ package com.aliraza.dailytasks
 
 import android.app.Application
 import androidx.core.os.UserManagerCompat
-import com.aliraza.dailytasks.data.db.FiredBy
+import com.aliraza.dailytasks.core.model.FiredBy
 import kotlinx.coroutines.launch
 
 class DailyTasksApp : Application() {

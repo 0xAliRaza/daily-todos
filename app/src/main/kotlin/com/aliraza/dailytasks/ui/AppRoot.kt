@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -55,7 +53,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
@@ -72,6 +69,7 @@ import com.aliraza.dailytasks.ui.calendar.CalendarContent
 import com.aliraza.dailytasks.ui.calendar.CalendarMode
 import com.aliraza.dailytasks.ui.calendar.CalendarState
 import com.aliraza.dailytasks.ui.components.AppIcons
+import com.aliraza.dailytasks.ui.components.KeyboardGuardBox
 import com.aliraza.dailytasks.ui.components.QuickAddBar
 import com.aliraza.dailytasks.ui.components.QuickAddState
 import com.aliraza.dailytasks.ui.components.due
@@ -204,11 +202,10 @@ fun AppRoot(
 @Composable
 private fun Content(route: String, screens: Screens, padding: PaddingValues, addButton: Boolean, typing: Boolean) {
     val inner = if (addButton) padding.clearOfAddButton() else padding
-    Box {
+    KeyboardGuardBox(alsoWhen = typing) {
         AnimatedContent(route, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "route") { shown ->
             RouteContent(shown, screens, inner)
         }
-        if (typing) DismissKeyboardLayer()
     }
 }
 
@@ -285,16 +282,6 @@ private fun RouteContent(route: String, s: Screens, padding: PaddingValues) {
         route == Route.HEALTH -> HealthScreen(s.settings, padding)
         route == Route.FOCUS -> FocusScreen(s.focus, padding)
     }
-}
-
-/**
- * Covers the screen while the add bar is being typed in: a tap anywhere closes the keyboard, and the
- * draft stays in the bar. The tap goes no further, so it can't open a task by accident.
- */
-@Composable
-private fun DismissKeyboardLayer() {
-    val focus = LocalFocusManager.current
-    Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { focus.clearFocus() } })
 }
 
 /** The add bar above the tabs. While typing the tabs step aside, so the bar sits on the keyboard. */

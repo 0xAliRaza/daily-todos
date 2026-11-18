@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -70,31 +72,29 @@ fun FocusScreen(viewModel: FocusViewModel, padding: PaddingValues) {
             delay(SECOND_MS)
         }
     }
-    Column(
-        Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Spacer(Modifier.height(12.dp))
-        Dial(timer, settings, now, title)
-        Spacer(Modifier.height(28.dp))
-        when (timer.phase) {
-            FocusPhase.IDLE -> StartControls(viewModel, settings)
+    // The dial sits in the middle of the screen and the controls at the bottom, in thumb reach; on a
+    // short screen the two stack and scroll.
+    BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+        Column(
+            Modifier.verticalScroll(rememberScrollState()).heightIn(min = maxHeight).padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Spacer(Modifier.height(8.dp))
+            Dial(timer, settings, now, title)
+            Column(Modifier.padding(top = 32.dp, bottom = 24.dp)) {
+                when (timer.phase) {
+                    FocusPhase.IDLE -> StartControls(viewModel, settings)
 
-            FocusPhase.WAITING -> Buttons(
-                primary = stringResource(R.string.focus_start_next) to viewModel::next,
-                secondary = stringResource(R.string.focus_stop) to viewModel::stop,
-            )
+                    FocusPhase.WAITING -> Buttons(
+                        primary = stringResource(R.string.focus_start_next) to viewModel::next,
+                        secondary = stringResource(R.string.focus_stop) to viewModel::stop,
+                    )
 
-            else -> RunningControls(viewModel, timer)
+                    else -> RunningControls(viewModel, timer)
+                }
+            }
         }
-        Spacer(Modifier.height(16.dp))
-        Text(
-            stringResource(R.string.focus_footnote),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -116,9 +116,9 @@ private fun Dial(timer: FocusTimer, settings: Settings, now: Instant, title: Str
         FocusPhase.BREAK -> tokens.dateToday
         else -> tokens.accent
     }
-    Box(Modifier.size(264.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(288.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize().padding(8.dp)) {
-            val stroke = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+            val stroke = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
             drawArc(tokens.divider, 0f, FULL_CIRCLE, useCenter = false, style = stroke)
             val sweep = FULL_CIRCLE * fraction
             if (sweep > 0f) drawArc(arc, START_ANGLE, sweep, false, style = stroke)
@@ -139,7 +139,7 @@ private fun DialText(phase: String, left: Duration, title: String?) {
         Text(
             "%02d:%02d".format(seconds / SECONDS_PER_MINUTE, seconds % SECONDS_PER_MINUTE),
             // Tabular figures keep the digits from shifting as they count down.
-            style = TextStyle(fontSize = 64.sp, fontWeight = FontWeight.Light, fontFeatureSettings = "tnum"),
+            style = TextStyle(fontSize = 72.sp, fontWeight = FontWeight.Light, fontFeatureSettings = "tnum"),
             color = scheme.onBackground,
         )
         if (title != null) {

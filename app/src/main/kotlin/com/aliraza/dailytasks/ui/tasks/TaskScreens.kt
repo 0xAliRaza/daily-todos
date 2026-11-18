@@ -77,6 +77,8 @@ import com.aliraza.dailytasks.ui.components.SwipeRow
 import com.aliraza.dailytasks.ui.components.TaskRow
 import com.aliraza.dailytasks.ui.components.TodayButton
 import com.aliraza.dailytasks.ui.components.dueTone
+import com.aliraza.dailytasks.ui.components.guarded
+import com.aliraza.dailytasks.ui.components.rememberGuardedField
 import com.aliraza.dailytasks.ui.components.rowDivider
 import com.aliraza.dailytasks.ui.components.weekdayLong
 import com.aliraza.dailytasks.ui.components.weekdayShort
@@ -237,12 +239,13 @@ private fun InlineSubtasks(taskId: String, ctx: RowContext) {
 internal fun AddSubtaskLine(onAdd: (String) -> Unit) {
     var editing by remember { mutableStateOf(false) }
     Row(
-        Modifier.offset(x = (-12).dp).fillMaxWidth().heightIn(min = 40.dp).clip(RoundedCornerShape(8.dp))
+        Modifier.offset(x = (-12).dp).fillMaxWidth().heightIn(min = 34.dp).clip(RoundedCornerShape(8.dp))
             .clickable(enabled = !editing) { editing = true },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val tint = MaterialTheme.colorScheme.primary
-        Icon(AppIcons.Add, null, tint = tint, modifier = Modifier.padding(horizontal = 12.dp).size(16.dp))
+        // Quiet on purpose: it sits under every open list of sub-tasks, so it shouldn't compete with them.
+        val tint = MaterialTheme.colorScheme.onSurfaceVariant
+        Icon(AppIcons.Add, null, tint = tint, modifier = Modifier.padding(start = 13.dp, end = 13.dp).size(14.dp))
         if (editing) SubtaskField(onAdd, onClose = { editing = false }) else AddSubtaskHint()
     }
 }
@@ -251,7 +254,7 @@ internal fun AddSubtaskLine(onAdd: (String) -> Unit) {
 private fun AddSubtaskHint() {
     Text(
         stringResource(R.string.subtask_add_inline),
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
@@ -262,6 +265,7 @@ private fun RowScope.SubtaskField(onAdd: (String) -> Unit, onClose: () -> Unit) 
     var draft by remember { mutableStateOf("") }
     var hadFocus by remember { mutableStateOf(false) }
     val requester = remember { FocusRequester() }
+    val guarded = rememberGuardedField()
     val scheme = MaterialTheme.colorScheme
     val commit = {
         if (draft.isNotBlank()) onAdd(draft.trim())
@@ -286,7 +290,7 @@ private fun RowScope.SubtaskField(onAdd: (String) -> Unit, onClose: () -> Unit) 
             imeAction = ImeAction.Done,
         ),
         keyboardActions = KeyboardActions(onDone = { commit() }),
-        modifier = Modifier.weight(1f).focusRequester(requester).onFocusChanged {
+        modifier = Modifier.weight(1f).guarded(guarded).focusRequester(requester).onFocusChanged {
             if (hadFocus && !it.isFocused) {
                 commit()
                 onClose()

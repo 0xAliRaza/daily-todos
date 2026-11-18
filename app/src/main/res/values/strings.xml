@@ -148,7 +148,6 @@
     <string name="focus_alert_focus_body">Your break has started.</string>
     <string name="focus_alert_break_done">Break is over</string>
     <string name="focus_alert_break_body">Start the next focus round when you’re ready.</string>
-    <string name="focus_footnote">Round ends are scheduled like reminders, so they fire even if the app is closed.</string>
     <string name="channel_timer_sound">Timer end: sound</string>
     <string name="channel_timer_vibrate">Timer end: vibrate</string>
     <string name="channel_timer_both">Timer end: sound and vibrate</string>

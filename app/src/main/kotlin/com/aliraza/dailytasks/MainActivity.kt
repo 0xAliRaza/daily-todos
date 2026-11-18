@@ -1,27 +1,93 @@
 package com.aliraza.dailytasks
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.aliraza.dailytasks.core.model.ThemeMode
+import com.aliraza.dailytasks.ui.AppRoot
+import com.aliraza.dailytasks.ui.RequestNotificationPermission
+import com.aliraza.dailytasks.ui.focus.FocusViewModel
+import com.aliraza.dailytasks.ui.settings.SettingsViewModel
+import com.aliraza.dailytasks.ui.tasks.TasksViewModel
 import com.aliraza.dailytasks.ui.theme.DailyTasksTheme
-import com.aliraza.dailytasks.ui.today.TodayScreen
-import com.aliraza.dailytasks.ui.today.TodayViewModel
 
 class MainActivity : ComponentActivity() {
+    /** What a notification asked to open; read by the UI, then cleared. */
+    private var opened by mutableStateOf<Opened?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) opened = Opened.from(intent)
         val container = (application as DailyTasksApp).container
         val factory = viewModelFactory {
-            initializer { TodayViewModel(container.tasks, container.lists, container.clock) }
+            initializer {
+                TasksViewModel(
+                    container.tasks,
+                    container.subtasks,
+                    container.lists,
+                    container.settings,
+                    container.clock,
+                )
+            }
+            initializer {
+                SettingsViewModel(
+                    container.settings,
+                    container.backup,
+                    container.tasks,
+                    container.database.reminderLog(),
+                    container.clock,
+                )
+            }
+            initializer { FocusViewModel(container.timers, container.tasks, container.settings, container.clock) }
         }
         setContent {
-            DailyTasksTheme {
-                TodayScreen(viewModel(factory = factory))
+            val tasks: TasksViewModel = viewModel(factory = factory)
+            val settings by tasks.settings.collectAsStateWithLifecycle()
+            val dark = when (settings.theme) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            DailyTasksTheme(dark = dark) {
+                RequestNotificationPermission()
+                AppRoot(
+                    tasks = tasks,
+                    settings = viewModel(factory = factory),
+                    focus = viewModel(factory = factory),
+                    opened = opened,
+                    onOpenedHandled = { opened = null },
+                )
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        opened = Opened.from(intent)
+    }
+
+    /** A task to show, or the focus screen. */
+    sealed interface Opened {
+        data class Task(val id: String) : Opened
+
+        data object Focus : Opened
+
+        companion object {
+            fun from(intent: Intent?): Opened? = when {
+                intent == null -> null
+                intent.getBooleanExtra(EXTRA_OPEN_FOCUS, false) -> Focus
+                else -> intent.getStringExtra(EXTRA_TASK_ID)?.let(::Task)
             }
         }
     }
@@ -29,5 +95,8 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** Set when the activity is opened from a reminder. */
         const val EXTRA_TASK_ID = "task_id"
+
+        /** Set when the activity is opened from the focus timer's notification. */
+        const val EXTRA_OPEN_FOCUS = "open_focus"
     }
 }

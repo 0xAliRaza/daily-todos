@@ -34,6 +34,7 @@ class TaskRepositoryTest {
 
     private lateinit var db: AppDatabase
     private lateinit var repository: TaskRepository
+    private lateinit var subtasks: SubtaskRepository
     private lateinit var lists: ListRepository
     private lateinit var settings: SettingsRepository
     private var scheduleRuns = 0
@@ -45,6 +46,7 @@ class TaskRepositoryTest {
         settings = SettingsRepository(db.settings(), onScheduleChanged)
         lists = ListRepository(db.lists())
         repository = TaskRepository(db, clock, settings, onScheduleChanged)
+        subtasks = SubtaskRepository(db.subtasks())
     }
 
     @After
@@ -68,6 +70,51 @@ class TaskRepositoryTest {
         val milk = repository.addTask(NewTask("Milk", listId = groceries.id))
         assertNull(milk.dueDate)
         assertEquals(groceries.id, milk.listId)
+    }
+
+    @Test
+    fun doneTodayHoldsWhatTodayShowedAndWasTickedSinceMidnight() = runTest {
+        val dueToday = repository.addTask(NewTask("Stretch", dueDate = today))
+        val overdue = repository.addTask(NewTask("Pay rent", dueDate = today.minusDays(2)))
+        val later = repository.addTask(NewTask("Dentist", dueDate = today.plusDays(3)))
+        val groceries = lists.create("Groceries")
+        val milk = repository.addTask(NewTask("Milk", listId = groceries.id))
+        repository.setCompleted(listOf(dueToday.id, later.id, milk.id), true)
+        clock.advance(Duration.ofMinutes(5))
+        repository.setCompleted(listOf(overdue.id), true)
+
+        assertEquals(
+            listOf("Pay rent", "Stretch"),
+            repository.observeCompletedOn(today).first().map { it.title },
+        )
+        clock.advance(Duration.ofDays(1))
+        assertTrue(repository.observeCompletedOn(today.plusDays(1)).first().isEmpty())
+    }
+
+    @Test
+    fun aListsDoneTasksAreNewestFirstAndLeaveWhenReopened() = runTest {
+        val groceries = lists.create("Groceries")
+        val milk = repository.addTask(NewTask("Milk", listId = groceries.id))
+        val eggs = repository.addTask(NewTask("Eggs", listId = groceries.id))
+        repository.setCompleted(listOf(milk.id), true)
+        clock.advance(Duration.ofMinutes(1))
+        repository.setCompleted(listOf(eggs.id), true)
+        assertEquals(listOf("Eggs", "Milk"), repository.observeCompletedInList(groceries.id).first().map { it.title })
+
+        repository.setCompleted(listOf(eggs.id), false)
+        assertEquals(listOf("Milk"), repository.observeCompletedInList(groceries.id).first().map { it.title })
+    }
+
+    @Test
+    fun subtaskProgressCountsTickedAndTotalPerTask() = runTest {
+        val trip = repository.addTask(NewTask("Trip"))
+        val plain = repository.addTask(NewTask("Plain"))
+        subtasks.add(trip.id, "Pack").let { subtasks.update(it.copy(done = true)) }
+        subtasks.add(trip.id, "Book taxi")
+        subtasks.add(trip.id, "Water plants")
+        val progress = subtasks.observeProgress().first()
+        assertEquals(mapOf(trip.id to SubtaskProgress(done = 1, total = 3)), progress)
+        assertNull(progress[plain.id])
     }
 
     @Test
@@ -130,7 +177,7 @@ class TaskRepositoryTest {
     @Test
     fun purgeRemovesOnlyWhatIsOlderThanTheUndoWindow() = runTest {
         val old = repository.addTask(NewTask("Old"))
-        repository.addSubtask(old.id, "Step")
+        subtasks.add(old.id, "Step")
         repository.setDeleted(listOf(old.id), true)
 
         clock.advance(Duration.ofDays(2))
@@ -139,7 +186,7 @@ class TaskRepositoryTest {
 
         repository.purgeDeleted()
         assertNull(repository.task(old.id))
-        assertTrue(repository.observeSubtasks(old.id).first().isEmpty())
+        assertTrue(subtasks.observe(old.id).first().isEmpty())
         assertNotNull(repository.task(recent.id))
     }
 
@@ -185,10 +232,10 @@ class TaskRepositoryTest {
     @Test
     fun subtasksKeepTheirOrder() = runTest {
         val task = repository.addTask(NewTask("Trip"))
-        val pack = repository.addSubtask(task.id, "Pack")
-        repository.addSubtask(task.id, "Book taxi")
-        repository.updateSubtask(pack.copy(done = true))
-        val steps = repository.observeSubtasks(task.id).first()
+        val pack = subtasks.add(task.id, "Pack")
+        subtasks.add(task.id, "Book taxi")
+        subtasks.update(pack.copy(done = true))
+        val steps = subtasks.observe(task.id).first()
         assertEquals(listOf("Pack" to true, "Book taxi" to false), steps.map { it.title to it.done })
     }
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Mirrors the background token in ui/theme/ColorTokens.kt so the first frame matches. -->
-    <color name="window_background">#FFFCF8F4</color>
-    <color name="launcher_background">#FFFCF8F4</color>
-    <color name="launcher_foreground">#FFE26D00</color>
+    <color name="window_background">#FFFFFFFF</color>
+    <color name="launcher_background">#FFFFFFFF</color>
+    <color name="launcher_foreground">#FFD1453B</color>
 </resources>

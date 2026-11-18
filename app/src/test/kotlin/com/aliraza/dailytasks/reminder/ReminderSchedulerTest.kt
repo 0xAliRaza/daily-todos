@@ -56,7 +56,15 @@ class ReminderSchedulerTest {
         // Writes do not re-run the engine here, so each test controls exactly when it runs.
         settings = SettingsRepository(db.settings()) {}
         tasks = TaskRepository(db, clock, settings) {}
-        scheduler = ReminderScheduler(tasks, settings, db.reminderLog(), poster, alarm, mirror, clock) { timerEnd }
+        scheduler = ReminderScheduler(
+            tasks,
+            settings,
+            db.reminderLog(),
+            poster,
+            alarm,
+            mirror,
+            clock,
+        ) { _, _ -> timerEnd }
     }
 
     @After

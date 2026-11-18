@@ -183,6 +183,8 @@ the app is opened again; catch-up then posts what was missed.
    insistent repeats vibration as well as sound on the A54)**. If it does not, fall back to a short
    foreground service started from the alarm receiver that plays on the alarm stream and vibrates; it
    must stop itself at the cap. Task reminders stay ordinary single-alert notifications.
+   As built (2026-11-18): the cap is the notification's own timeout (`setTimeoutAfter`), which removes the
+   alert and with it the repeating sound, so no scheduler entry is needed for the stop.
 
 ## 7. Quick-add parser (`:core`)
 
@@ -250,10 +252,11 @@ Behaviour: swipe to complete; undo snackbar after complete, delete and bulk acti
 later); long-press for multi-select with bulk complete, re-date, priority and delete; drag to reorder inside
 a section; new tasks go to the bottom.
 
-Design: tokens in one file; warm orange accent on warm neutrals; light and dark; no wallpaper-based dynamic
+Design: tokens in one file; one red accent on plain neutrals, with signal colours for priority and due date; light and dark; no wallpaper-based dynamic
 colour; system font; edge-to-edge; start/end layout only (right-to-left safe); works at 200% font size;
 TalkBack labels; respects the system's animation-off setting; designed empty states. The palette in
-`ui/theme/ColorTokens.kt` was approved on 2026-11-18; `ThemeContrastTest` keeps every pairing at WCAG AA.
+`ui/theme/ColorTokens.kt` (red on white, chosen by the owner on 2026-11-18, replacing the first rose palette);
+`ThemeContrastTest` keeps every pairing at WCAG AA, the signal colours included.
 
 **Reminder health screen**: one row per check, green or red, each with a fix button.
 
@@ -306,10 +309,19 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
   5, and write the answers back into this file. Then the scheduler, receivers, notifications with actions,
   the schedule mirror and catch-up, with a bare add field to create tasks. Done when the matrix below
   passes on the A54.
-- [ ] **M4 Task screens.** Section 8 items 1, 2, 4, 5 and 7 (the lists screen is M7).
-- [ ] **M5 Reminder health** and the first-run permission flow.
-- [ ] **M6 Focus timer.**
+- [ ] **M4 Task screens.** Section 8 items 1, 2, 4, 5 and 7 (the lists screen is M7). (2026-11-18: built in the
+  plain checkbox-list style: Today, Upcoming with the week strip, Search, the task sheet, quick-add
+  highlighting with chips, undo, multi-select and drag to reorder. Checked on an emulator; waits for the A54.)
+  2026-11-18, later: red-on-white redesign; the add bar opens from a round + button; a Calendar tab with Day,
+  3 days, Week and Month (the month folds to the picked week as its day list scrolls); Upcoming links to it
+  and has a Today button. Date and time words anywhere in the line make one moment and toggle together.
+- [ ] **M5 Reminder health** and the first-run permission flow. (2026-11-18: the health screen with checks, maker
+  steps, a test reminder and the history is built; the first-run flow is still to do.)
+- [ ] **M6 Focus timer.** (2026-11-18: built through the scheduler. On an emulator, with the app killed, a
+  1-minute round alerted on time, the break started by itself and its end waited for a tap. The A54 checks of
+  the three signal modes are still to do.)
 - [ ] **M7 Lists.** The lists screen and `#list` in quick add. Until then every task lives in "Daily".
+  (2026-11-18: create, rename and open lists are built; deleting a list is not.)
 - [ ] **M8 Export, import, settings.** (2026-11-18: the backup format, hostile-file checks, export,
   restore and the round-trip test are in; the pickers, confirmation and settings screen are still to do.) Export through the system "create document" picker and import
   through "open document", so no storage permission is needed. Treat the imported file as hostile: size

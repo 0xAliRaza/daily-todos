@@ -28,6 +28,20 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE list_id = :listId AND completed_at IS NULL AND deleted_at IS NULL")
     fun observeOpenInList(listId: String): Flow<List<TaskEntity>>
 
+    /** Tasks ticked off at or after [since], newest first. */
+    @Query(
+        "SELECT tasks.* FROM tasks JOIN lists ON lists.id = tasks.list_id " +
+            "WHERE tasks.completed_at >= :since AND tasks.deleted_at IS NULL AND lists.deleted_at IS NULL " +
+            "ORDER BY tasks.completed_at DESC",
+    )
+    fun observeCompletedSince(since: Instant): Flow<List<TaskEntity>>
+
+    @Query(
+        "SELECT * FROM tasks WHERE list_id = :listId AND completed_at IS NOT NULL AND deleted_at IS NULL " +
+            "ORDER BY completed_at DESC",
+    )
+    fun observeCompletedInList(listId: String): Flow<List<TaskEntity>>
+
     /** Title or notes contain [pattern] (a LIKE pattern); done tasks included, deleted ones not. */
     @Query(
         "SELECT tasks.* FROM tasks JOIN lists ON lists.id = tasks.list_id " +
@@ -127,6 +141,10 @@ interface SubtaskDao {
 
     @Query("DELETE FROM subtasks WHERE id = :id")
     suspend fun delete(id: String)
+
+    /** One row per task that has sub-tasks: how many there are and how many are ticked. */
+    @Query("SELECT task_id AS taskId, COUNT(*) AS total, SUM(done) AS done FROM subtasks GROUP BY task_id")
+    fun observeProgress(): Flow<List<SubtaskProgressRow>>
 
     /** Sub-tasks of every task a backup holds. */
     @Query(

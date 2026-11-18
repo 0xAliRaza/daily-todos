@@ -1,13 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Daily Tasks</string>
+    <string name="app_name">DT</string>
+
+    <!-- Common actions -->
+    <string name="action_add">Add task</string>
+    <string name="action_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_complete">Complete</string>
+    <string name="action_reopen">Mark not done</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_drag">Drag to reorder</string>
+    <string name="action_focus">Focus</string>
+    <string name="action_ok">OK</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_save">Save</string>
+    <string name="action_undo">Undo</string>
+    <string name="action_unrecognise">Don’t read %1$s from the text</string>
+    <string name="action_recognise">Read %1$s from the text again</string>
+    <plurals name="selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+
+    <!-- Days and dates -->
+    <string name="day_today">Today</string>
+    <string name="day_tomorrow">Tomorrow</string>
+    <string name="day_yesterday">Yesterday</string>
+    <string name="date_next_week">Next week</string>
+    <string name="date_pick">Pick a date…</string>
+    <string name="time_pick">Pick a time…</string>
+    <string name="week_previous">Previous week</string>
+    <string name="week_next">Next week</string>
+
+    <!-- Today, Upcoming, Lists, Search -->
     <string name="today_title">Today</string>
-    <string name="today_empty_title">Nothing due today</string>
-    <string name="today_empty_body">Tasks for today and anything overdue show up here.</string>
+    <string name="today_empty_title">All clear</string>
+    <string name="today_empty_body">Nothing due today. Add something below, or enjoy the free time.</string>
     <string name="today_section_overdue">Overdue</string>
-    <string name="today_section_timed">Scheduled</string>
-    <string name="today_section_rest">Anytime today</string>
-    <string name="add_placeholder">Add a task, e.g. Call bank tomorrow 4pm p1</string>
+    <string name="upcoming_title">Upcoming</string>
+    <string name="calendar_title">Calendar</string>
+    <string name="calendar_open">Open in calendar</string>
+    <string name="calendar_day">Day</string>
+    <string name="calendar_three_days">3 days</string>
+    <string name="calendar_week">Week</string>
+    <string name="calendar_month">Month</string>
+    <string name="calendar_previous">Earlier</string>
+    <string name="calendar_next">Later</string>
+    <string name="calendar_nothing">Nothing on this day</string>
+    <string name="calendar_more">+%1$d</string>
+    <string name="completed_title">Completed · %1$d</string>
+    <string name="completed_toggle">Show or hide completed tasks</string>
+    <string name="subtasks_progress_label">Sub-tasks done: %1$d of %2$d</string>
+    <string name="subtasks_show">Show sub-tasks</string>
+    <string name="subtasks_hide">Hide sub-tasks</string>
+    <string name="upcoming_later">Later</string>
+    <string name="lists_title">Lists</string>
+    <string name="list_default_tag">Default</string>
+    <string name="list_new">New list</string>
+    <string name="list_rename">Rename list</string>
+    <string name="list_empty_title">Nothing here yet</string>
+    <string name="list_empty_body">Add the first item below.</string>
+    <string name="search_title">Search</string>
+    <string name="search_placeholder">Search tasks</string>
+    <string name="search_hint_title">Find anything</string>
+    <string name="search_hint_body">Titles and notes across every list, done tasks too.</string>
+    <string name="search_none_title">No matches</string>
+    <string name="search_none_body">Nothing has “%1$s” in it.</string>
+
+    <!-- Quick add -->
+    <string name="add_placeholder">Add a task</string>
+    <string name="add_to_list">Add to %1$s</string>
+
+    <!-- Undo -->
+    <plurals name="undo_completed">
+        <item quantity="one">Completed</item>
+        <item quantity="other">%1$d completed</item>
+    </plurals>
+    <plurals name="undo_reopened">
+        <item quantity="one">Marked not done</item>
+        <item quantity="other">%1$d marked not done</item>
+    </plurals>
+    <plurals name="undo_deleted">
+        <item quantity="one">Task deleted</item>
+        <item quantity="other">%1$d tasks deleted</item>
+    </plurals>
+    <plurals name="undo_reordered">
+        <item quantity="one">Order changed</item>
+        <item quantity="other">Order changed</item>
+    </plurals>
+
+    <!-- Task sheet -->
+    <string name="task_title_hint">Task name</string>
+    <string name="task_notes_hint">Notes</string>
+    <string name="task_no_date">No date</string>
+    <string name="task_no_time">No time</string>
+    <string name="task_reminds">Next reminder: %1$s, %2$s</string>
+    <string name="task_subtasks">Sub-tasks</string>
+    <string name="task_subtask_hint">Add a sub-task</string>
+    <string name="priority_none">No priority</string>
+    <string name="priority_long">Priority %1$d</string>
+
+    <!-- Reminders -->
     <string name="reminder_overdue">Overdue</string>
     <string name="reminder_action_done">Done</string>
     <string name="reminder_action_snooze_short">10 min</string>
@@ -16,4 +110,140 @@
     <string name="channel_reminders_description">One notification for each task when it is due.</string>
     <string name="channel_reminders_dnd">Reminders through Do Not Disturb</string>
     <string name="channel_reminders_dnd_description">Used instead of Reminders when the Do Not Disturb setting is on.</string>
+
+    <!-- Focus timer -->
+    <string name="focus_title">Focus</string>
+    <string name="focus_label">Focus</string>
+    <string name="focus_break">Break</string>
+    <string name="focus_breaks">Breaks</string>
+    <string name="focus_ready">Ready</string>
+    <string name="focus_paused">Paused</string>
+    <string name="focus_minutes">%1$d min</string>
+    <string name="focus_less">Shorter %1$s</string>
+    <string name="focus_more">Longer %1$s</string>
+    <string name="focus_start">Start focus</string>
+    <string name="focus_start_next">Start next focus</string>
+    <string name="focus_skip_break">Skip break</string>
+    <string name="focus_pause">Pause</string>
+    <string name="focus_resume">Resume</string>
+    <string name="focus_stop">Stop</string>
+    <string name="focus_progress_focus">Focus · round %1$d</string>
+    <string name="focus_progress_break">Break after round %1$d</string>
+    <string name="focus_paused_left">Paused · %1$d min left</string>
+    <string name="focus_alert_focus_done">Focus round done</string>
+    <string name="focus_alert_focus_body">Your break has started.</string>
+    <string name="focus_alert_break_done">Break is over</string>
+    <string name="focus_alert_break_body">Start the next focus round when you’re ready.</string>
+    <string name="focus_footnote">Round ends are scheduled like reminders, so they fire even if the app is closed.</string>
+    <string name="channel_timer_sound">Timer end: sound</string>
+    <string name="channel_timer_vibrate">Timer end: vibrate</string>
+    <string name="channel_timer_both">Timer end: sound and vibrate</string>
+    <string name="channel_timer_description">Keeps going until you dismiss it, and stops by itself after a minute.</string>
+    <string name="channel_timer_running">Timer running</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_reminders">Reminders</string>
+    <string name="settings_default_time">Default reminder time</string>
+    <string name="settings_default_time_hint">For tasks with a date and no time</string>
+    <string name="settings_undated_tomorrow">New Daily tasks get tomorrow</string>
+    <string name="settings_undated_tomorrow_hint">Shown in the add bar while typing</string>
+    <string name="settings_date_only">Remind tasks without a time</string>
+    <string name="settings_date_only_hint">At the default reminder time</string>
+    <string name="settings_heads_up">Early heads-up for timed tasks</string>
+    <string name="settings_heads_up_none">On time</string>
+    <string name="settings_overdue">Overdue reminders</string>
+    <string name="settings_overdue_hint">Undone tasks remind again each morning</string>
+    <string name="settings_overdue_time">Overdue reminder time</string>
+    <string name="settings_dnd">Break through Do Not Disturb</string>
+    <string name="settings_dnd_hint">Reminders and timer ends still alert</string>
+    <string name="settings_reliability">Reliability</string>
+    <string name="settings_health_hint">Permissions, battery and a test reminder</string>
+    <string name="settings_battery">Battery optimisation</string>
+    <string name="settings_battery_ok">Unrestricted</string>
+    <string name="settings_battery_todo">Restricted · tap to allow background use</string>
+    <string name="settings_focus">Focus timer</string>
+    <string name="settings_signal">End signal</string>
+    <string name="signal_sound">Sound</string>
+    <string name="signal_vibrate">Vibrate</string>
+    <string name="signal_both">Both</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_data">Your data</string>
+    <string name="settings_footer">DT · offline, no account</string>
+
+    <!-- Backup -->
+    <string name="backup_export">Export backup</string>
+    <string name="backup_import">Import backup</string>
+    <string name="backup_import_hint">Replaces everything after you confirm</string>
+    <string name="backup_last">Last backup: %1$s</string>
+    <string name="backup_never">never</string>
+    <string name="backup_saved">Backup saved</string>
+    <string name="backup_failed">Could not write the backup</string>
+    <string name="backup_rejected">That file is not a DT backup</string>
+    <string name="backup_restored">Backup restored</string>
+    <string name="backup_confirm_title">Replace everything?</string>
+    <string name="backup_confirm_body">Everything on this phone is replaced by the backup (tasks: %1$d, lists: %2$d).</string>
+    <string name="backup_confirm_replace">Replace</string>
+
+    <!-- Reminder health -->
+    <string name="health_title">Reminder health</string>
+    <string name="health_all_good">Everything reminders need is in place.</string>
+    <string name="health_needs_attention">Something needs a tap before reminders are reliable.</string>
+    <string name="health_checks">Checks</string>
+    <string name="health_notifications">Notifications</string>
+    <string name="health_allowed">Allowed</string>
+    <string name="health_notifications_fix">Off · tap to allow</string>
+    <string name="health_exact">Exact alarms</string>
+    <string name="health_exact_ok">Allowed, so reminders land on the minute</string>
+    <string name="health_exact_fix">Not allowed · tap to allow</string>
+    <string name="health_maker_steps">Steps for this phone</string>
+    <string name="health_test">Send a test reminder</string>
+    <string name="health_test_title">DT test reminder</string>
+    <string name="health_test_sent">A test reminder arrives in about a minute</string>
+    <string name="health_history">Recent reminders</string>
+    <string name="health_history_empty">No reminders yet.</string>
+    <string name="health_history_due">%1$s, due %2$s</string>
+    <string name="health_history_fired">Fired %1$s</string>
+    <string name="health_on_time">On time</string>
+    <string name="health_late">%1$d min late</string>
+    <string name="health_history_note">History stays on this phone and stores no task titles.</string>
+
+    <string-array name="steps_samsung">
+        <item>Settings → Apps → DT → Battery → Unrestricted.</item>
+        <item>Settings → Battery → Background usage limits: keep DT out of Sleeping apps and Deep sleeping apps.</item>
+        <item>An unrestricted app is never put to sleep, so “Put unused apps to sleep” can stay on.</item>
+    </string-array>
+    <string-array name="steps_xiaomi">
+        <item>Settings → Apps → Manage apps → DT → Autostart: on.</item>
+        <item>Same page → Battery saver → No restrictions.</item>
+        <item>Recent apps: long-press DT and tap the lock so it is not cleared.</item>
+    </string-array>
+    <string-array name="steps_oppo">
+        <item>Settings → Apps → App management → DT → Battery usage: allow background activity and auto launch.</item>
+        <item>Settings → Battery → More settings: turn off optimisation for DT.</item>
+    </string-array>
+    <string-array name="steps_vivo">
+        <item>Settings → Battery → Background power consumption management → DT: allow.</item>
+        <item>i Manager → App manager → Autostart manager → DT: on.</item>
+    </string-array>
+    <string-array name="steps_oneplus">
+        <item>Settings → Apps → DT → Battery → Unrestricted (or “Don’t optimise”).</item>
+        <item>Settings → Battery → Advanced: turn off adaptive and sleep standby optimisation if reminders arrive late.</item>
+    </string-array>
+    <string-array name="steps_huawei">
+        <item>Settings → Battery → App launch → DT: switch to manage manually and allow all three options.</item>
+        <item>Settings → Apps → DT → Battery: allow running in the background.</item>
+    </string-array>
+    <string-array name="steps_transsion">
+        <item>Phone Master → App management → Auto-start: allow DT.</item>
+        <item>Settings → Battery → App power saving → DT: no restrictions.</item>
+    </string-array>
+    <string-array name="steps_generic">
+        <item>Settings → Apps → DT → Battery: Unrestricted (or “Don’t optimise”).</item>
+        <item>If the phone has an autostart or background-launch list, allow DT there.</item>
+    </string-array>
 </resources>

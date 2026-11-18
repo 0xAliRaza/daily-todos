@@ -66,6 +66,9 @@ data class SubtaskEntity(
     val position: Long,
 )
 
+/** A task's sub-task counts, as [SubtaskDao.observeProgress] reads them. */
+data class SubtaskProgressRow(val taskId: String, val total: Int, val done: Int)
+
 /** One posted reminder, for the Reminder health history. Deliberately holds no title. */
 @Entity(tableName = "reminder_log", indices = [Index("fired_at")])
 data class ReminderLogEntity(

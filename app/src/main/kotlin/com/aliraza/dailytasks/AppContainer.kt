@@ -5,11 +5,15 @@ import com.aliraza.dailytasks.core.model.FiredBy
 import com.aliraza.dailytasks.data.BackupRepository
 import com.aliraza.dailytasks.data.ListRepository
 import com.aliraza.dailytasks.data.SettingsRepository
+import com.aliraza.dailytasks.data.SubtaskRepository
 import com.aliraza.dailytasks.data.TaskRepository
+import com.aliraza.dailytasks.data.TimerRepository
 import com.aliraza.dailytasks.data.db.AppDatabase
 import com.aliraza.dailytasks.reminder.AndroidAlarmArmer
+import com.aliraza.dailytasks.reminder.AndroidFocusSignals
 import com.aliraza.dailytasks.reminder.AndroidReminderPoster
 import com.aliraza.dailytasks.reminder.BeforeUnlockReminders
+import com.aliraza.dailytasks.reminder.FocusEngine
 import com.aliraza.dailytasks.reminder.ReminderActions
 import com.aliraza.dailytasks.reminder.ReminderScheduler
 import com.aliraza.dailytasks.reminder.ScheduleMirror
@@ -38,6 +42,8 @@ class AppContainer(context: Context) {
     val settings: SettingsRepository by lazy { SettingsRepository(database.settings(), onScheduleChanged) }
     val lists: ListRepository by lazy { ListRepository(database.lists()) }
     val tasks: TaskRepository by lazy { TaskRepository(database, clock, settings, onScheduleChanged) }
+    val subtasks: SubtaskRepository by lazy { SubtaskRepository(database.subtasks()) }
+    val timers: TimerRepository by lazy { TimerRepository(database.timer(), settings, clock, onScheduleChanged) }
     val backup: BackupRepository by lazy { BackupRepository(database, settings, clock, onScheduleChanged) }
 
     val alarmArmer by lazy { AndroidAlarmArmer(appContext) }
@@ -47,7 +53,16 @@ class AppContainer(context: Context) {
     }
 
     val scheduler: ReminderScheduler by lazy {
-        ReminderScheduler(tasks, settings, database.reminderLog(), reminderPoster, alarmArmer, mirror, clock)
+        ReminderScheduler(
+            tasks,
+            settings,
+            database.reminderLog(),
+            reminderPoster,
+            alarmArmer,
+            mirror,
+            clock,
+            timer = FocusEngine(timers, tasks, AndroidFocusSignals(appContext)),
+        )
     }
     val beforeUnlock by lazy { BeforeUnlockReminders(mirror, reminderPoster, alarmArmer, clock) }
     val reminderActions by lazy { ReminderActions(tasks, reminderPoster, clock) }

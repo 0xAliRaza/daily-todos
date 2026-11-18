@@ -9,8 +9,9 @@ Daily Tasks is a native Android to-do app for one person's daily use: Kotlin and
 offline, licensed GPL-3.0-or-later. Its promise is that a reminder always fires. Android only; there is no
 desktop or web version.
 
-Status on 2026-11-18: M0 to M2 done; the reminder engine (M3) and the backup logic (M8) are built and
-wait for the A54 checks and their screens. See the milestones in `PLAN.md`.
+Status on 2026-11-18: M0 to M2 done. The reminder engine (M3), the task screens (M4), reminder health
+(M5), the focus timer (M6), lists (M7) and settings with backup (M8) are built and wait for the A54 checks.
+On the phone the app is named DT. See the milestones in `PLAN.md`.
 
 ## Start here
 
@@ -29,6 +30,9 @@ wait for the A54 checks and their screens. See the milestones in `PLAN.md`.
 - Three priorities, optional. No labels.
 - Views: Today and Upcoming (with a week strip to jump between days) show dated tasks from every list;
   then each list on its own. Search.
+- Calendar: Day, 3 days, Week and Month views of dated tasks. Timed tasks sit at their time on an hour
+  grid (tasks have no length); Month shows dots per day and the picked day's tasks below, and folds to
+  that day's week as the list scrolls. Reached from its own tab and from Upcoming's week strip.
 - Undo on every action, multi-select, drag to reorder.
 - Sorting: inside a list, manual order with new tasks added at the bottom. In Today, overdue first, then
   timed tasks by time, then the rest in manual order.
@@ -81,8 +85,11 @@ wait for the A54 checks and their screens. See the milestones in `PLAN.md`.
 
 **Design**
 
-- Warm orange accent on warm neutrals; light and dark both first-class; system font.
-- Bright orange for fills and icons, a darker shade for text, so contrast stays at WCAG AA.
+- One red accent on plain neutrals: white in light, near-black grey in dark; both first-class; system font.
+- Signal colours, not extra accents: the check-box ring shows priority (P1 red, P2 orange, P3 blue) and a
+  due date is coloured by nearness (overdue red, today green, tomorrow amber, this week purple).
+- Flat lists split by hairlines, no cards. Adding a task starts from a round + button and is one
+  line: the text, one pill for the due day, and send. Every pairing stays at WCAG AA.
 
 ## Rules that must hold
 
@@ -96,7 +103,7 @@ wait for the A54 checks and their screens. See the milestones in `PLAN.md`.
 
 ## Non-goals
 
-Repeating tasks (habits belong in a habit app), labels, nested projects and sections, task durations, a calendar grid, a global quick-add or home-screen
+Repeating tasks (habits belong in a habit app), labels, nested projects and sections, task durations, a global quick-add or home-screen
 shortcut flow, keyboard shortcuts, encryption, sync, accounts, collaboration, AI features, points or
 streaks, location reminders, importers for other apps' files, desktop and web versions.
 

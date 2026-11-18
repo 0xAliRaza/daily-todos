@@ -29,8 +29,8 @@ class ReminderScheduler(
     private val alarm: AlarmArmer,
     private val mirror: ScheduleMirror,
     private val clock: Clock,
-    /** When the running focus round ends, if one runs; it shares the single alarm. */
-    private val timerEndsAt: suspend () -> Instant? = { null },
+    /** The focus timer: ends its rounds and says when the running one ends; it shares the single alarm. */
+    private val timer: TimerStep = TimerStep { _, _ -> null },
 ) {
     private val mutex = Mutex()
 
@@ -46,7 +46,7 @@ class ReminderScheduler(
         if (posted.isNotEmpty()) log.trim(LOG_SIZE)
         removeStale(open.filter { it.notifiedFor != null || it.id in posted }.map { it.id }.toSet())
 
-        val next = listOfNotNull(plan.nextAt, timerEndsAt()).minOrNull()
+        val next = listOfNotNull(plan.nextAt, timer.run(now, current)).minOrNull()
         if (next != null) alarm.arm(next) else alarm.cancel()
         writeMirror(snapshotOf(plan, current))
     }

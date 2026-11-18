@@ -1,16 +1,12 @@
 package com.aliraza.dailytasks.reminder
 
-import android.Manifest
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import com.aliraza.dailytasks.MainActivity
 import com.aliraza.dailytasks.R
 import java.time.Instant
@@ -33,7 +29,7 @@ class AndroidReminderPoster(private val context: Context) : ReminderPoster {
     private val manager = NotificationManagerCompat.from(context)
 
     override fun post(content: ReminderContent, dndOverride: Boolean): Boolean {
-        if (!canPost()) return false
+        if (!context.canPostNotifications()) return false
         NotificationChannels.ensure(context)
         val channel = if (dndOverride) NotificationChannels.REMINDERS_DND else NotificationChannels.REMINDERS
         val notification = NotificationCompat.Builder(context, channel)
@@ -75,13 +71,6 @@ class AndroidReminderPoster(private val context: Context) : ReminderPoster {
         context.getSystemService(NotificationManager::class.java).activeNotifications
             .filter { it.id == NOTIFICATION_ID && it.tag != null }
             .mapTo(mutableSetOf()) { it.tag }
-
-    private fun canPost(): Boolean {
-        val permitted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
-            PackageManager.PERMISSION_GRANTED
-        return permitted && manager.areNotificationsEnabled()
-    }
 
     private fun openTask(taskId: String): PendingIntent = PendingIntent.getActivity(
         context,

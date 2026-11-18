@@ -2,7 +2,6 @@ package com.aliraza.dailytasks.data
 
 import androidx.room.withTransaction
 import com.aliraza.dailytasks.core.model.NewTask
-import com.aliraza.dailytasks.core.model.Subtask
 import com.aliraza.dailytasks.core.model.Task
 import com.aliraza.dailytasks.core.reminder.ReminderRules
 import com.aliraza.dailytasks.data.db.AppDatabase
@@ -30,7 +29,6 @@ class TaskRepository(
 ) {
     private val tasks = db.tasks()
     private val lists = db.lists()
-    private val subtasks = db.subtasks()
 
     private fun now(): Instant = clock.instant()
 
@@ -43,10 +41,20 @@ class TaskRepository(
     fun observeOpenInList(listId: String): Flow<List<Task>> =
         tasks.observeOpenInList(listId).map { rows -> rows.map { it.toDomain() } }
 
-    fun observeTask(id: String): Flow<Task?> = tasks.observe(id).map { it?.toDomain() }
+    /**
+     * What Today shows as done: tasks ticked off since midnight on [day] that were due that day or
+     * earlier. Undated tasks from other lists stay out, as they never showed in Today.
+     */
+    fun observeCompletedOn(day: LocalDate): Flow<List<Task>> =
+        tasks.observeCompletedSince(day.atStartOfDay(clock.zone).toInstant()).map { rows ->
+            rows.map { it.toDomain() }.filter { task -> task.dueDate?.isAfter(day) == false }
+        }
 
-    fun observeSubtasks(taskId: String): Flow<List<Subtask>> =
-        subtasks.observeForTask(taskId).map { rows -> rows.map { it.toDomain() } }
+    /** A list's done tasks, the most recently ticked first. */
+    fun observeCompletedInList(listId: String): Flow<List<Task>> =
+        tasks.observeCompletedInList(listId).map { rows -> rows.map { it.toDomain() } }
+
+    fun observeTask(id: String): Flow<Task?> = tasks.observe(id).map { it?.toDomain() }
 
     /** Tasks whose title or notes contain [query], case-insensitively; `%` and `_` match literally. */
     fun search(query: String): Flow<List<Task>> {
@@ -156,28 +164,6 @@ class TaskRepository(
             tasks.purgeDeletedBefore(before)
             lists.purgeDeletedBefore(before)
         }
-    }
-
-    // Sub-tasks
-
-    suspend fun addSubtask(taskId: String, title: String): Subtask {
-        val subtask = Subtask(
-            id = UUID.randomUUID().toString(),
-            taskId = taskId,
-            title = title.trim(),
-            done = false,
-            position = (subtasks.maxPosition(taskId) ?: -1) + 1,
-        )
-        subtasks.upsert(subtask.toEntity())
-        return subtask
-    }
-
-    suspend fun updateSubtask(subtask: Subtask) {
-        subtasks.upsert(subtask.toEntity())
-    }
-
-    suspend fun deleteSubtask(id: String) {
-        subtasks.delete(id)
     }
 
     companion object {

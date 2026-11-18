@@ -27,12 +27,27 @@ class ThemeContrastTest {
         "onAccentContainer on accentContainer" to (t.onAccentContainer to t.accentContainer),
         "onError on error" to (t.onError to t.error),
         "error on background" to (t.error to t.background),
+        "dateToday on background" to (t.dateToday to t.background),
+        "dateToday on surface" to (t.dateToday to t.surface),
+        "dateTomorrow on background" to (t.dateTomorrow to t.background),
+        "dateTomorrow on surface" to (t.dateTomorrow to t.surface),
+        "dateThisWeek on background" to (t.dateThisWeek to t.background),
+        "dateThisWeek on surface" to (t.dateThisWeek to t.surface),
+        "accentText on accentContainer" to (t.accentText to t.accentContainer),
+        "onSurfaceVariant on accentContainer" to (t.onSurfaceVariant to t.accentContainer),
     )
 
     private fun graphicPairs(t: ColorTokens) = mapOf(
         "accent on background" to (t.accent to t.background),
         "accent on surface" to (t.accent to t.surface),
         "outline on background" to (t.outline to t.background),
+        "outline on surface" to (t.outline to t.surface),
+        "priority1 on background" to (t.priority1 to t.background),
+        "priority2 on background" to (t.priority2 to t.background),
+        "priority3 on background" to (t.priority3 to t.background),
+        "priority1 on surface" to (t.priority1 to t.surface),
+        "priority2 on surface" to (t.priority2 to t.surface),
+        "priority3 on surface" to (t.priority3 to t.surface),
     )
 
     private fun assertAll(name: String, pairs: Map<String, Pair<Color, Color>>, minimum: Double) {

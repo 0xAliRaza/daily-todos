@@ -37,6 +37,7 @@ class BackupRoundTripTest {
         val settings = SettingsRepository(db.settings()) {}
         val lists = ListRepository(db.lists())
         val tasks = TaskRepository(db, clock, settings) {}
+        val subtasks = SubtaskRepository(db.subtasks())
         val backup = BackupRepository(db, settings, clock) {}
     }
 
@@ -65,8 +66,8 @@ class BackupRoundTripTest {
             ),
         )
         tasks.snooze(bank.id, Instant.parse("2026-11-19T15:10:00Z"))
-        tasks.addSubtask(bank.id, "Find statement")
-        tasks.addSubtask(bank.id, "Write questions").let { tasks.updateSubtask(it.copy(done = true)) }
+        subtasks.add(bank.id, "Find statement")
+        subtasks.add(bank.id, "Write questions").let { subtasks.update(it.copy(done = true)) }
         tasks.addTask(NewTask("Milk", listId = groceries.id))
         val done = tasks.addTask(NewTask("Old chore"))
         tasks.setCompleted(listOf(done.id), completed = true)

@@ -33,6 +33,9 @@ On the phone the app is named DT. See the milestones in `PLAN.md`.
 - Calendar: Day, 3 days, Week and Month views of dated tasks. Timed tasks sit at their time on an hour
   grid (tasks have no length); Month shows dots per day and the picked day's tasks below, and folds to
   that day's week as the list scrolls. Reached from its own tab and from Upcoming's week strip.
+- Gestures: swipe a task right to reschedule (today, tomorrow, next week, a picked date, no date), left
+  to delete; both undo. Tap opens a task, long-press starts multi-select, the round box completes.
+- Lists show their open counts; a list's menu renames it or deletes it with its tasks (undo right after).
 - Undo on every action, multi-select, drag to reorder.
 - Sorting: inside a list, manual order with new tasks added at the bottom. In Today, overdue first, then
   timed tasks by time, then the rest in manual order.

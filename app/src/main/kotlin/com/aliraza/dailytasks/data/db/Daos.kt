@@ -28,6 +28,20 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE list_id = :listId AND completed_at IS NULL AND deleted_at IS NULL")
     fun observeOpenInList(listId: String): Flow<List<TaskEntity>>
 
+    /** Open tasks per list, for the counts on the Lists screen. Lists with none are left out. */
+    @Query(
+        "SELECT list_id AS listId, COUNT(*) AS open FROM tasks " +
+            "WHERE completed_at IS NULL AND deleted_at IS NULL GROUP BY list_id",
+    )
+    fun observeOpenCounts(): Flow<List<ListCountRow>>
+
+    /** The tasks of lists deleted before [before], so those lists can be purged too. */
+    @Query(
+        "DELETE FROM tasks WHERE list_id IN " +
+            "(SELECT id FROM lists WHERE deleted_at IS NOT NULL AND deleted_at < :before)",
+    )
+    suspend fun purgeInListsDeletedBefore(before: Instant): Int
+
     /** Tasks ticked off at or after [since], newest first. */
     @Query(
         "SELECT tasks.* FROM tasks JOIN lists ON lists.id = tasks.list_id " +

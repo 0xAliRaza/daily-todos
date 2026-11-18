@@ -75,13 +75,11 @@ import com.aliraza.dailytasks.ui.components.timeLabel
 import com.aliraza.dailytasks.ui.components.toneColor
 import com.aliraza.dailytasks.ui.theme.tokens
 import kotlinx.coroutines.delay
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
-import java.time.temporal.TemporalAdjusters
 
 private const val SAVE_DELAY_MS = 400L
 
@@ -298,15 +296,9 @@ private fun DateRow(task: Task, today: LocalDate, ink: Color, set: ((Task) -> Ta
         label = task.dueDate?.let { dayLabel(it, today) } ?: stringResource(R.string.task_no_date),
         ink = ink,
     ) { close ->
-        Option(R.string.day_today, close) { set { it.copy(dueDate = today) } }
-        Option(R.string.day_tomorrow, close) { set { it.copy(dueDate = today.plusDays(1)) } }
-        Option(R.string.date_next_week, close) {
-            set { it.copy(dueDate = today.with(TemporalAdjusters.next(DayOfWeek.MONDAY))) }
-        }
+        quickDates(today).forEach { quick -> Option(quick.label, close) { set { it.movedTo(quick.date) } } }
         Option(R.string.date_pick, close, onPick)
-        if (task.dueDate != null) {
-            Option(R.string.task_no_date, close) { set { it.copy(dueDate = null, dueTime = null) } }
-        }
+        if (task.dueDate != null) Option(R.string.task_no_date, close) { set { it.movedTo(null) } }
     }
 }
 
@@ -386,7 +378,7 @@ private fun MenuRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateDialog(initial: LocalDate, onDismiss: () -> Unit, onPick: (LocalDate) -> Unit) {
+internal fun DateDialog(initial: LocalDate, onDismiss: () -> Unit, onPick: (LocalDate) -> Unit) {
     val state = rememberDatePickerState(
         initialSelectedDateMillis = initial.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli(),
     )

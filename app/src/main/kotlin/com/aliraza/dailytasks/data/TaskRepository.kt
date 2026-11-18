@@ -50,6 +50,10 @@ class TaskRepository(
             rows.map { it.toDomain() }.filter { task -> task.dueDate?.isAfter(day) == false }
         }
 
+    /** Open tasks per list id; lists without any are missing from the map. */
+    fun observeOpenCounts(): Flow<Map<String, Int>> =
+        tasks.observeOpenCounts().map { rows -> rows.associate { it.listId to it.open } }
+
     /** A list's done tasks, the most recently ticked first. */
     fun observeCompletedInList(listId: String): Flow<List<Task>> =
         tasks.observeCompletedInList(listId).map { rows -> rows.map { it.toDomain() } }
@@ -162,6 +166,8 @@ class TaskRepository(
         val before = now().minus(age)
         db.withTransaction {
             tasks.purgeDeletedBefore(before)
+            // A deleted list takes its tasks with it; they go first so the list can.
+            tasks.purgeInListsDeletedBefore(before)
             lists.purgeDeletedBefore(before)
         }
     }

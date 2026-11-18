@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aliraza.dailytasks.MainActivity
 import com.aliraza.dailytasks.R
+import com.aliraza.dailytasks.core.model.TaskList
 import com.aliraza.dailytasks.ui.calendar.CalendarContent
 import com.aliraza.dailytasks.ui.calendar.CalendarMode
 import com.aliraza.dailytasks.ui.calendar.CalendarState
@@ -81,6 +84,7 @@ import com.aliraza.dailytasks.ui.settings.SettingsScreen
 import com.aliraza.dailytasks.ui.settings.SettingsViewModel
 import com.aliraza.dailytasks.ui.tasks.ListContent
 import com.aliraza.dailytasks.ui.tasks.ListsContent
+import com.aliraza.dailytasks.ui.tasks.RescheduleHost
 import com.aliraza.dailytasks.ui.tasks.RowContext
 import com.aliraza.dailytasks.ui.tasks.SearchContent
 import com.aliraza.dailytasks.ui.tasks.Selection
@@ -106,7 +110,7 @@ private object Route {
     const val FOCUS = "focus"
     const val LIST_PREFIX = "list/"
 
-    val tabs = listOf(TODAY, UPCOMING, CALENDAR, LISTS, SEARCH)
+    val tabs = listOf(TODAY, UPCOMING, CALENDAR, LISTS)
 }
 
 private fun String.listId(): String? = removePrefix(Route.LIST_PREFIX).takeIf { startsWith(Route.LIST_PREFIX) }
@@ -121,6 +125,7 @@ fun AppRoot(
 ) {
     var stack by rememberSaveable { mutableStateOf(listOf(Route.TODAY)) }
     var sheetTask by rememberSaveable { mutableStateOf<String?>(null) }
+    var rescheduling by rememberSaveable { mutableStateOf<String?>(null) }
     val route = stack.last()
     val navigate = { next: String -> stack = stack + next }
     val back = { stack = stack.dropLast(1) }
@@ -138,7 +143,7 @@ fun AppRoot(
 
     val snackbar = remember { SnackbarHostState() }
     UndoSnackbars(tasks, snackbar)
-    val ctx = rememberRowContext(tasks, selection) { sheetTask = it }
+    val ctx = rememberRowContext(tasks, selection, onReschedule = { rescheduling = it }) { sheetTask = it }
     val quickAdd = remember { QuickAddState() }
     val showsAdd = route in setOf(Route.TODAY, Route.UPCOMING, Route.CALENDAR) || route.listId() != null
     val canAdd = showsAdd && !selection.active
@@ -177,6 +182,7 @@ fun AppRoot(
         }
         Content(route, screens, padding, addButton = showsAdd, typing = quickAdd.focused)
     }
+    rescheduling?.let { id -> RescheduleHost(tasks, id) { rescheduling = null } }
     sheetTask?.let { id ->
         TaskSheet(
             viewModel = tasks,
@@ -360,10 +366,12 @@ private fun TopBar(route: String, tasks: TasksViewModel, onBack: () -> Unit, onO
     val lists by tasks.lists.collectAsStateWithLifecycle()
     val list = route.listId()?.let { id -> lists.firstOrNull { it.id == id } }
     var renaming by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
     val title = list?.name ?: stringResource(titleOf(route))
     val top = route in Route.tabs
+    // Opaque up to the screen's top edge, so rows scrolled up pass under it instead of showing through.
     Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(
             start = if (top) 16.dp else 4.dp,
             end = 4.dp,
             top = 8.dp,
@@ -381,17 +389,12 @@ private fun TopBar(route: String, tasks: TasksViewModel, onBack: () -> Unit, onO
             large = top || list != null,
             modifier = Modifier.weight(1f),
         )
-        if (list != null) {
-            IconButton(onClick = { renaming = true }) {
-                Icon(
-                    AppIcons.Edit,
-                    stringResource(R.string.list_rename),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        if (list != null) ListMenu(list, onRename = { renaming = true }) { deleting = true }
         if (top) {
             val tint = MaterialTheme.colorScheme.onSurfaceVariant
+            IconButton(onClick = { onOpen(Route.SEARCH) }) {
+                Icon(AppIcons.Search, stringResource(R.string.search_title), tint = tint)
+            }
             IconButton(onClick = { onOpen(Route.FOCUS) }) {
                 Icon(AppIcons.Timer, stringResource(R.string.focus_title), tint = tint)
             }
@@ -403,6 +406,65 @@ private fun TopBar(route: String, tasks: TasksViewModel, onBack: () -> Unit, onO
     if (renaming && list != null) {
         RenameDialog(list.name, onDismiss = { renaming = false }) { tasks.renameList(list.id, it) }
     }
+    if (deleting && list != null) {
+        DeleteListDialog(list.name, onDismiss = { deleting = false }) {
+            tasks.deleteList(list.id)
+            onBack()
+        }
+    }
+}
+
+/** A list's ⋮ menu: rename, and delete for every list but the default one. */
+@Composable
+private fun ListMenu(list: TaskList, onRename: () -> Unit, onDelete: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(AppIcons.More, stringResource(R.string.action_more), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.list_rename)) },
+                leadingIcon = { Icon(AppIcons.Edit, null) },
+                onClick = {
+                    open = false
+                    onRename()
+                },
+            )
+            if (!list.isDefault) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.list_delete), color = MaterialTheme.colorScheme.error) },
+                    leadingIcon = { Icon(AppIcons.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                    onClick = {
+                        open = false
+                        onDelete()
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Asks before a list goes, since its tasks go with it. Undo is still offered right after. */
+@Composable
+private fun DeleteListDialog(name: String, onDismiss: () -> Unit, onDelete: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.list_delete_title, name)) },
+        text = { Text(stringResource(R.string.list_delete_body)) },
+        confirmButton = {
+            TextButton(onClick = {
+                onDismiss()
+                onDelete()
+            }) { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = {
+            // Neutral, so the one red button is the one that deletes.
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+    )
 }
 
 @Composable
@@ -488,7 +550,6 @@ private fun TabBar(route: String, onTab: (String) -> Unit) {
         Triple(Route.UPCOMING, AppIcons.Upcoming, R.string.upcoming_title),
         Triple(Route.CALENDAR, AppIcons.Calendar, R.string.calendar_title),
         Triple(Route.LISTS, AppIcons.Lists, R.string.lists_title),
-        Triple(Route.SEARCH, AppIcons.Search, R.string.search_title),
     )
     Row(
         Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)

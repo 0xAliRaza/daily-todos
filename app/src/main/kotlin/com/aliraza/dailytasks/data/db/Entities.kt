@@ -66,6 +66,9 @@ data class SubtaskEntity(
     val position: Long,
 )
 
+/** How many open tasks a list holds, as [TaskDao.observeOpenCounts] reads them. */
+data class ListCountRow(val listId: String, val open: Int)
+
 /** A task's sub-task counts, as [SubtaskDao.observeProgress] reads them. */
 data class SubtaskProgressRow(val taskId: String, val total: Int, val done: Int)
 

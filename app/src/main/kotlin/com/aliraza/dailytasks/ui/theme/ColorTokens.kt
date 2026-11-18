@@ -33,6 +33,9 @@ data class ColorTokens(
     val dateToday: Color,
     val dateTomorrow: Color,
     val dateThisWeek: Color,
+
+    /** Behind a row swiped right to reschedule; [onAccent] icons sit on it. */
+    val swipeReschedule: Color,
 )
 
 val LightTokens = ColorTokens(
@@ -56,6 +59,7 @@ val LightTokens = ColorTokens(
     dateToday = Color(0xFF058527),
     dateTomorrow = Color(0xFFA35C00),
     dateThisWeek = Color(0xFF692EC2),
+    swipeReschedule = Color(0xFF692EC2),
 )
 
 val DarkTokens = ColorTokens(
@@ -79,4 +83,5 @@ val DarkTokens = ColorTokens(
     dateToday = Color(0xFF3CC264),
     dateTomorrow = Color(0xFFFF9A14),
     dateThisWeek = Color(0xFFB287FF),
+    swipeReschedule = Color(0xFF7440C9),
 )

@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -72,6 +73,7 @@ import com.aliraza.dailytasks.ui.components.RoundCheck
 import com.aliraza.dailytasks.ui.components.RowMeta
 import com.aliraza.dailytasks.ui.components.SectionHeader
 import com.aliraza.dailytasks.ui.components.SubtaskFold
+import com.aliraza.dailytasks.ui.components.SwipeRow
 import com.aliraza.dailytasks.ui.components.TaskRow
 import com.aliraza.dailytasks.ui.components.TodayButton
 import com.aliraza.dailytasks.ui.components.dueTone
@@ -116,6 +118,9 @@ class RowContext(
     val subtasks: Map<String, SubtaskProgress> = emptyMap(),
     val subtasksOf: (String) -> Flow<List<Subtask>> = { flowOf(emptyList()) },
     val setSubtaskDone: (Subtask, Boolean) -> Unit = { _, _ -> },
+    val addSubtask: (taskId: String, title: String) -> Unit = { _, _ -> },
+    val delete: (Task) -> Unit = {},
+    val reschedule: (Task) -> Unit = {},
 ) {
     val today: LocalDate get() = now.toLocalDate()
 
@@ -133,11 +138,16 @@ class RowContext(
 }
 
 @Composable
-fun rememberRowContext(viewModel: TasksViewModel, selection: Selection, open: (String) -> Unit): RowContext {
+fun rememberRowContext(
+    viewModel: TasksViewModel,
+    selection: Selection,
+    onReschedule: (String) -> Unit,
+    open: (String) -> Unit,
+): RowContext {
     val now by viewModel.now.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val progress by viewModel.subtaskProgress.collectAsStateWithLifecycle()
-    return remember(now, lists, selection, open, progress) {
+    return remember(now, lists, selection, open, progress, onReschedule) {
         RowContext(
             now,
             lists.associateBy { it.id },
@@ -147,6 +157,9 @@ fun rememberRowContext(viewModel: TasksViewModel, selection: Selection, open: (S
             subtasks = progress,
             subtasksOf = viewModel::observeSubtasks,
             setSubtaskDone = viewModel::setSubtaskDone,
+            addSubtask = viewModel::addSubtask,
+            delete = { task -> viewModel.delete(listOf(task.id)) },
+            reschedule = { task -> onReschedule(task.id) },
         )
     }
 }
@@ -162,18 +175,25 @@ internal fun TaskItem(
 ) {
     var open by rememberSaveable(task.id) { mutableStateOf(false) }
     val fold = meta.subtasks?.let { SubtaskFold(open, onToggle = { open = !open }) { InlineSubtasks(task.id, ctx) } }
-    TaskRow(
-        task = task,
-        today = ctx.today,
-        meta = meta,
-        selected = task.id in ctx.selection.ids,
-        onToggle = { ctx.toggle(task) },
-        onClick = { if (ctx.selection.active) ctx.selection.toggle(task.id) else ctx.open(task.id) },
-        onLongClick = { ctx.selection.toggle(task.id) },
+    SwipeRow(
+        enabled = !ctx.selection.active,
+        canReschedule = task.completedAt == null,
+        onReschedule = { ctx.reschedule(task) },
+        onDelete = { ctx.delete(task) },
         modifier = modifier,
-        fold = fold,
-        trailing = trailing,
-    )
+    ) {
+        TaskRow(
+            task = task,
+            today = ctx.today,
+            meta = meta,
+            selected = task.id in ctx.selection.ids,
+            onToggle = { ctx.toggle(task) },
+            onClick = { if (ctx.selection.active) ctx.selection.toggle(task.id) else ctx.open(task.id) },
+            onLongClick = { ctx.selection.toggle(task.id) },
+            fold = fold,
+            trailing = trailing,
+        )
+    }
 }
 
 /** The sub-tasks under an open row: tap one, box or text, to tick it. */
@@ -205,6 +225,59 @@ private fun InlineSubtasks(taskId: String, ctx: RowContext) {
                 )
             }
         }
+        AddSubtaskLine { ctx.addSubtask(taskId, it) }
+    }
+}
+
+/**
+ * "+ Add a sub-task" under the open sub-tasks. Tapped, it becomes a field; Enter adds and keeps the
+ * field ready for the next one; leaving it empty closes it.
+ */
+@Composable
+private fun AddSubtaskLine(onAdd: (String) -> Unit) {
+    var editing by remember { mutableStateOf(false) }
+    var draft by remember { mutableStateOf("") }
+    val scheme = MaterialTheme.colorScheme
+    val requester = remember { FocusRequester() }
+    Row(
+        Modifier.offset(x = (-12).dp).fillMaxWidth().heightIn(min = 40.dp).clip(RoundedCornerShape(8.dp))
+            .clickable(enabled = !editing) { editing = true },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(AppIcons.Add, null, tint = scheme.primary, modifier = Modifier.padding(horizontal = 12.dp).size(16.dp))
+        if (!editing) {
+            Text(
+                stringResource(R.string.subtask_add_inline),
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurfaceVariant,
+            )
+            return@Row
+        }
+        LaunchedEffect(Unit) { requester.requestFocus() }
+        var hadFocus by remember { mutableStateOf(false) }
+        BasicTextField(
+            value = draft,
+            onValueChange = { draft = it.replace('\n', ' ') },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = scheme.onBackground),
+            cursorBrush = SolidColor(scheme.primary),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(onDone = {
+                if (draft.isNotBlank()) onAdd(draft.trim())
+                draft = ""
+            }),
+            modifier = Modifier.weight(1f).focusRequester(requester).onFocusChanged {
+                if (hadFocus && !it.isFocused) {
+                    if (draft.isNotBlank()) onAdd(draft.trim())
+                    draft = ""
+                    editing = false
+                }
+                hadFocus = it.isFocused
+            },
+        )
     }
 }
 
@@ -432,14 +505,17 @@ private fun dayInk(scheme: ColorScheme, picked: Boolean, past: Boolean, today: B
 @Composable
 fun ListsContent(viewModel: TasksViewModel, padding: PaddingValues, onOpen: (String) -> Unit) {
     val lists by viewModel.lists.collectAsStateWithLifecycle()
+    val counts by viewModel.listCounts.collectAsStateWithLifecycle()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-        items(lists, key = { it.id }) { list -> ListRow(list, Modifier.animateItem()) { onOpen(list.id) } }
+        items(lists, key = { it.id }) { list ->
+            ListRow(list, counts[list.id] ?: 0, Modifier.animateItem()) { onOpen(list.id) }
+        }
         item(key = "new") { NewListField(viewModel::createList) }
     }
 }
 
 @Composable
-private fun ListRow(list: TaskList, modifier: Modifier, onClick: () -> Unit) {
+private fun ListRow(list: TaskList, open: Int, modifier: Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Row(
         modifier = modifier
@@ -458,9 +534,13 @@ private fun ListRow(list: TaskList, modifier: Modifier, onClick: () -> Unit) {
                 stringResource(R.string.list_default_tag),
                 style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 10.dp),
             )
         }
-        Icon(AppIcons.ChevronRight, null, tint = scheme.outline, modifier = Modifier.padding(start = 8.dp))
+        if (open > 0) {
+            Text(open.toString(), style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
+        }
+        Icon(AppIcons.ChevronRight, null, tint = scheme.outline, modifier = Modifier.padding(start = 6.dp))
     }
 }
 

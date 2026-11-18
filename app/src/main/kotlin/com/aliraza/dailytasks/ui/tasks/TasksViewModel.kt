@@ -109,6 +109,10 @@ class TasksViewModel(
 
     fun completedInList(listId: String): Flow<List<Task>> = tasks.observeCompletedInList(listId)
 
+    /** Open tasks per list id, for the Lists screen. */
+    val listCounts: StateFlow<Map<String, Int>> = tasks.observeOpenCounts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), emptyMap())
+
     fun listTasks(listId: String): Flow<List<Task>> =
         combine(tasks.observeOpenInList(listId), ordering) { open, order -> order.list(open) }
 
@@ -208,6 +212,21 @@ class TasksViewModel(
         }
     }
 
+    /** Moves a task to [date] (null: no date), keeping its time; undo puts both back. */
+    fun reschedule(id: String, date: LocalDate?) {
+        viewModelScope.launch {
+            val before = tasks.task(id) ?: return@launch
+            tasks.updateTask(id) { it.movedTo(date) }
+            undoEvents.tryEmit(
+                UndoEvent(R.plurals.undo_rescheduled, 1) {
+                    viewModelScope.launch {
+                        tasks.updateTask(id) { it.copy(dueDate = before.dueDate, dueTime = before.dueTime) }
+                    }
+                },
+            )
+        }
+    }
+
     fun update(id: String, change: (Task) -> Task) {
         viewModelScope.launch { tasks.updateTask(id, change) }
     }
@@ -244,6 +263,16 @@ class TasksViewModel(
     fun createList(name: String) {
         if (name.isBlank()) return
         viewModelScope.launch { listRepo.create(name) }
+    }
+
+    /** Deletes a list and its tasks, with undo. The default list is refused further down. */
+    fun deleteList(id: String) {
+        viewModelScope.launch {
+            listRepo.setDeleted(id, deleted = true)
+            undoEvents.tryEmit(
+                UndoEvent(R.plurals.undo_list_deleted, 1) { viewModelScope.launch { listRepo.setDeleted(id, false) } },
+            )
+        }
     }
 
     fun renameList(id: String, name: String) {

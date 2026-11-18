@@ -35,7 +35,7 @@ class BackupRoundTripTest {
 
     private class Phone(val db: AppDatabase, clock: MutableClock) {
         val settings = SettingsRepository(db.settings()) {}
-        val lists = ListRepository(db.lists())
+        val lists = ListRepository(db.lists(), clock)
         val tasks = TaskRepository(db, clock, settings) {}
         val subtasks = SubtaskRepository(db.subtasks())
         val backup = BackupRepository(db, settings, clock) {}

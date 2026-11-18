@@ -24,6 +24,7 @@ class ThemeContrastTest {
         "accentText on background" to (t.accentText to t.background),
         "accentText on surface" to (t.accentText to t.surface),
         "onAccent on accent" to (t.onAccent to t.accent),
+        "onAccent on swipeReschedule" to (t.onAccent to t.swipeReschedule),
         "onAccentContainer on accentContainer" to (t.onAccentContainer to t.accentContainer),
         "onError on error" to (t.onError to t.error),
         "error on background" to (t.error to t.background),

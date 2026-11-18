@@ -40,7 +40,7 @@ class AppContainer(context: Context) {
     private val onScheduleChanged: suspend () -> Unit = { scheduler.run(FiredBy.CATCH_UP) }
 
     val settings: SettingsRepository by lazy { SettingsRepository(database.settings(), onScheduleChanged) }
-    val lists: ListRepository by lazy { ListRepository(database.lists()) }
+    val lists: ListRepository by lazy { ListRepository(database.lists(), clock, onScheduleChanged) }
     val tasks: TaskRepository by lazy { TaskRepository(database, clock, settings, onScheduleChanged) }
     val subtasks: SubtaskRepository by lazy { SubtaskRepository(database.subtasks()) }
     val timers: TimerRepository by lazy { TimerRepository(database.timer(), settings, clock, onScheduleChanged) }

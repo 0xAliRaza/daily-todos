@@ -44,7 +44,7 @@ class TaskRepositoryTest {
         db = AppDatabase.inMemory(ApplicationProvider.getApplicationContext())
         val onScheduleChanged: suspend () -> Unit = { scheduleRuns++ }
         settings = SettingsRepository(db.settings(), onScheduleChanged)
-        lists = ListRepository(db.lists())
+        lists = ListRepository(db.lists(), clock, onScheduleChanged)
         repository = TaskRepository(db, clock, settings, onScheduleChanged)
         subtasks = SubtaskRepository(db.subtasks())
     }
@@ -115,6 +115,48 @@ class TaskRepositoryTest {
         val progress = subtasks.observeProgress().first()
         assertEquals(mapOf(trip.id to SubtaskProgress(done = 1, total = 3)), progress)
         assertNull(progress[plain.id])
+    }
+
+    @Test
+    fun openCountsLeaveOutDoneAndDeletedTasks() = runTest {
+        val groceries = lists.create("Groceries")
+        val milk = repository.addTask(NewTask("Milk", listId = groceries.id))
+        repository.addTask(NewTask("Eggs", listId = groceries.id))
+        val bread = repository.addTask(NewTask("Bread", listId = groceries.id))
+        repository.setCompleted(listOf(milk.id), true)
+        repository.setDeleted(listOf(bread.id), true)
+        assertEquals(1, repository.observeOpenCounts().first()[groceries.id])
+    }
+
+    @Test
+    fun aDeletedListHidesItsTasksStopsTheirRemindersAndComesBackOnUndo() = runTest {
+        val trip = lists.create("Trip")
+        repository.addTask(NewTask("Pack", listId = trip.id, dueDate = today))
+        val runsBefore = scheduleRuns
+        lists.setDeleted(trip.id, deleted = true)
+        assertTrue(repository.openDated().isEmpty())
+        assertTrue(lists.observe().first().none { it.id == trip.id })
+        assertTrue(scheduleRuns > runsBefore)
+
+        lists.setDeleted(trip.id, deleted = false)
+        assertEquals(listOf("Pack"), repository.openDated().map { it.title })
+    }
+
+    @Test
+    fun theDefaultListCannotBeDeleted() = runTest {
+        val daily = lists.observe().first().single { it.isDefault }
+        lists.setDeleted(daily.id, deleted = true)
+        assertTrue(lists.observe().first().any { it.id == daily.id })
+    }
+
+    @Test
+    fun purgingADeletedListTakesItsTasksWithIt() = runTest {
+        val trip = lists.create("Trip")
+        val pack = repository.addTask(NewTask("Pack", listId = trip.id))
+        lists.setDeleted(trip.id, deleted = true)
+        clock.advance(TaskRepository.UNDO_WINDOW.plusMinutes(1))
+        repository.purgeDeleted()
+        assertNull(repository.task(pack.id))
     }
 
     @Test

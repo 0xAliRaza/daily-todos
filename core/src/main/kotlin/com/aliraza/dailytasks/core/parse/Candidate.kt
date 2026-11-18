@@ -21,6 +21,8 @@ internal data class Candidate(
     val time: TimeValue? = null,
     val priority: Priority? = null,
     val listName: String? = null,
+    /** [listName] names a list to create, as no existing one matched the tag. */
+    val newList: Boolean = false,
 )
 
 internal fun interface Matcher {

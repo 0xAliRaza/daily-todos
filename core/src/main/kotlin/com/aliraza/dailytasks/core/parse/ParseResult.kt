@@ -28,7 +28,8 @@ data class Span(val kind: SpanKind, val range: IntRange)
 
 /**
  * What the line means. [date] is set whenever [time] is: a time alone resolves to today or tomorrow.
- * [listName] is one of the input list names exactly as given.
+ * [listName] is one of the input list names exactly as given, or, when [newList] is set, the name of a
+ * list to create from a tag that matched none ("#weekend-trip" is "Weekend trip").
  */
 data class ParseResult(
     val title: String,
@@ -37,4 +38,5 @@ data class ParseResult(
     val priority: Priority = Priority.NONE,
     val listName: String? = null,
     val spans: List<Span> = emptyList(),
+    val newList: Boolean = false,
 )

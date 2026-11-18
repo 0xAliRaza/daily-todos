@@ -24,6 +24,7 @@ class QuickAddParserTableTest(private val row: Row) {
         val priority: Int = 0,
         val list: String? = null,
         val dayFirst: Boolean = true,
+        val newList: Boolean = false,
     ) {
         override fun toString() = "\"$input\""
     }
@@ -38,6 +39,7 @@ class QuickAddParserTableTest(private val row: Row) {
         assertEquals("title, date, time", expected, actual)
         assertEquals("priority", Priority.fromLevel(row.priority), result.priority)
         assertEquals("list", row.list, result.listName)
+        assertEquals("new list", row.newList, result.newList)
     }
 
     companion object {
@@ -271,7 +273,10 @@ class QuickAddParserTableTest(private val row: Row) {
             none("Call bank p4"),
             none("Call bank p0"),
             none("app1 review"),
-            none("Milk #unknown"),
+            Row("Milk #unknown", "Milk", list = "Unknown", newList = true),
+            Row("Flights #nyTrip tomorrow", "Flights", TOMORROW, list = "NyTrip", newList = true),
+            Row("Pack #weekend-trip", "Pack", list = "Weekend trip", newList = true),
+            none("Issue #42"),
             none("Milk # groceries"),
             none("#groceries"),
             none("p1"),

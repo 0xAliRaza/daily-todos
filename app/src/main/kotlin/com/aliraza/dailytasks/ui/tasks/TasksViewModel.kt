@@ -151,7 +151,9 @@ class TasksViewModel(
         return date?.let { DefaultDate(it, time) }
     }
 
+    /** The list a typed task goes to; null for a list the tag asks to create, which isn't there yet. */
     private fun targetList(parsed: ParseResult, contextListId: String?): TaskList? {
+        if (parsed.newList) return null
         val all = lists.value
         return all.firstOrNull { it.name == parsed.listName }
             ?: all.firstOrNull { it.id == contextListId }
@@ -161,10 +163,14 @@ class TasksViewModel(
     fun add(parsed: ParseResult, contextListId: String?, defaultDate: DefaultDate?) {
         if (parsed.title.isBlank()) return
         viewModelScope.launch {
+            // "#name" that matched no list makes it now; a same-named list made meanwhile is reused.
+            val created = parsed.listName?.takeIf { parsed.newList }?.let { name ->
+                lists.value.firstOrNull { it.name.equals(name, ignoreCase = true) } ?: listRepo.create(name)
+            }
             tasks.addTask(
                 NewTask(
                     title = parsed.title,
-                    listId = targetList(parsed, contextListId)?.id,
+                    listId = created?.id ?: targetList(parsed, contextListId)?.id,
                     priority = parsed.priority,
                     dueDate = parsed.date ?: defaultDate?.date,
                     dueTime = parsed.time,

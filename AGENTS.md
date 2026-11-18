@@ -45,6 +45,8 @@ On the phone the app is named DT. See the milestones in `PLAN.md`.
 - One line of natural language carries the date, time, priority and list ("Call bank tomorrow 4pm p1",
   "Milk #groceries"). Date and time parsing is the most important part of the app.
 - Recognised words are highlighted while typing; tapping one un-recognises it.
+- A "#name" that matches no list creates that list when the task is added ("#weekend-trip" makes
+  "Weekend trip"); numbers alone ("Issue #42") stay text.
 - A task with a date and no time gets the default reminder time (10:00 unless changed).
 - A task with no date, added to the default list, gets tomorrow at the default time. It shows as a chip
   while adding, so it can be tapped away. Tasks added to any other list stay undated, so a grocery list

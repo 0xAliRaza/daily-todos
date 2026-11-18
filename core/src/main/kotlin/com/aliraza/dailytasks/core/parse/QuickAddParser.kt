@@ -31,6 +31,7 @@ object QuickAddParser {
             priority = accepted.firstNotNullOfOrNull { it.priority } ?: Priority.NONE,
             listName = accepted.firstNotNullOfOrNull { it.listName },
             spans = accepted.map { Span(it.kind, charRange(tokens, it)) },
+            newList = accepted.any { it.newList },
         )
     }
 

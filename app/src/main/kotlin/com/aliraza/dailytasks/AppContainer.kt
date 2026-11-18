@@ -27,7 +27,7 @@ import java.time.Clock
  */
 class AppContainer(context: Context) {
     val appContext: Context = context.applicationContext
-    val clock: Clock = Clock.systemDefaultZone()
+    val clock: Clock = DeviceClock
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val database: AppDatabase by lazy { AppDatabase.build(appContext) }

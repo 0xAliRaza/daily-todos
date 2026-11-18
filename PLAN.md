@@ -30,6 +30,10 @@ test phone before the design depends on them.
 - Versions: take the latest stable AGP, Kotlin, Compose BOM, Room and KSP at scaffold time from the
   official release pages or the Android Studio new-project template. Do not trust remembered version
   numbers. Pin everything in `gradle/libs.versions.toml` and commit the Gradle wrapper.
+- Scaffolded on 2026-11-18 with Gradle 9.9.1, AGP 9.5.1 (its built-in Kotlin support, so no
+  `kotlin-android` plugin), Kotlin 2.4.21, KSP 2.3.14, Room 2.8.5 and Compose BOM 2026.09.00.
+- detekt is pinned to `2.0.0-alpha.6`: the last stable line (1.23) cannot run on JDK 25 or read Kotlin
+  2.4. Move to 2.0.0 stable when it ships. Formatting comes from detekt's ktlint wrapper.
 - Third-party code beyond AndroidX, Kotlin and Material: none by default. The one candidate is a
   drag-to-reorder helper for lazy lists; compare a small hand-rolled version first, and if a library wins,
   pin it and list it in `THIRD_PARTY_NOTICES.md`.
@@ -266,7 +270,8 @@ Rules a machine can check are checks, not sentences.
 Logic milestones can be committed when `verify.sh` is green. Anything the owner has to see on the phone
 (M4 to M7) waits for their yes before the commit.
 
-- [ ] **M0 Skeleton.** Two modules, version catalog, theme token stub, empty Today screen, the three
+- [x] **M0 Skeleton.** (Installed and launched on the emulator on 2026-11-18; installing on the A54 is
+  still to do.) Two modules, version catalog, theme token stub, empty Today screen, the three
   scripts, permission tripwire, lint and detekt, `README.md` (what it is, non-goals), `SECURITY.md`,
   `CHANGELOG.md`, `THIRD_PARTY_NOTICES.md`. Done when `verify.sh` is green and the debug build installs on
   the emulator and the A54.

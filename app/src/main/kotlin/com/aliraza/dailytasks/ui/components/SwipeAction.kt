@@ -119,20 +119,20 @@ fun SwipeRow(
     }
 }
 
-/** Purple with a calendar behind a right swipe, red with a bin behind a left one. */
+/** The accent with a calendar behind a right swipe, red with a bin behind a left one. */
 @Composable
 private fun SwipeBackground(offset: Float, armed: SwipeAction?, modifier: Modifier) {
     if (offset == 0f) return
     val right = offset > 0f
     val tokens = MaterialTheme.tokens
     Box(
-        modifier.background(if (right) tokens.swipeReschedule else tokens.accent).padding(horizontal = 22.dp),
+        modifier.background(if (right) tokens.accent else tokens.error).padding(horizontal = 22.dp),
         contentAlignment = if (right) Alignment.CenterStart else Alignment.CenterEnd,
     ) {
         Icon(
             if (right) AppIcons.Today else AppIcons.Delete,
             null,
-            tint = tokens.onAccent,
+            tint = if (right) tokens.onAccent else tokens.onError,
             modifier = Modifier.size(22.dp).scale(if (armed != null) ARMED_SCALE else 1f),
         )
     }

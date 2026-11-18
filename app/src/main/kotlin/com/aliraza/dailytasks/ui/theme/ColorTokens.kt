@@ -5,9 +5,10 @@ import androidx.compose.ui.graphics.Color
 /**
  * Design tokens: the only place colours are defined.
  *
- * One red accent on plain neutrals (PLAN.md section 8). Priorities and due dates carry their own
- * signal colours, so a list can be read at a glance. `ThemeContrastTest` fails if any pairing drops
- * below WCAG AA.
+ * One ink-blue accent on plain neutrals (PLAN.md section 8). Red is kept for what is urgent: overdue
+ * dates, P1 and deleting. Priorities carry their own signal colours; due dates are red when overdue,
+ * the accent for today and grey after that, so a list stays calm. `ThemeContrastTest` fails if any
+ * pairing drops below WCAG AA.
  */
 data class ColorTokens(
     val background: Color,
@@ -29,13 +30,10 @@ data class ColorTokens(
     val priority1: Color,
     val priority2: Color,
     val priority3: Color,
-    /** Due-date text by nearness. Overdue uses [accentText]; later dates use [onSurfaceVariant]. */
-    val dateToday: Color,
-    val dateTomorrow: Color,
-    val dateThisWeek: Color,
-
-    /** Behind a row swiped right to reschedule; [onAccent] icons sit on it. */
-    val swipeReschedule: Color,
+    /** Overdue due dates. Today uses [accentText]; later dates use [onSurfaceVariant]. */
+    val overdue: Color,
+    /** The focus timer's ring during a break. A graphic, so 3:1. */
+    val rest: Color,
 )
 
 val LightTokens = ColorTokens(
@@ -46,20 +44,18 @@ val LightTokens = ColorTokens(
     onBackground = Color(0xFF202020),
     onSurfaceVariant = Color(0xFF666666),
     outline = Color(0xFF8C8C8C),
-    accent = Color(0xFFD1453B),
+    accent = Color(0xFF2563EB),
     onAccent = Color(0xFFFFFFFF),
-    accentText = Color(0xFFC3392F),
-    accentContainer = Color(0xFFFCEDEB),
-    onAccentContainer = Color(0xFF8A1F17),
+    accentText = Color(0xFF2563EB),
+    accentContainer = Color(0xFFEAF1FE),
+    onAccentContainer = Color(0xFF1E3A8A),
     error = Color(0xFFB3261E),
     onError = Color(0xFFFFFFFF),
     priority1 = Color(0xFFD1453B),
     priority2 = Color(0xFFC76E00),
     priority3 = Color(0xFF246FE0),
-    dateToday = Color(0xFF058527),
-    dateTomorrow = Color(0xFFA35C00),
-    dateThisWeek = Color(0xFF692EC2),
-    swipeReschedule = Color(0xFF692EC2),
+    overdue = Color(0xFFC3392F),
+    rest = Color(0xFF058527),
 )
 
 val DarkTokens = ColorTokens(
@@ -70,18 +66,16 @@ val DarkTokens = ColorTokens(
     onBackground = Color(0xFFEDEDED),
     onSurfaceVariant = Color(0xFFADADAD),
     outline = Color(0xFF858585),
-    accent = Color(0xFFD1453B),
-    onAccent = Color(0xFFFFFFFF),
-    accentText = Color(0xFFFF7A6E),
-    accentContainer = Color(0xFF4A2421),
-    onAccentContainer = Color(0xFFFFDAD5),
+    accent = Color(0xFF7AA2FF),
+    onAccent = Color(0xFF0B1A3A),
+    accentText = Color(0xFF8DB0FF),
+    accentContainer = Color(0xFF1F2A44),
+    onAccentContainer = Color(0xFFDCE7FF),
     error = Color(0xFFF2B8B5),
     onError = Color(0xFF601410),
     priority1 = Color(0xFFFF7066),
     priority2 = Color(0xFFFF9A14),
     priority3 = Color(0xFF5C9DFF),
-    dateToday = Color(0xFF3CC264),
-    dateTomorrow = Color(0xFFFF9A14),
-    dateThisWeek = Color(0xFFB287FF),
-    swipeReschedule = Color(0xFF7440C9),
+    overdue = Color(0xFFFF7A6E),
+    rest = Color(0xFF3CC264),
 )

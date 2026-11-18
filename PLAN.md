@@ -252,7 +252,7 @@ Behaviour: swipe to complete; undo snackbar after complete, delete and bulk acti
 later); long-press for multi-select with bulk complete, re-date, priority and delete; drag to reorder inside
 a section; new tasks go to the bottom.
 
-Design: tokens in one file; one red accent on plain neutrals, with signal colours for priority and due date; light and dark; no wallpaper-based dynamic
+Design: tokens in one file; one ink-blue accent on plain neutrals, red kept for overdue, P1 and deleting, signal colours for priority; light and dark; no wallpaper-based dynamic
 colour; system font; edge-to-edge; start/end layout only (right-to-left safe); works at 200% font size;
 TalkBack labels; respects the system's animation-off setting; designed empty states. The palette in
 `ui/theme/ColorTokens.kt` (red on white, chosen by the owner on 2026-11-18, replacing the first rose palette);

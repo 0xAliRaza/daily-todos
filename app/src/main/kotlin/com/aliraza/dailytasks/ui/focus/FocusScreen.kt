@@ -109,11 +109,11 @@ private fun Dial(timer: FocusTimer, settings: Settings, now: Instant, title: Str
     }
     val left = if (timer.phase == FocusPhase.IDLE) total else timer.remaining(now)
     val fraction by animateFloatAsState(progress(left, total), label = "dial")
-    // A thin ring: soft while ready, red while focusing, green while resting.
+    // A thin ring: soft while ready, the accent while focusing, green while resting.
     val tokens = MaterialTheme.tokens
     val arc = when (timer.phase) {
         FocusPhase.IDLE -> tokens.accent.copy(alpha = READY_ALPHA)
-        FocusPhase.BREAK -> tokens.dateToday
+        FocusPhase.BREAK -> tokens.rest
         else -> tokens.accent
     }
     Box(Modifier.size(288.dp), contentAlignment = Alignment.Center) {

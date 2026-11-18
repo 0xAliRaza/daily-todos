@@ -90,9 +90,10 @@ On the phone the app is named DT. See the milestones in `PLAN.md`.
 
 **Design**
 
-- One red accent on plain neutrals: white in light, near-black grey in dark; both first-class; system font.
-- Signal colours, not extra accents: the check-box ring shows priority (P1 red, P2 orange, P3 blue) and a
-  due date is coloured by nearness (overdue red, today green, tomorrow amber, this week purple).
+- One ink-blue accent on plain neutrals: white in light, near-black grey in dark; both first-class; system font.
+  Red is kept for what is urgent: overdue, P1 and deleting.
+- Signal colours, not extra accents: the check-box ring shows priority (P1 red, P2 orange, P3 blue); a due
+  date is red when overdue, the accent for today, and grey after that.
 - Flat lists split by hairlines, no cards. Adding a task starts from a round + button and is one
   line: the text, one pill for the due day, and send. Every pairing stays at WCAG AA.
 

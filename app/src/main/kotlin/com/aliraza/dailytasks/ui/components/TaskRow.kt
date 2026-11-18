@@ -84,11 +84,9 @@ fun priorityColor(priority: Priority): Color = with(MaterialTheme.tokens) {
 @Composable
 fun toneColor(tone: DateTone): Color = with(MaterialTheme.tokens) {
     when (tone) {
-        DateTone.OVERDUE -> accentText
-        DateTone.TODAY -> dateToday
-        DateTone.TOMORROW -> dateTomorrow
-        DateTone.THIS_WEEK -> dateThisWeek
-        DateTone.LATER -> onSurfaceVariant
+        DateTone.OVERDUE -> overdue
+        DateTone.TODAY -> accentText
+        DateTone.TOMORROW, DateTone.THIS_WEEK, DateTone.LATER -> onSurfaceVariant
     }
 }
 
@@ -280,11 +278,11 @@ class SubtaskFold(val open: Boolean, val onToggle: () -> Unit, val content: @Com
 
 /**
  * "3/4" and a chevron at the row's right edge. Tapping it folds the sub-tasks open or shut in place,
- * without opening the task. All ticked reads in the today green.
+ * without opening the task. All ticked reads in the accent.
  */
 @Composable
 private fun SubtaskToggle(done: Int, total: Int, open: Boolean, onToggle: () -> Unit) {
-    val ink = if (done == total) MaterialTheme.tokens.dateToday else MaterialTheme.colorScheme.onSurfaceVariant
+    val ink = if (done == total) MaterialTheme.tokens.accentText else MaterialTheme.colorScheme.onSurfaceVariant
     val turn by animateFloatAsState(if (open) HALF_TURN else 0f, label = "fold")
     val progress = stringResource(R.string.subtasks_progress_label, done, total)
     val action = stringResource(if (open) R.string.subtasks_hide else R.string.subtasks_show)

@@ -22,9 +22,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Release signing comes from the environment (scripts/release.sh reads it from the macOS Keychain);
+    // no key or password lives in the repo. Without it, a release build is simply left unsigned.
+    val keystore = providers.environmentVariable("DT_KEYSTORE").orNull
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = providers.environmentVariable("DT_KEYSTORE_PASSWORD").get()
+                keyAlias = "daily-tasks"
+                keyPassword = providers.environmentVariable("DT_KEYSTORE_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

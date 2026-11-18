@@ -171,6 +171,24 @@ class ReminderSchedulerTest {
     }
 
     @Test
+    fun aMirrorThatCannotBeWrittenDoesNotStopTheEngine() = runTest {
+        add("Gym", 16)
+        // The parent "folder" is a plain file, so every write fails.
+        val blocked = File(folder.newFile("not-a-folder"), ScheduleMirror.FILE_NAME)
+        val failing = ReminderScheduler(
+            tasks,
+            settings,
+            db.reminderLog(),
+            poster,
+            alarm,
+            ScheduleMirror(blocked),
+            clock,
+        )
+        failing.run(FiredBy.CATCH_UP)
+        assertEquals(at(16), alarm.armedAt)
+    }
+
+    @Test
     fun historyKeepsTheNewestEntriesOnly() = runTest {
         repeat(ReminderScheduler.LOG_SIZE + 5) { add("Task $it", 9) }
         clock.now = at(9)

@@ -9,6 +9,7 @@ import com.aliraza.dailytasks.data.db.ReminderLogDao
 import com.aliraza.dailytasks.data.db.ReminderLogEntity
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.IOException
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -47,7 +48,19 @@ class ReminderScheduler(
 
         val next = listOfNotNull(plan.nextAt, timerEndsAt()).minOrNull()
         if (next != null) alarm.arm(next) else alarm.cancel()
-        mirror.write(snapshotOf(plan, current))
+        writeMirror(snapshotOf(plan, current))
+    }
+
+    /**
+     * The mirror only matters after a restart before unlock. A failed write must not take the engine down
+     * with it: the alarm is already armed, and the next run writes the mirror again.
+     */
+    private fun writeMirror(snapshot: ScheduleMirror.Snapshot) {
+        try {
+            mirror.write(snapshot)
+        } catch (_: IOException) {
+            // Nothing else to do; see above.
+        }
     }
 
     private suspend fun post(

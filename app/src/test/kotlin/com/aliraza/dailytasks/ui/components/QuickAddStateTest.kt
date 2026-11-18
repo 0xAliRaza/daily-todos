@@ -133,15 +133,76 @@ class DuePillTest {
     }
 
     @Test
-    fun togglingThePillSwitchesItsDateOffAndBackOn() {
-        val state = QuickAddState().apply { edit(TextFieldValue("Call bank friday", TextRange(16))) }
-        state.toggle(Due(friday, null, on = true, words = listOf(word)))
-        assertEquals(setOf(word), state.excluded.keys)
-        state.toggle(Due(friday, null, on = false, words = listOf(word)))
-        assertTrue(state.excluded.isEmpty())
-        state.toggle(Due(tomorrow, null, on = true, words = emptyList()))
+    fun togglingThePillSwitchesTheDefaultDateOffAndBackOn() {
+        val state = QuickAddState().apply { edit(TextFieldValue("Call bank", TextRange(9))) }
+        state.toggleDefaultDate()
         assertTrue(state.defaultDateOff)
-        state.toggle(Due(tomorrow, null, on = false, words = emptyList()))
+        state.toggleDefaultDate()
         assertFalse(state.defaultDateOff)
+    }
+
+    @Test
+    fun onlyTheDefaultDateGetsThePill() {
+        assertFalse(due(read, read, emptySet(), default, false)!!.isDefault)
+        assertFalse(due(plain, read, setOf(word), default, false)!!.isDefault)
+        assertTrue(due(plain, plain, emptySet(), default, false)!!.isDefault)
+    }
+
+    @Test
+    fun aPickReplacesWhatTheLineSaidAndLeavesTheCursorReadyToType() {
+        val state = QuickAddState()
+        state.edit(TextFieldValue("Call bank p2 tomorrow"))
+        state.put("p1", replacing = listOf(10..11))
+        assertEquals("Call bank tomorrow p1 ", state.text)
+        assertEquals(TextRange(state.text.length), state.value.selection)
+
+        state.clear()
+        state.put("#groceries", replacing = emptyList())
+        assertEquals("#groceries ", state.text)
+    }
+
+    @Test
+    fun aPickerTakingTheKeyboardDoesNotCloseTheBar() {
+        val state = QuickAddState()
+        state.show()
+        state.focusChanged(true)
+        state.picking = true
+        state.focusChanged(false)
+        assertTrue(state.open)
+        state.picking = false
+        state.focusChanged(true)
+        state.focusChanged(false)
+        assertFalse(state.open)
+    }
+
+    @Test
+    fun pickingByHandKeepsAWordSwitchedOffAfterItMoves() {
+        val text = "Call bank p2 about friday"
+        val state = QuickAddState().apply { edit(TextFieldValue(text, TextRange(text.length))) }
+        state.exclude(19..24)
+        state.put("p1", replacing = listOf(10..11))
+        assertEquals("Call bank about friday p1 ", state.text)
+        assertEquals(mapOf(16..21 to "friday"), state.excluded)
+    }
+
+    @Test
+    fun pickingNoPriorityLeavesOneTrailingSpace() {
+        val state = QuickAddState().apply { edit(TextFieldValue("Call  p2", TextRange(8))) }
+        state.put("", replacing = listOf(6..7))
+        assertEquals("Call ", state.text)
+    }
+
+    @Test
+    fun squeezeTellsWhereEveryKeptCharacterLanded() {
+        val (line, moved) = squeeze(" ab  cd", drop = listOf(1..1))
+        assertEquals("b cd", line)
+        assertEquals(listOf(-1, -1, 0, -1, -1, 2, 3), moved.toList())
+    }
+
+    @Test
+    fun clearingTheBarEndsAPick() {
+        val state = QuickAddState().apply { picking = true }
+        state.clear()
+        assertFalse(state.picking)
     }
 }

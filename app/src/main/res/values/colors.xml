@@ -2,6 +2,6 @@
 <resources>
     <!-- Mirrors the background token in ui/theme/ColorTokens.kt so the first frame matches. -->
     <color name="window_background">#FFFFFFFF</color>
-    <color name="launcher_background">#FFFFFFFF</color>
-    <color name="launcher_foreground">#FF2563EB</color>
+    <!-- The launcher icon: the ink-blue accent, full bleed. -->
+    <color name="launcher_background">#FF2563EB</color>
 </resources>

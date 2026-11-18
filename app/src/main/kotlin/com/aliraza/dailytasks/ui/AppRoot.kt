@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,8 +67,8 @@ import com.aliraza.dailytasks.MainActivity
 import com.aliraza.dailytasks.R
 import com.aliraza.dailytasks.core.model.TaskList
 import com.aliraza.dailytasks.ui.calendar.CalendarContent
-import com.aliraza.dailytasks.ui.calendar.CalendarMode
 import com.aliraza.dailytasks.ui.calendar.CalendarState
+import com.aliraza.dailytasks.ui.components.AddOptions
 import com.aliraza.dailytasks.ui.components.AppIcons
 import com.aliraza.dailytasks.ui.components.KeyboardGuardBox
 import com.aliraza.dailytasks.ui.components.QuickAddBar
@@ -96,22 +97,7 @@ import com.aliraza.dailytasks.ui.theme.tokens
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
 
-/** Where the app is. A plain back stack of these; the first four are the bottom tabs. */
-private object Route {
-    const val TODAY = "today"
-    const val UPCOMING = "upcoming"
-    const val CALENDAR = "calendar"
-    const val LISTS = "lists"
-    const val SEARCH = "search"
-    const val SETTINGS = "settings"
-    const val HEALTH = "health"
-    const val FOCUS = "focus"
-    const val LIST_PREFIX = "list/"
-
-    val tabs = listOf(TODAY, UPCOMING, CALENDAR, LISTS)
-}
-
-private fun String.listId(): String? = removePrefix(Route.LIST_PREFIX).takeIf { startsWith(Route.LIST_PREFIX) }
+internal fun String.listId(): String? = removePrefix(Route.LIST_PREFIX).takeIf { startsWith(Route.LIST_PREFIX) }
 
 @Composable
 fun AppRoot(
@@ -121,29 +107,34 @@ fun AppRoot(
     opened: MainActivity.Opened?,
     onOpenedHandled: () -> Unit,
 ) {
-    var stack by rememberSaveable { mutableStateOf(listOf(Route.TODAY)) }
+    val nav = rememberNavigation()
     var sheetTask by rememberSaveable { mutableStateOf<String?>(null) }
-    var rescheduling by rememberSaveable { mutableStateOf<String?>(null) }
-    val route = stack.last()
-    val navigate = { next: String -> stack = stack + next }
-    val back = { stack = stack.dropLast(1) }
+    var rescheduling by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    val route = nav.route
     val selection = remember { Selection() }
-    val upcoming = remember { UpcomingState(tasks.now.value.toLocalDate()) }
+    // Read through derivedStateOf so the root recomposes when the date turns, not every minute.
+    val clock = tasks.now.collectAsStateWithLifecycle()
+    val today by remember { derivedStateOf { clock.value.toLocalDate() } }
+    val upcoming = remember(today) { UpcomingState(today) }
     val calendar = remember { CalendarState(tasks.now.value.toLocalDate()) }
     LaunchedEffect(route) { selection.clear() }
     OpenedEffect(
         opened,
         onTask = { sheetTask = it },
-        onFocus = { stack = stack.filter { it != Route.FOCUS } + Route.FOCUS },
+        onFocus = nav::openFocus,
         onHandled = onOpenedHandled,
     )
-    BackHandler(enabled = selection.active || stack.size > 1) { if (selection.active) selection.clear() else back() }
+    BackHandler(enabled = selection.active || nav.canGoBack) { if (selection.active) selection.clear() else nav.back() }
 
     val snackbar = remember { SnackbarHostState() }
     UndoSnackbars(tasks, snackbar)
-    val ctx = rememberRowContext(tasks, selection, onReschedule = { rescheduling = it }) { sheetTask = it }
+    val ctx = rememberRowContext(
+        tasks,
+        selection,
+        onReschedule = { if (it.isNotEmpty()) rescheduling = ArrayList(it) },
+    ) { sheetTask = it }
     val quickAdd = remember { QuickAddState() }
-    val showsAdd = route in setOf(Route.TODAY, Route.UPCOMING, Route.CALENDAR) || route.listId() != null
+    val showsAdd = route in Route.takesTasks || route.listId() != null
     val canAdd = showsAdd && !selection.active
 
     Scaffold(
@@ -159,28 +150,25 @@ fun AppRoot(
             }
         },
         topBar = {
-            if (selection.active) {
-                SelectionBar(selection, tasks)
-            } else {
-                TopBar(route, tasks, onBack = back, onOpen = navigate)
-            }
+            RootTopBar(selection, tasks, nav) { calendar.open(upcoming.selected, calendar.mode) }
         },
         floatingActionButton = {
             if (canAdd && !quickAdd.open) AddButton(quickAdd::show)
         },
         bottomBar = {
-            BottomBars(route, showAdd = canAdd && quickAdd.open, onTab = { stack = listOf(it) }) {
+            BottomBars(
+                route,
+                showAdd = canAdd && quickAdd.open,
+                onTab = nav::tab,
+            ) {
                 AddBar(tasks, quickAdd, route, contextDate(route, upcoming, calendar))
             }
         },
     ) { padding ->
-        val screens = Screens(tasks, settings, focus, ctx, upcoming, calendar, navigate) { day ->
-            calendar.open(day, CalendarMode.WEEK)
-            stack = listOf(Route.CALENDAR)
-        }
+        val screens = Screens(tasks, settings, focus, ctx, upcoming, calendar, nav::open)
         Content(route, screens, padding, addButton = showsAdd, typing = quickAdd.focused)
     }
-    rescheduling?.let { id -> RescheduleHost(tasks, id) { rescheduling = null } }
+    rescheduling?.let { ids -> RescheduleHost(tasks, ids) { rescheduling = null } }
     sheetTask?.let { id ->
         TaskSheet(
             viewModel = tasks,
@@ -188,10 +176,23 @@ fun AppRoot(
             onFocus = {
                 focus.pickTask(it)
                 sheetTask = null
-                navigate(Route.FOCUS)
+                nav.open(Route.FOCUS)
             },
             onDismiss = { sheetTask = null },
         )
+    }
+}
+
+/** The selection bar while picking several tasks, else the title bar. */
+@Composable
+private fun RootTopBar(selection: Selection, tasks: TasksViewModel, nav: Navigation, onToCalendar: () -> Unit) {
+    if (selection.active) {
+        SelectionBar(selection, tasks)
+        return
+    }
+    TopBar(nav.route, tasks, nav::back, nav::open) {
+        // The calendar opens on the day picked in the list.
+        if (nav.switchUpcomingView() == Route.CALENDAR) onToCalendar()
     }
 }
 
@@ -247,7 +248,8 @@ private fun PaddingValues.clearOfAddButton(): PaddingValues = PaddingValues(
     bottom = calculateBottomPadding() + AddButtonClearance,
 )
 
-private val AddButtonClearance = 80.dp
+/** Room left under a screen's content so its last rows can scroll clear of the round add button. */
+internal val AddButtonClearance = 80.dp
 
 /** What the screens need from the shell. */
 private class Screens(
@@ -258,7 +260,6 @@ private class Screens(
     val upcoming: UpcomingState,
     val calendar: CalendarState,
     val navigate: (String) -> Unit,
-    val openCalendar: (LocalDate) -> Unit,
 )
 
 /** The day the add bar files new tasks under: the picked day in Upcoming or the calendar. */
@@ -274,7 +275,7 @@ private fun RouteContent(route: String, s: Screens, padding: PaddingValues) {
     when {
         list != null -> ListContent(s.tasks, list, s.ctx, padding)
         route == Route.TODAY -> TodayContent(s.tasks, s.ctx, padding)
-        route == Route.UPCOMING -> UpcomingContent(s.tasks, s.ctx, s.upcoming, padding, s.openCalendar)
+        route == Route.UPCOMING -> UpcomingContent(s.tasks, s.ctx, s.upcoming, padding)
         route == Route.CALENDAR -> CalendarContent(s.tasks, s.ctx, s.calendar, padding)
         route == Route.LISTS -> ListsContent(s.tasks, padding) { s.navigate(Route.LIST_PREFIX + it) }
         route == Route.SEARCH -> SearchContent(s.tasks, s.ctx, padding)
@@ -294,7 +295,7 @@ private fun BottomBars(route: String, showAdd: Boolean, onTab: (String) -> Unit,
     LaunchedEffect(typing) { if (!typing) focus.clearFocus() }
     Column(if (typing) Modifier.imePadding() else Modifier) {
         if (showAdd) addBar()
-        if (route in Route.tabs && !typing) {
+        if (route in Route.top && !typing) {
             TabBar(route, onTab)
         } else if (showAdd) {
             Spacer(Modifier.navigationBarsPadding())
@@ -326,14 +327,21 @@ private fun AddBar(tasks: TasksViewModel, state: QuickAddState, route: String, c
     // A typed date switched off means "no date", so the default stays out while one is.
     val defaultOff = state.defaultDateOff || switchedOffWhen(all, state.excluded.keys).isNotEmpty()
     val preview = tasks.defaultDate(parsed, settings, listId, contextDate, off = false)
-    val placeholder = lists.firstOrNull { it.id == listId }?.let { stringResource(R.string.add_to_list, it.name) }
-        ?: stringResource(R.string.add_placeholder)
+    val open = lists.firstOrNull { it.id == listId }
+    val placeholder = open?.let {
+        stringResource(
+            R.string.add_to_list,
+            it.name,
+        )
+    } ?: stringResource(R.string.add_placeholder)
+    val target = parsed.listName ?: open?.name ?: lists.firstOrNull { it.isDefault }?.name.orEmpty()
     QuickAddBar(
         state = state,
         parsed = parsed,
         due = due(parsed, all, state.excluded.keys, preview, defaultOff),
         today = now.toLocalDate(),
         placeholder = placeholder,
+        options = AddOptions(lists.map { it.name }, target),
         onSubmit = {
             // Parsed again from the field itself: a second Enter before recomposition must not add twice.
             if (state.text.isNotBlank()) {
@@ -348,14 +356,20 @@ private fun AddBar(tasks: TasksViewModel, state: QuickAddState, route: String, c
 }
 
 @Composable
-private fun TopBar(route: String, tasks: TasksViewModel, onBack: () -> Unit, onOpen: (String) -> Unit) {
+private fun TopBar(
+    route: String,
+    tasks: TasksViewModel,
+    onBack: () -> Unit,
+    onOpen: (String) -> Unit,
+    onSwitchView: () -> Unit,
+) {
     val now by tasks.now.collectAsStateWithLifecycle()
     val lists by tasks.lists.collectAsStateWithLifecycle()
     val list = route.listId()?.let { id -> lists.firstOrNull { it.id == id } }
     var renaming by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     val title = list?.name ?: stringResource(titleOf(route))
-    val top = route in Route.tabs
+    val top = route in Route.top
     // Opaque up to the screen's top edge, so rows scrolled up pass under it instead of showing through.
     Row(
         Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(
@@ -377,18 +391,7 @@ private fun TopBar(route: String, tasks: TasksViewModel, onBack: () -> Unit, onO
             modifier = Modifier.weight(1f),
         )
         if (list != null) ListMenu(list, onRename = { renaming = true }) { deleting = true }
-        if (top) {
-            val tint = MaterialTheme.colorScheme.onSurfaceVariant
-            IconButton(onClick = { onOpen(Route.SEARCH) }) {
-                Icon(AppIcons.Search, stringResource(R.string.search_title), tint = tint)
-            }
-            IconButton(onClick = { onOpen(Route.FOCUS) }) {
-                Icon(AppIcons.Timer, stringResource(R.string.focus_title), tint = tint)
-            }
-            IconButton(onClick = { onOpen(Route.SETTINGS) }) {
-                Icon(AppIcons.Settings, stringResource(R.string.settings_title), tint = tint)
-            }
-        }
+        if (top) TopActions(route, onOpen, onSwitchView)
     }
     if (renaming && list != null) {
         RenameDialog(list.name, onDismiss = { renaming = false }) { tasks.renameList(list.id, it) }
@@ -399,6 +402,30 @@ private fun TopBar(route: String, tasks: TasksViewModel, onBack: () -> Unit, onO
             onBack()
         }
     }
+}
+
+/** The icons at the right of a top-level title: the Upcoming view switch, search, focus, settings. */
+@Composable
+private fun TopActions(route: String, onOpen: (String) -> Unit, onSwitchView: () -> Unit) {
+    val tint = MaterialTheme.colorScheme.onSurfaceVariant
+    if (route in Route.upcomingViews) ViewSwitch(showsCalendar = route == Route.CALENDAR, onSwitchView)
+    IconButton(onClick = { onOpen(Route.SEARCH) }) {
+        Icon(AppIcons.Search, stringResource(R.string.search_title), tint = tint)
+    }
+    IconButton(onClick = { onOpen(Route.FOCUS) }) {
+        Icon(AppIcons.Timer, stringResource(R.string.focus_title), tint = tint)
+    }
+    IconButton(onClick = { onOpen(Route.SETTINGS) }) {
+        Icon(AppIcons.Settings, stringResource(R.string.settings_title), tint = tint)
+    }
+}
+
+/** Flips Upcoming between its list and its calendar; the icon shows the view a tap goes to. */
+@Composable
+private fun ViewSwitch(showsCalendar: Boolean, onClick: () -> Unit) {
+    val icon = if (showsCalendar) AppIcons.Agenda else AppIcons.Calendar
+    val label = stringResource(if (showsCalendar) R.string.view_list else R.string.view_calendar)
+    IconButton(onClick = onClick) { Icon(icon, label, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
 }
 
 /** A list's ⋮ menu: rename, and delete for every list but the default one. */
@@ -476,7 +503,7 @@ private fun TitleBlock(title: String, subtitle: String?, large: Boolean, modifie
 private fun titleOf(route: String): Int = when (route) {
     Route.TODAY -> R.string.today_title
     Route.UPCOMING -> R.string.upcoming_title
-    Route.CALENDAR -> R.string.calendar_title
+    Route.CALENDAR -> R.string.upcoming_title
     Route.LISTS -> R.string.lists_title
     Route.SEARCH -> R.string.search_title
     Route.SETTINGS -> R.string.settings_title
@@ -535,7 +562,6 @@ private fun TabBar(route: String, onTab: (String) -> Unit) {
     val items = listOf(
         Triple(Route.TODAY, AppIcons.Today, R.string.today_title),
         Triple(Route.UPCOMING, AppIcons.Upcoming, R.string.upcoming_title),
-        Triple(Route.CALENDAR, AppIcons.Calendar, R.string.calendar_title),
         Triple(Route.LISTS, AppIcons.Lists, R.string.lists_title),
     )
     Row(
@@ -546,7 +572,7 @@ private fun TabBar(route: String, onTab: (String) -> Unit) {
             Tab(
                 icon,
                 stringResource(label),
-                selected = route == target,
+                selected = route == target || (target == Route.UPCOMING && route in Route.upcomingViews),
             ) { onTab(target) }
         }
     }

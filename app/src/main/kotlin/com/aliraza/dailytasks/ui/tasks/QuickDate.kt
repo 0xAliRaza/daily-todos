@@ -17,6 +17,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,9 +34,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aliraza.dailytasks.R
 import com.aliraza.dailytasks.core.model.Task
 import com.aliraza.dailytasks.ui.components.AppIcons
+import com.aliraza.dailytasks.ui.components.DateDialog
 import com.aliraza.dailytasks.ui.components.dateTone
 import com.aliraza.dailytasks.ui.components.toneColor
 import com.aliraza.dailytasks.ui.components.weekdayShort
+import kotlinx.coroutines.flow.map
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -54,12 +58,18 @@ internal fun Task.movedTo(date: LocalDate?): Task =
     if (date == null) copy(dueDate = null, dueTime = null) else copy(dueDate = date)
 
 /**
- * Opened by swiping a row right: the quick days, a date picker, and "No date". Each day shows its
- * weekday and its due colour, so "Next week" reads as "Mon".
+ * Opened by swiping a row right, or from the overdue header for all of them: the quick days, a date
+ * picker, and "No date". Each day shows its weekday and its due colour, so "Next week" reads as "Mon".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun RescheduleSheet(task: Task, today: LocalDate, onPick: (LocalDate?) -> Unit, onDismiss: () -> Unit) {
+internal fun RescheduleSheet(
+    title: String,
+    current: LocalDate?,
+    today: LocalDate,
+    onPick: (LocalDate?) -> Unit,
+    onDismiss: () -> Unit,
+) {
     var picking by remember { mutableStateOf(false) }
     val pick = { date: LocalDate? ->
         onPick(date)
@@ -71,7 +81,7 @@ internal fun RescheduleSheet(task: Task, today: LocalDate, onPick: (LocalDate?) 
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
         Text(
-            task.title,
+            title,
             style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -81,28 +91,15 @@ internal fun RescheduleSheet(task: Task, today: LocalDate, onPick: (LocalDate?) 
             val ink = toneColor(dateTone(quick.date, today))
             DayOption(AppIcons.Today, stringResource(quick.label), weekdayShort(quick.date), ink) { pick(quick.date) }
         }
-        DayOption(
-            AppIcons.Calendar,
-            stringResource(R.string.date_pick),
-            null,
-            MaterialTheme.colorScheme.onSurfaceVariant,
-        ) {
-            picking = true
-        }
-        if (task.dueDate != null) {
-            DayOption(
-                AppIcons.Close,
-                stringResource(R.string.task_no_date),
-                null,
-                MaterialTheme.colorScheme.onSurfaceVariant,
-            ) {
-                pick(null)
-            }
+        val muted = MaterialTheme.colorScheme.onSurfaceVariant
+        DayOption(AppIcons.Calendar, stringResource(R.string.date_pick), null, muted) { picking = true }
+        if (current != null) {
+            DayOption(AppIcons.Close, stringResource(R.string.task_no_date), null, muted) { pick(null) }
         }
         Spacer(Modifier.navigationBarsPadding().padding(bottom = 12.dp))
     }
     if (picking) {
-        DateDialog(task.dueDate ?: today, onDismiss = { picking = false }) { pick(it) }
+        DateDialog(current ?: today, onDismiss = { picking = false }) { pick(it) }
     }
 }
 
@@ -121,11 +118,21 @@ private fun DayOption(icon: ImageVector, label: String, weekday: String?, ink: C
     }
 }
 
-/** Hosts the reschedule sheet for [taskId] while it is open. */
+/** Hosts the reschedule sheet for [ids] while it is open: one task by its title, several by their count. */
 @Composable
-internal fun RescheduleHost(viewModel: TasksViewModel, taskId: String, onDone: () -> Unit) {
-    val task by remember(taskId) { viewModel.observeTask(taskId) }.collectAsStateWithLifecycle(null)
+internal fun RescheduleHost(viewModel: TasksViewModel, ids: List<String>, onDone: () -> Unit) {
     val now by viewModel.now.collectAsStateWithLifecycle()
-    val current = task ?: return
-    RescheduleSheet(current, now.toLocalDate(), onPick = { viewModel.reschedule(taskId, it) }, onDismiss = onDone)
+    val today = now.toLocalDate()
+    val pick = { date: LocalDate? -> viewModel.reschedule(ids, date) }
+    if (ids.size > 1) {
+        // Several tasks may mix dated and undated ones, so "No date" is always offered.
+        val title = pluralStringResource(R.plurals.reschedule_many, ids.size, ids.size)
+        RescheduleSheet(title, current = today, today, onPick = pick, onDismiss = onDone)
+        return
+    }
+    // Null while loading; empty once the task is gone (completed or deleted elsewhere), which closes the sheet.
+    val found by remember(ids) { viewModel.observeTask(ids.first()).map { listOfNotNull(it) } }
+        .collectAsStateWithLifecycle(null)
+    val task = found?.let { it.firstOrNull() ?: return LaunchedEffect(Unit) { onDone() } } ?: return
+    RescheduleSheet(task.title, task.dueDate, today, onPick = pick, onDismiss = onDone)
 }

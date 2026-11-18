@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
+import kotlin.math.abs
 
 private const val WEEK_DAYS = 7L
 
@@ -36,6 +37,20 @@ fun dayLabel(date: LocalDate, today: LocalDate): String {
 }
 
 fun timeLabel(time: LocalTime): String = time.format(TIME)
+
+/**
+ * A day's section title: "Tomorrow · Thu 19 Nov". Yesterday, today and tomorrow lead with their name;
+ * other days are just "Fri 20 Nov".
+ */
+@Composable
+fun sectionDay(day: LocalDate, today: LocalDate): String {
+    val near = abs(ChronoUnit.DAYS.between(today, day)) <= 1
+    return listOfNotNull(dayLabel(day, today).takeIf { near }, sectionDate(day, today)).joinToString(" · ")
+}
+
+/** "Fri 20 Nov", with the year added when it isn't this year's. */
+fun sectionDate(day: LocalDate, today: LocalDate): String =
+    day.format(if (day.year == today.year) SECTION_DAY else SECTION_DAY_YEAR)
 
 /** How near a due date is. It picks the date's colour, so a list can be read at a glance. */
 enum class DateTone { OVERDUE, TODAY, TOMORROW, THIS_WEEK, LATER }
@@ -71,4 +86,6 @@ fun weekdayShort(date: LocalDate): String =
 
 private val TIME: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 private val SHORT_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, d MMM")
+private val SECTION_DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM")
+private val SECTION_DAY_YEAR: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM yyyy")
 private val LONG_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM")

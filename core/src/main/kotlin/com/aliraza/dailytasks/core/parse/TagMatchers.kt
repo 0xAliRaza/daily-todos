@@ -23,8 +23,8 @@ internal object TagMatchers {
         val token = ctx.tokens.getOrNull(index) ?: return null
         val word = token.word
         if (!word.startsWith("#") || word.length < 2) return null
-        val key = word.drop(1)
-        val existing = ctx.listNames.firstOrNull { normalise(it) == key }
+        val key = listKey(word.drop(1))
+        val existing = ctx.listNames.firstOrNull { listKey(it) == key }
         val typed = token.raw.substring(token.wordStart - token.start, token.wordEnd - token.start)
         return when {
             existing != null -> Candidate(SpanKind.LIST, index, index + 1, listName = existing)
@@ -42,5 +42,9 @@ internal object TagMatchers {
 
     private const val MAX_NAME = 40
 
-    private fun normalise(name: String) = name.lowercase().filterNot { it.isWhitespace() }
+    /**
+     * How a list name reads as a tag: lower case, letters, digits, "_" and "-" only. "Books (2026)" and
+     * "#books2026" both give "books2026", so a tag still matches names with spaces or punctuation.
+     */
+    fun listKey(name: String): String = name.lowercase().filter { it.isLetterOrDigit() || it == '_' || it == '-' }
 }

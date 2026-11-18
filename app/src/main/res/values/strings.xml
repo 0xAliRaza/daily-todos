@@ -30,17 +30,17 @@
     <string name="date_next_week">Next week</string>
     <string name="date_pick">Pick a date…</string>
     <string name="time_pick">Pick a time…</string>
-    <string name="week_previous">Previous week</string>
-    <string name="week_next">Next week</string>
 
     <!-- Today, Upcoming, Lists, Search -->
     <string name="today_title">Today</string>
     <string name="today_empty_title">All clear</string>
-    <string name="today_empty_body">Nothing due today. Add something below, or enjoy the free time.</string>
+    <string name="today_empty_body">Nothing due today. Tap + to add something, or enjoy the free time.</string>
+    <string name="today_done_title">All done for today</string>
+    <string name="today_done_body">Everything due today is ticked off.</string>
     <string name="today_section_overdue">Overdue</string>
     <string name="upcoming_title">Upcoming</string>
-    <string name="calendar_title">Calendar</string>
-    <string name="calendar_open">Open in calendar</string>
+    <string name="view_calendar">Show as calendar</string>
+    <string name="view_list">Show as list</string>
     <string name="calendar_day">Day</string>
     <string name="calendar_three_days">3 days</string>
     <string name="calendar_week">Week</string>
@@ -48,7 +48,14 @@
     <string name="calendar_previous">Earlier</string>
     <string name="calendar_next">Later</string>
     <string name="calendar_nothing">Nothing on this day</string>
-    <string name="calendar_more">+%1$d</string>
+    <plurals name="calendar_hidden_above">
+        <item quantity="one">%1$d task above, show it</item>
+        <item quantity="other">%1$d tasks above, show them</item>
+    </plurals>
+    <plurals name="calendar_hidden_below">
+        <item quantity="one">%1$d task below, show it</item>
+        <item quantity="other">%1$d tasks below, show them</item>
+    </plurals>
     <string name="completed_title">Completed · %1$d</string>
     <string name="completed_toggle">Show or hide completed tasks</string>
     <string name="subtasks_progress_label">Sub-tasks done: %1$d of %2$d</string>
@@ -60,13 +67,12 @@
     <string name="list_delete_body">Its tasks are deleted with it. You can still undo right after.</string>
     <string name="action_reschedule">Reschedule</string>
     <string name="subtask_add_inline">Add a sub-task</string>
-    <string name="upcoming_later">Later</string>
     <string name="lists_title">Lists</string>
     <string name="list_default_tag">Default</string>
     <string name="list_new">New list</string>
     <string name="list_rename">Rename list</string>
     <string name="list_empty_title">Nothing here yet</string>
-    <string name="list_empty_body">Add the first item below.</string>
+    <string name="list_empty_body">Tap + to add the first one.</string>
     <string name="search_title">Search</string>
     <string name="search_placeholder">Search tasks</string>
     <string name="search_hint_title">Find anything</string>
@@ -91,6 +97,11 @@
         <item quantity="one">Task deleted</item>
         <item quantity="other">%1$d tasks deleted</item>
     </plurals>
+    <plurals name="reschedule_many">
+        <item quantity="one">%1$d task</item>
+        <item quantity="other">%1$d tasks</item>
+    </plurals>
+    <string name="today_reschedule_overdue">Reschedule</string>
     <plurals name="undo_rescheduled">
         <item quantity="one">Rescheduled</item>
         <item quantity="other">%1$d rescheduled</item>
@@ -113,6 +124,8 @@
     <string name="task_subtasks">Sub-tasks</string>
     <string name="task_subtask_hint">Add a sub-task</string>
     <string name="priority_none">No priority</string>
+    <string name="add_option_date">Date</string>
+    <string name="add_option_priority">Priority</string>
     <string name="priority_long">Priority %1$d</string>
 
     <!-- Reminders -->
@@ -259,4 +272,6 @@
         <item>Settings → Apps → DT → Battery: Unrestricted (or “Don’t optimise”).</item>
         <item>If the phone has an autostart or background-launch list, allow DT there.</item>
     </string-array>
+    <string name="week_previous">Previous week</string>
+    <string name="week_next">Next week</string>
 </resources>

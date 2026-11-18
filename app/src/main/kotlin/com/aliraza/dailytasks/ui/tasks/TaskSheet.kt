@@ -21,8 +21,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,7 +32,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -67,6 +64,7 @@ import com.aliraza.dailytasks.core.model.Subtask
 import com.aliraza.dailytasks.core.model.Task
 import com.aliraza.dailytasks.core.model.TaskList
 import com.aliraza.dailytasks.ui.components.AppIcons
+import com.aliraza.dailytasks.ui.components.DateDialog
 import com.aliraza.dailytasks.ui.components.RoundCheck
 import com.aliraza.dailytasks.ui.components.dayLabel
 import com.aliraza.dailytasks.ui.components.dueTone
@@ -75,11 +73,9 @@ import com.aliraza.dailytasks.ui.components.timeLabel
 import com.aliraza.dailytasks.ui.components.toneColor
 import com.aliraza.dailytasks.ui.theme.tokens
 import kotlinx.coroutines.delay
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.ZoneOffset
 
 private const val SAVE_DELAY_MS = 400L
 
@@ -374,24 +370,6 @@ private fun MenuRow(
             menu { open = false }
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun DateDialog(initial: LocalDate, onDismiss: () -> Unit, onPick: (LocalDate) -> Unit) {
-    val state = rememberDatePickerState(
-        initialSelectedDateMillis = initial.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli(),
-    )
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = {
-                state.selectedDateMillis?.let { onPick(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
-                onDismiss()
-            }) { Text(stringResource(R.string.action_ok)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
-    ) { DatePicker(state) }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

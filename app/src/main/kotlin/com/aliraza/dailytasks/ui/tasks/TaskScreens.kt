@@ -3,7 +3,6 @@ package com.aliraza.dailytasks.ui.tasks
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -20,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -27,9 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,20 +37,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
@@ -75,24 +71,19 @@ import com.aliraza.dailytasks.ui.components.SectionHeader
 import com.aliraza.dailytasks.ui.components.SubtaskFold
 import com.aliraza.dailytasks.ui.components.SwipeRow
 import com.aliraza.dailytasks.ui.components.TaskRow
-import com.aliraza.dailytasks.ui.components.TodayButton
 import com.aliraza.dailytasks.ui.components.dueTone
 import com.aliraza.dailytasks.ui.components.guarded
 import com.aliraza.dailytasks.ui.components.rememberGuardedField
 import com.aliraza.dailytasks.ui.components.rowDivider
-import com.aliraza.dailytasks.ui.components.weekdayLong
-import com.aliraza.dailytasks.ui.components.weekdayShort
+import com.aliraza.dailytasks.ui.components.sectionDay
 import com.aliraza.dailytasks.ui.theme.tokens
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.time.temporal.TemporalAdjusters
-
-private const val DAYS_IN_WEEK = 7L
 
 /** Multi-select: a long-press starts it, and while it runs a tap toggles a task instead of opening it. */
 @Stable
@@ -122,7 +113,7 @@ class RowContext(
     val setSubtaskDone: (Subtask, Boolean) -> Unit = { _, _ -> },
     val addSubtask: (taskId: String, title: String) -> Unit = { _, _ -> },
     val delete: (Task) -> Unit = {},
-    val reschedule: (Task) -> Unit = {},
+    val reschedule: (List<String>) -> Unit = {},
 ) {
     val today: LocalDate get() = now.toLocalDate()
 
@@ -143,7 +134,7 @@ class RowContext(
 fun rememberRowContext(
     viewModel: TasksViewModel,
     selection: Selection,
-    onReschedule: (String) -> Unit,
+    onReschedule: (List<String>) -> Unit,
     open: (String) -> Unit,
 ): RowContext {
     val now by viewModel.now.collectAsStateWithLifecycle()
@@ -161,7 +152,7 @@ fun rememberRowContext(
             setSubtaskDone = viewModel::setSubtaskDone,
             addSubtask = viewModel::addSubtask,
             delete = { task -> viewModel.delete(listOf(task.id)) },
-            reschedule = { task -> onReschedule(task.id) },
+            reschedule = onReschedule,
         )
     }
 }
@@ -175,12 +166,13 @@ internal fun TaskItem(
     modifier: Modifier = Modifier,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
-    var open by rememberSaveable(task.id) { mutableStateOf(false) }
+    // Sub-tasks show by default; the chevron folds them away.
+    var open by rememberSaveable(task.id) { mutableStateOf(true) }
     val fold = meta.subtasks?.let { SubtaskFold(open, onToggle = { open = !open }) { InlineSubtasks(task.id, ctx) } }
     SwipeRow(
         enabled = !ctx.selection.active,
         canReschedule = task.completedAt == null,
-        onReschedule = { ctx.reschedule(task) },
+        onReschedule = { ctx.reschedule(listOf(task.id)) },
         onDelete = { ctx.delete(task) },
         modifier = modifier,
     ) {
@@ -300,17 +292,31 @@ private fun RowScope.SubtaskField(onAdd: (String) -> Unit, onClose: () -> Unit) 
     )
 }
 
-private fun LazyListScope.section(title: Int?, tasks: List<Task>, ctx: RowContext, showDate: Boolean = false) {
+private fun LazyListScope.section(
+    title: Int?,
+    tasks: List<Task>,
+    ctx: RowContext,
+    showDate: Boolean = false,
+    action: Pair<String, () -> Unit>? = null,
+) {
     if (tasks.isEmpty()) return
     if (title != null) {
         item(key = "h$title") {
-            SectionHeader(stringResource(title), Modifier.animateItem(), trailing = tasks.size.toString())
+            SectionHeader(
+                stringResource(title),
+                Modifier.animateItem(),
+                trailing = tasks.size.toString(),
+                action = action,
+            )
         }
     }
     items(tasks, key = { it.id }) { task -> TaskItem(task, ctx, ctx.meta(task, showDate), Modifier.animateItem()) }
 }
 
 // Today
+
+/** Share of the screen the "all done" message takes above the completed tasks. */
+private const val ALL_DONE_HEIGHT = 0.55f
 
 @Composable
 fun TodayContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingValues) {
@@ -328,8 +334,20 @@ fun TodayContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVal
     }
     // Timed tasks first, then the rest, as one group. It gets a header only to set it apart from overdue.
     val due = current.timed + current.rest
+    val overdueIds = current.overdue.map { it.id }
+    val moveAll = stringResource(R.string.today_reschedule_overdue) to { ctx.reschedule(overdueIds) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-        section(R.string.today_section_overdue, current.overdue, ctx, showDate = true)
+        // Everything for today ticked off: say so above what was done, rather than leave a bare header.
+        if (current.all.isEmpty()) {
+            item(key = "allDone") {
+                EmptyState(
+                    stringResource(R.string.today_done_title),
+                    stringResource(R.string.today_done_body),
+                    Modifier.fillParentMaxHeight(ALL_DONE_HEIGHT),
+                )
+            }
+        }
+        section(R.string.today_section_overdue, current.overdue, ctx, showDate = true, action = moveAll)
         section(R.string.day_today.takeIf { current.overdue.isNotEmpty() }, due, ctx)
         completedSection(done, ctx, showDone) { showDone = !showDone }
     }
@@ -337,64 +355,89 @@ fun TodayContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVal
 
 // Upcoming
 
-/** The week strip's state: which week is shown and which day is picked. Survives rotation. */
-@Stable
-class UpcomingState(today: LocalDate) {
-    var weekStart by mutableStateOf(today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
-    var selected by mutableStateOf(today.plusDays(1))
-}
-
+/** Upcoming: the week strip over one list of days, each picked day jumped to in the list. */
 @Composable
-fun UpcomingContent(
-    viewModel: TasksViewModel,
-    ctx: RowContext,
-    state: UpcomingState,
-    padding: PaddingValues,
-    onOpenCalendar: (LocalDate) -> Unit,
-) {
+fun UpcomingContent(viewModel: TasksViewModel, ctx: RowContext, state: UpcomingState, padding: PaddingValues) {
     val upcoming by viewModel.upcoming.collectAsStateWithLifecycle()
     val byDay = upcoming ?: return
-    val today = ctx.today
-    val days = (0 until DAYS_IN_WEEK).map { state.weekStart.plusDays(it) }.filter { it.isAfter(today) }
-    val weekEnd = state.weekStart.plusDays(DAYS_IN_WEEK - 1)
-    val later = byDay.filterKeys { it.isAfter(weekEnd) }.toSortedMap().values.flatten()
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
+    val days = state.days(byDay.keys)
+    val list = rememberLazyListState()
+    val count = { day: LocalDate -> byDay[day].orEmpty().size }
+    val jump = rememberDayJump(list) { headerIndex(days, count, it).coerceAtLeast(0) }
+    FollowTopDay(list, jump) { dayAt(days, count, it)?.let(state::follow) }
     Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
-        val strip = WeekStripActions(
-            onToday = {
-                state.weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                state.selected = today.plusDays(1)
-                scope.launch { listState.animateScrollToItem(0) }
+        val actions = WeekStripActions(
+            onHome = {
+                state.home()
+                jump(state.selected)
             },
-            onCalendar = { onOpenCalendar(state.selected) },
+            onPage = { forward -> state.page(forward)?.let(jump) },
+            onPick = { day ->
+                state.selected = day
+                jump(day)
+            },
         )
-        WeekStrip(state, today, strip, hasTasks = { byDay[it].orEmpty().isNotEmpty() }) { day ->
-            state.selected = day
-            val index = days.indexOf(day).coerceAtLeast(0)
-            scope.launch { listState.animateScrollToItem(days.take(index).sumOf { 1 + byDay[it].orEmpty().size }) }
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).rowDivider(MaterialTheme.tokens.divider, start = 0.dp))
+        WeekStrip(state, ctx.today, hasTasks = { count(it) > 0 }, actions)
         LazyColumn(
             Modifier.fillMaxSize(),
-            state = listState,
+            state = list,
             contentPadding = PaddingValues(bottom = padding.calculateBottomPadding()),
         ) {
             days.forEach { day ->
-                upcomingDay(day, byDay[day].orEmpty(), ctx, day == state.selected) { state.selected = day }
-            }
-            if (later.isNotEmpty()) {
-                item(key = "later") { SectionHeader(stringResource(R.string.upcoming_later)) }
-                items(
-                    later,
-                    key = { it.id },
-                ) { task -> TaskItem(task, ctx, ctx.meta(task, showDate = true), Modifier.animateItem()) }
+                upcomingDay(day, byDay[day].orEmpty(), ctx, day == state.selected) { state.follow(day) }
             }
         }
     }
 }
 
-/** A day's header: "19 Nov · Tomorrow · Thursday". Tapping it picks the day for the add bar. */
+/**
+ * Scrolls the list to a day's header. While it scrolls, [DayJump.running] is set so the strip doesn't
+ * follow the days it passes on the way.
+ */
+@Stable
+private class DayJump(
+    private val scope: CoroutineScope,
+    private val list: LazyListState,
+    val index: (LocalDate) -> Int,
+) : (LocalDate) -> Unit {
+    var running = false
+        private set
+
+    /** Counts jumps, so a jump cut short by the next one doesn't clear [running] under it. */
+    private var latest = 0
+
+    override fun invoke(day: LocalDate) {
+        val mine = ++latest
+        running = true
+        scope.launch {
+            try {
+                list.animateScrollToItem(index(day))
+            } finally {
+                if (latest == mine) running = false
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberDayJump(list: LazyListState, index: (LocalDate) -> Int): DayJump {
+    val scope = rememberCoroutineScope()
+    val latest by rememberUpdatedState(index)
+    return remember(list) { DayJump(scope, list) { latest(it) } }
+}
+
+/** As the user scrolls, hands the index of the topmost visible item to [onTop], so the strip follows. */
+@Composable
+private fun FollowTopDay(list: LazyListState, jump: DayJump, onTop: (Int) -> Unit) {
+    val top by rememberUpdatedState(onTop)
+    LaunchedEffect(list) {
+        snapshotFlow { list.firstVisibleItemIndex }.collect { index ->
+            if (list.isScrollInProgress && !jump.running) top(index)
+        }
+    }
+}
+
+/** A day's header: "Tomorrow · Thu 19 Nov". Tapping it picks the day for the add bar. */
 private fun LazyListScope.upcomingDay(
     day: LocalDate,
     tasks: List<Task>,
@@ -403,10 +446,8 @@ private fun LazyListScope.upcomingDay(
     onPick: () -> Unit,
 ) {
     item(key = "d$day") {
-        val tomorrow = stringResource(R.string.day_tomorrow).takeIf { day == ctx.today.plusDays(1) }
-        val title = listOfNotNull(day.format(DAY_MONTH), tomorrow, weekdayLong(day)).joinToString(" · ")
         SectionHeader(
-            title,
+            sectionDay(day, ctx.today),
             Modifier.clickable(onClick = onPick),
             accent = picked,
             trailing = tasks.size.takeIf { it > 0 }?.toString(),
@@ -416,107 +457,6 @@ private fun LazyListScope.upcomingDay(
         tasks,
         key = { it.id },
     ) { task -> TaskItem(task, ctx, ctx.meta(task, showDate = false), Modifier.animateItem()) }
-}
-
-/** The week strip's header buttons: back to this week, and the same days in the calendar. */
-private class WeekStripActions(val onToday: () -> Unit, val onCalendar: () -> Unit)
-
-@Composable
-private fun WeekStrip(
-    state: UpcomingState,
-    today: LocalDate,
-    actions: WeekStripActions,
-    hasTasks: (LocalDate) -> Boolean,
-    onPick: (LocalDate) -> Unit,
-) {
-    val thisWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-    Column(Modifier.padding(horizontal = 12.dp)) {
-        Row(Modifier.padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                state.weekStart.format(MONTH),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f).padding(start = 4.dp),
-            )
-            if (state.weekStart != thisWeek || state.selected != today.plusDays(1)) TodayButton(actions.onToday)
-            IconButton(onClick = actions.onCalendar) {
-                Icon(
-                    AppIcons.Calendar,
-                    stringResource(R.string.calendar_open),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(
-                onClick = { state.weekStart = state.weekStart.minusWeeks(1) },
-                enabled = state.weekStart.isAfter(thisWeek),
-            ) {
-                Icon(AppIcons.ChevronLeft, stringResource(R.string.week_previous))
-            }
-            IconButton(onClick = { state.weekStart = state.weekStart.plusWeeks(1) }) {
-                Icon(AppIcons.ChevronRight, stringResource(R.string.week_next))
-            }
-        }
-        Row(Modifier.fillMaxWidth()) {
-            for (offset in 0 until DAYS_IN_WEEK) {
-                val day = state.weekStart.plusDays(offset)
-                DayCell(
-                    day,
-                    today,
-                    picked = day == state.selected,
-                    dot = hasTasks(day),
-                    Modifier.weight(1f),
-                ) { onPick(day) }
-            }
-        }
-        Spacer(Modifier.height(4.dp))
-    }
-}
-
-@Composable
-private fun DayCell(
-    day: LocalDate,
-    today: LocalDate,
-    picked: Boolean,
-    dot: Boolean,
-    modifier: Modifier,
-    onClick: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val past = !day.isAfter(today)
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(enabled = !past, role = Role.Button, onClick = onClick)
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        Text(
-            weekdayShort(day),
-            style = MaterialTheme.typography.labelSmall,
-            color = if (past) scheme.outline else scheme.onSurfaceVariant,
-        )
-        Box(
-            Modifier.size(34.dp).clip(CircleShape).background(if (picked) scheme.primary else Color.Transparent),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                day.dayOfMonth.toString(),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = if (day == today || picked) FontWeight.Bold else FontWeight.Medium,
-                color = dayInk(scheme, picked, past, day == today),
-            )
-        }
-        // A dot under days that have tasks; invisible otherwise, so every cell keeps the same height.
-        Box(Modifier.size(4.dp).clip(CircleShape).background(if (dot && !past) scheme.outline else Color.Transparent))
-    }
-}
-
-private fun dayInk(scheme: ColorScheme, picked: Boolean, past: Boolean, today: Boolean): Color = when {
-    picked -> scheme.onPrimary
-    today -> scheme.secondary
-    past -> scheme.outline
-    else -> scheme.onBackground
 }
 
 // Lists
@@ -612,6 +552,7 @@ fun ListContent(viewModel: TasksViewModel, listId: String, ctx: RowContext, padd
             stringResource(R.string.list_empty_title),
             stringResource(R.string.list_empty_body),
             Modifier.padding(padding),
+            icon = AppIcons.Checklist,
         )
         return
     }
@@ -663,27 +604,27 @@ private fun LazyListScope.completedSection(
     }
 }
 
+/** "Completed · 5" with a chevron: a quiet line, no hairline, so done tasks don't compete with open ones. */
 @Composable
 private fun CompletedHeader(count: Int, open: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     val turn by animateFloatAsState(if (open) HALF_TURN else 0f, label = "chevron")
     Row(
         modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.completed_toggle), onClick = onToggle)
-            .rowDivider(MaterialTheme.tokens.divider, start = 16.dp)
-            .padding(start = 16.dp, end = 12.dp, top = 18.dp, bottom = 8.dp),
+            .padding(start = 16.dp, end = 14.dp, top = 14.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             stringResource(R.string.completed_title, count),
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.labelLarge,
             color = scheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
         )
+        Spacer(Modifier.width(2.dp))
         Icon(
             AppIcons.ChevronDown,
             null,
             tint = scheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = turn },
+            modifier = Modifier.size(16.dp).graphicsLayer { rotationZ = turn },
         )
     }
 }
@@ -704,11 +645,13 @@ fun SearchContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVa
             query.isBlank() -> EmptyState(
                 stringResource(R.string.search_hint_title),
                 stringResource(R.string.search_hint_body),
+                icon = AppIcons.Search,
             )
 
             results.isEmpty() -> EmptyState(
                 stringResource(R.string.search_none_title),
                 stringResource(R.string.search_none_body, query),
+                icon = AppIcons.Search,
             )
 
             else -> LazyColumn(
@@ -760,4 +703,3 @@ private fun SearchField(query: String, onChange: (String) -> Unit, modifier: Mod
 }
 
 private val MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
-private val DAY_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM")

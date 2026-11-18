@@ -1,5 +1,6 @@
 package com.aliraza.dailytasks.ui.calendar
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
@@ -7,10 +8,12 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +47,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -50,8 +56,11 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,12 +72,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aliraza.dailytasks.R
 import com.aliraza.dailytasks.core.model.Priority
 import com.aliraza.dailytasks.core.model.Task
+import com.aliraza.dailytasks.ui.AddButtonClearance
 import com.aliraza.dailytasks.ui.components.AppIcons
 import com.aliraza.dailytasks.ui.components.SectionHeader
 import com.aliraza.dailytasks.ui.components.TodayButton
-import com.aliraza.dailytasks.ui.components.dayLabel
 import com.aliraza.dailytasks.ui.components.priorityColor
 import com.aliraza.dailytasks.ui.components.rowDivider
+import com.aliraza.dailytasks.ui.components.sectionDay
 import com.aliraza.dailytasks.ui.components.timeLabel
 import com.aliraza.dailytasks.ui.components.weekdayShort
 import com.aliraza.dailytasks.ui.tasks.RowContext
@@ -79,8 +89,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private const val HOURS = 24
@@ -88,8 +96,8 @@ private const val MINUTES_PER_HOUR = 60f
 private const val BLOCK_TINT = 0.16f
 private const val MONTH_DOTS = 3
 
-/** Untimed tasks shown per day above the hours; the rest are counted. */
-private const val ALL_DAY_SHOWN = 2
+/** The chevron turned to point up. */
+private const val UPSIDE_DOWN = 180f
 
 /** Hours shown above the current time when a view opens, so "now" sits near the top. */
 private const val HOURS_BEFORE_NOW = 1
@@ -122,6 +130,7 @@ class CalendarState(today: LocalDate) {
 @Composable
 fun CalendarContent(viewModel: TasksViewModel, ctx: RowContext, state: CalendarState, padding: PaddingValues) {
     val byDay by viewModel.byDay.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
     val tasks = byDay ?: return
     Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
         Header(state, ctx.today)
@@ -129,7 +138,7 @@ fun CalendarContent(viewModel: TasksViewModel, ctx: RowContext, state: CalendarS
         if (state.mode == CalendarMode.MONTH) {
             MonthView(state, ctx, tasks, padding.calculateBottomPadding())
         } else {
-            TimeGrid(state, ctx, tasks, padding.calculateBottomPadding())
+            TimeGrid(state, ctx, tasks, settings.defaultReminderTime, padding.calculateBottomPadding())
         }
     }
 }
@@ -194,31 +203,97 @@ private fun RowScope.ModeTab(label: String, on: Boolean, onClick: () -> Unit) {
 // Day, 3 days, week
 
 @Composable
-private fun TimeGrid(state: CalendarState, ctx: RowContext, tasks: Map<LocalDate, List<Task>>, bottom: Dp) {
+private fun TimeGrid(
+    state: CalendarState,
+    ctx: RowContext,
+    tasks: Map<LocalDate, List<Task>>,
+    untimedAt: LocalTime,
+    bottom: Dp,
+) {
     val days = visibleDays(state.mode, state.anchor)
     val hour = if (state.mode == CalendarMode.WEEK) 48.dp else 56.dp
     val scroll = rememberScrollState()
     val hourPx = with(LocalDensity.current) { hour.toPx() }
     val opensAt = if (ctx.today in days) (ctx.now.hour - HOURS_BEFORE_NOW).coerceAtLeast(0) else DAY_START_HOUR
     LaunchedEffect(state.mode, days.first()) { scroll.scrollTo((opensAt * hourPx).toInt()) }
+    // Every task at its time; one with only a date sits at the default reminder time, when it reminds.
+    val placed = days.map { day -> tasks[day].orEmpty().map { Placed(it, it.dueTime ?: untimedAt) } }
     DayHeaders(days, ctx.today) { state.open(it, CalendarMode.DAY) }
-    AllDayRow(days, tasks, ctx)
     val divider = MaterialTheme.tokens.divider
-    Row(
-        Modifier.fillMaxSize().verticalScroll(scroll).padding(bottom = bottom)
-            .drawBehind { hourLines(divider, hourPx, HourLabelWidth.toPx()) },
-    ) {
-        HourLabels(hour)
-        days.forEach { day ->
-            val timed = tasks[day].orEmpty().filter { it.dueTime != null }
-            DayColumn(
-                day,
-                timed,
-                ctx,
-                GridScale(hour, showTimes = state.mode != CalendarMode.WEEK),
-                Modifier.weight(1f),
-            )
+    Box(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxSize().verticalScroll(scroll).padding(bottom = bottom)
+                .drawBehind { hourLines(divider, hourPx, HourLabelWidth.toPx()) },
+        ) {
+            HourLabels(hour)
+            days.forEachIndexed { i, day ->
+                DayColumn(
+                    day,
+                    placed[i],
+                    ctx,
+                    GridScale(hour, showTimes = state.mode != CalendarMode.WEEK),
+                    Modifier.weight(1f),
+                )
+            }
         }
+        OffscreenHints(placed.flatten().map { it.at }, scroll, hourPx, bottom)
+    }
+}
+
+/** A task and where it sits on the grid: its own time, or the default reminder time without one. */
+private data class Placed(val task: Task, val at: LocalTime)
+
+/**
+ * "↑ 2" at the top and "↓ 3" at the bottom while tasks are scrolled out of view; tapping one scrolls
+ * to the nearest of them. Nothing shows when every task is in view.
+ */
+@Composable
+private fun BoxScope.OffscreenHints(times: List<LocalTime>, scroll: ScrollState, hourPx: Float, bottom: Dp) {
+    // Only the tab bar hides rows; the add button's clearance below it is still in view.
+    val bottomPx = with(LocalDensity.current) { (bottom - AddButtonClearance).coerceAtLeast(0.dp).toPx() }
+    val blockPx = with(LocalDensity.current) { BlockHeight.toPx() }
+    val tops = times.map { (it.hour + it.minute / MINUTES_PER_HOUR) * hourPx }
+    val above by remember(tops) { derivedStateOf { tops.filter { it + blockPx <= scroll.value } } }
+    val below by remember(tops) {
+        derivedStateOf { tops.filter { it + blockPx > scroll.value + scroll.viewportSize - bottomPx } }
+    }
+    val scope = rememberCoroutineScope()
+    val goTo = { y: Float -> scope.launch { scroll.animateScrollTo((y - hourPx).toInt().coerceAtLeast(0)) } }
+    if (above.isNotEmpty()) {
+        HintPill(up = true, above.size, Modifier.align(Alignment.TopCenter).padding(top = 6.dp)) {
+            goTo(above.max())
+        }
+    }
+    if (below.isNotEmpty()) {
+        HintPill(up = false, below.size, Modifier.align(Alignment.BottomCenter).padding(bottom = bottom + 6.dp)) {
+            goTo(below.min())
+        }
+    }
+}
+
+@Composable
+private fun HintPill(up: Boolean, count: Int, modifier: Modifier, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val label = pluralStringResource(
+        if (up) R.plurals.calendar_hidden_above else R.plurals.calendar_hidden_below,
+        count,
+        count,
+    )
+    Row(
+        modifier.shadow(2.dp, CircleShape).clip(CircleShape).background(scheme.surface)
+            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = label }
+            .padding(horizontal = 12.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            AppIcons.ChevronDown,
+            null,
+            tint = scheme.secondary,
+            modifier = Modifier.size(16.dp).rotate(if (up) UPSIDE_DOWN else 0f),
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(count.toString(), style = MaterialTheme.typography.labelMedium, color = scheme.secondary)
     }
 }
 
@@ -258,31 +333,6 @@ private fun DayHeaders(days: List<LocalDate>, today: LocalDate, onOpen: (LocalDa
     }
 }
 
-/** Tasks with a date and no time, as small chips above the hours. Hidden when there are none. */
-@Composable
-private fun AllDayRow(days: List<LocalDate>, tasks: Map<LocalDate, List<Task>>, ctx: RowContext) {
-    val untimed = days.map { day -> tasks[day].orEmpty().filter { it.dueTime == null } }
-    if (untimed.all { it.isEmpty() }) return
-    Row(
-        Modifier.fillMaxWidth().rowDivider(MaterialTheme.tokens.divider, start = 0.dp)
-            .padding(start = HourLabelWidth, top = 2.dp, bottom = 6.dp),
-    ) {
-        untimed.forEach { list ->
-            Column(Modifier.weight(1f).padding(horizontal = 1.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                list.take(ALL_DAY_SHOWN).forEach { task -> Block(task, ctx, time = null) }
-                if (list.size > ALL_DAY_SHOWN) {
-                    Text(
-                        stringResource(R.string.calendar_more, list.size - ALL_DAY_SHOWN),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
 @Composable
 private fun HourLabels(hour: Dp) {
     Column(Modifier.width(HourLabelWidth)) {
@@ -306,7 +356,7 @@ private fun HourLabels(hour: Dp) {
  * has a red line at the current time.
  */
 @Composable
-private fun DayColumn(day: LocalDate, timed: List<Task>, ctx: RowContext, scale: GridScale, modifier: Modifier) {
+private fun DayColumn(day: LocalDate, placed: List<Placed>, ctx: RowContext, scale: GridScale, modifier: Modifier) {
     val hour = scale.hour
     val accent = MaterialTheme.tokens.accent
     val isToday = day == ctx.today
@@ -320,18 +370,14 @@ private fun DayColumn(day: LocalDate, timed: List<Task>, ctx: RowContext, scale:
             }
         },
     ) {
-        timed.groupBy { halfHour(it.dueTime!!) }.forEach { (slot, group) ->
+        placed.groupBy { halfHour(it.at) }.forEach { (slot, group) ->
             Row(
                 Modifier.fillMaxWidth().offset(y = hour * (slot / 2f)).padding(horizontal = 1.dp),
                 horizontalArrangement = Arrangement.spacedBy(1.dp),
             ) {
-                group.forEach { task ->
-                    Block(
-                        task,
-                        ctx,
-                        time = task.dueTime?.takeIf { scale.showTimes },
-                        modifier = Modifier.weight(1f),
-                    )
+                // Only a task's own time is printed, so one placed at the default time reads as untimed.
+                group.forEach { (task, _) ->
+                    Block(task, ctx, time = task.dueTime?.takeIf { scale.showTimes }, modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -402,7 +448,7 @@ private fun MonthView(state: CalendarState, ctx: RowContext, tasks: Map<LocalDat
         Modifier.fillMaxSize().nestedScroll(connection),
         contentPadding = PaddingValues(bottom = bottom),
     ) {
-        item { SectionHeader(dayTitle(state.anchor, ctx.today)) }
+        item { SectionHeader(sectionDay(state.anchor, ctx.today)) }
         if (picked.isEmpty()) {
             item {
                 Text(
@@ -415,13 +461,6 @@ private fun MonthView(state: CalendarState, ctx: RowContext, tasks: Map<LocalDat
         }
         items(picked, key = { it.id }) { task -> TaskItem(task, ctx, ctx.meta(task, showDate = false)) }
     }
-}
-
-/** "Today · Wednesday, 18 November"; yesterday and tomorrow are named too, other days get the date. */
-@Composable
-private fun dayTitle(day: LocalDate, today: LocalDate): String {
-    val near = abs(ChronoUnit.DAYS.between(today, day)) <= 1
-    return listOfNotNull(dayLabel(day, today).takeIf { near }, day.format(LONG_DAY)).joinToString(" · ")
 }
 
 /**
@@ -504,4 +543,3 @@ private const val DAYS_IN_WEEK = 7
 /** One week in the month grid: the day circle, its dots and a little air. */
 private val MonthRowHeight = 50.dp
 private val MONTH_YEAR: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
-private val LONG_DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM")

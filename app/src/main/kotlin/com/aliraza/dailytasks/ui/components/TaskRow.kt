@@ -2,6 +2,8 @@ package com.aliraza.dailytasks.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,14 +36,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -56,11 +63,17 @@ import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalTime
 
-/** How long a ticked box stays visible before the task leaves the list. */
-private const val TICK_SETTLE_MS = 280L
+/*
+ * Ticking a task: the check draws itself in, then a line sweeps through the title as if crossed off on
+ * paper, then the row leaves for Completed. TICK_SETTLE_MS covers both before the task is marked done.
+ */
+private const val CHECK_DRAW_MS = 180
+private const val STRIKE_DELAY_MS = 120
+private const val STRIKE_MS = 260
+private const val TICK_SETTLE_MS = 480L
 
-/** A prioritised box is tinted with its own colour at this strength. */
-private const val PRIORITY_TINT = 0.12f
+/** The check mark inside the box, as fractions of its size: down to the corner, then up and right. */
+private val CHECK_POINTS = listOf(Offset(0.27f, 0.52f), Offset(0.43f, 0.68f), Offset(0.74f, 0.35f))
 
 /** The outer ring of the empty-state mark is the accent tint at half strength. */
 private const val EMPTY_HALO = 0.5f
@@ -103,12 +116,13 @@ fun RoundCheck(
     shape: Shape = CircleShape,
     size: Int = 22,
 ) {
+    // Priority shows as the ring's colour and weight alone; the box stays empty until it is ticked.
     val ring = priorityColor(priority)
-    val idle = if (priority == Priority.NONE) Color.Transparent else ring.copy(alpha = PRIORITY_TINT)
-    val fill by animateColorAsState(if (checked) ring else idle, label = "check")
-    val action = stringResource(if (checked) R.string.action_reopen else R.string.action_complete)
-    val level = stringResource(R.string.priority_long, priority.level)
-    val label = if (priority == Priority.NONE) action else "$action, $level"
+    // A ticked box without a priority fills with the accent, so finishing a task feels like something.
+    val filled = if (priority == Priority.NONE) MaterialTheme.tokens.accent else ring
+    val fill by animateColorAsState(if (checked) filled else Color.Transparent, label = "check")
+    val weight = if (priority == Priority.NONE) 1.5.dp else 2.dp
+    val label = checkLabel(checked, priority)
     Box(
         modifier = modifier
             .size(40.dp)
@@ -122,12 +136,10 @@ fun RoundCheck(
                 .size(size.dp)
                 .clip(shape)
                 .background(fill)
-                .border(1.5.dp, ring, shape),
+                .border(weight, ring, shape),
             contentAlignment = Alignment.Center,
         ) {
-            if (checked) {
-                Icon(AppIcons.Check, null, tint = Color.White, modifier = Modifier.fillMaxSize().padding(3.dp))
-            }
+            CheckMark(checked)
         }
     }
 }
@@ -196,7 +208,7 @@ fun TaskRow(
             priority = task.priority,
         )
         Spacer(Modifier.width(4.dp))
-        RowText(task, today, meta, fold, Modifier.weight(1f))
+        RowText(task, today, meta, fold, striking = ticking && !done, modifier = Modifier.weight(1f))
         if (fold != null && meta.subtasks != null) {
             val (ticked, total) = meta.subtasks
             Box(Modifier.padding(top = 2.dp)) { SubtaskToggle(ticked, total, fold.open, fold.onToggle) }
@@ -207,25 +219,94 @@ fun TaskRow(
 
 /** Title, a line of notes, the meta line, and the sub-tasks when folded open. */
 @Composable
-private fun RowText(task: Task, today: LocalDate, meta: RowMeta, fold: SubtaskFold?, modifier: Modifier) {
+private fun RowText(
+    task: Task,
+    today: LocalDate,
+    meta: RowMeta,
+    fold: SubtaskFold?,
+    striking: Boolean,
+    modifier: Modifier,
+) {
     Column(modifier.padding(top = 9.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Title(task.title, task.completedAt != null)
+        Title(task.title, task.completedAt != null, striking)
         if (task.notes.isNotBlank()) Notes(task.notes)
         MetaLine(today, meta)
         if (fold?.open == true) fold.content()
     }
 }
 
+/** The title; while [striking], a line sweeps through it, across every line it wraps to, and it greys. */
 @Composable
-private fun Title(title: String, done: Boolean) {
+private fun Title(title: String, done: Boolean, striking: Boolean) {
+    val scheme = MaterialTheme.colorScheme
+    val sweep by animateFloatAsState(
+        if (striking) 1f else 0f,
+        tween(STRIKE_MS, delayMillis = STRIKE_DELAY_MS),
+        label = "strike",
+    )
+    val ink by animateColorAsState(
+        if (done || striking) scheme.onSurfaceVariant else scheme.onBackground,
+        tween(STRIKE_MS, delayMillis = STRIKE_DELAY_MS),
+        label = "title",
+    )
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         text = title,
         style = MaterialTheme.typography.bodyLarge,
-        color = with(MaterialTheme.colorScheme) { if (done) onSurfaceVariant else onBackground },
+        color = ink,
         textDecoration = if (done) TextDecoration.LineThrough else null,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
+        onTextLayout = { layout = it },
+        modifier = Modifier.drawWithContent {
+            drawContent()
+            val text = layout
+            if (text != null && sweep > 0f && !done) drawStrike(text, sweep, ink)
+        },
     )
+}
+
+/** "Complete, Priority 1": what the box does, and the task's priority when it has one. */
+@Composable
+private fun checkLabel(checked: Boolean, priority: Priority): String {
+    val action = stringResource(if (checked) R.string.action_reopen else R.string.action_complete)
+    if (priority == Priority.NONE) return action
+    return "$action, ${stringResource(R.string.priority_long, priority.level)}"
+}
+
+/** The white tick, drawing itself in as the box is ticked and out as it is cleared. */
+@Composable
+private fun CheckMark(checked: Boolean) {
+    val drawn by animateFloatAsState(if (checked) 1f else 0f, tween(CHECK_DRAW_MS), label = "check")
+    if (drawn > 0f) Canvas(Modifier.fillMaxSize()) { drawCheck(drawn) }
+}
+
+/** The first [sweep] share of the title's lines, struck through at each line's middle. */
+private fun DrawScope.drawStrike(text: TextLayoutResult, sweep: Float, color: Color) {
+    val widths = (0 until text.lineCount).map { text.getLineRight(it) - text.getLineLeft(it) }
+    var left = widths.sum() * sweep
+    widths.forEachIndexed { line, width ->
+        if (left <= 0f) return
+        val start = text.getLineLeft(line)
+        val y = (text.getLineTop(line) + text.getLineBottom(line)) / 2
+        drawLine(color, Offset(start, y), Offset(start + minOf(width, left), y), 1.5.dp.toPx(), StrokeCap.Round)
+        left -= width
+    }
+}
+
+/** The check mark, drawn up to [progress] of its length, in white on the filled box. */
+private fun DrawScope.drawCheck(progress: Float) {
+    val points = CHECK_POINTS.map { Offset(it.x * size.width, it.y * size.height) }
+    val segments = points.zipWithNext()
+    var left = segments.sumOf { (a, b) -> (b - a).getDistance().toDouble() }.toFloat() * progress
+    val stroke = 2.dp.toPx()
+    segments.forEach { (a, b) ->
+        if (left <= 0f) return
+        val length = (b - a).getDistance()
+        val end = if (left >= length) b else a + (b - a) * (left / length)
+        drawLine(Color.White, a, end, stroke, StrokeCap.Round)
+        left -= length
+    }
 }
 
 @Composable
@@ -305,7 +386,13 @@ private fun SubtaskToggle(done: Int, total: Int, open: Boolean, onToggle: () -> 
 
 /** A bold group title with a hairline under it, the way lists are split into days and sections. */
 @Composable
-fun SectionHeader(text: String, modifier: Modifier = Modifier, accent: Boolean = false, trailing: String? = null) {
+fun SectionHeader(
+    text: String,
+    modifier: Modifier = Modifier,
+    accent: Boolean = false,
+    trailing: String? = null,
+    action: Pair<String, () -> Unit>? = null,
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -323,11 +410,21 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier, accent: Boolean =
         trailing?.let {
             Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        action?.let { (label, onClick) ->
+            Text(
+                label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.clip(CircleShape).clickable(role = Role.Button, onClick = onClick)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
     }
 }
 
+/** A calm, centred message for a screen with nothing to show; [icon] says which kind of empty it is. */
 @Composable
-fun EmptyState(title: String, body: String, modifier: Modifier = Modifier) {
+fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, icon: ImageVector = AppIcons.Check) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -335,7 +432,7 @@ fun EmptyState(title: String, body: String, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Two soft rings around a check: calm, and recognisably the app's own mark.
+        // Two soft rings around the icon: calm, and recognisably the app's own mark.
         Box(
             modifier = Modifier
                 .size(112.dp)
@@ -349,7 +446,7 @@ fun EmptyState(title: String, body: String, modifier: Modifier = Modifier) {
                 ).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(AppIcons.Check, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(34.dp))
+                Icon(icon, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(34.dp))
             }
         }
         Spacer(Modifier.size(10.dp))

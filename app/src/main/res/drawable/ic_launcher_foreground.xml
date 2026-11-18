@@ -1,18 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A check mark inside a rounded square, centred in the adaptive icon safe zone. -->
+<!--
+  The app's mark: the round check box, ticked, with the check breaking out through a gap in the ring.
+  Drawn inside the adaptive icon's 66dp safe zone (centre 54,54); white on the ink-blue background,
+  and the same shape serves as the monochrome layer for themed icons.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="@color/launcher_foreground"
-        android:pathData="M40,34h28a6,6 0,0 1,6 6v28a6,6 0,0 1,-6 6h-28a6,6 0,0 1,-6 -6v-28a6,6 0,0 1,6 -6z" />
+    <!-- The ring, open between -70 and -15 degrees, where the check leaves it. -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="5"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round"
+        android:pathData="M70.42,49.6 A17,17 0 1,1 59.81,38.03" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M44,54l7,7l13,-14" />
+        android:pathData="M45.5,54.5L52,61L71,40" />
 </vector>

@@ -104,12 +104,16 @@ class TaskRepository(
         updateTasks(listOf(id), change)
     }
 
-    /** Bulk edit, used by multi-select (re-date, priority). One transaction, one reschedule. */
-    suspend fun updateTasks(ids: Collection<String>, change: (Task) -> Task) {
-        db.withTransaction {
+    /**
+     * Bulk edit, used by multi-select (re-date, priority). One transaction, one reschedule. Returns the
+     * tasks as they were just before the change, read in the same transaction, for undo.
+     */
+    suspend fun updateTasks(ids: Collection<String>, change: (Task) -> Task): List<Task> {
+        val before = db.withTransaction {
             val settings = settings.current()
             val now = now()
-            val updated = tasks.getMany(ids).map { row ->
+            val rows = tasks.getMany(ids)
+            val updated = rows.map { row ->
                 val before = row.toDomain()
                 val after = change(before).copy(id = before.id, updatedAt = now)
                 val moved = if (after.listId != before.listId) {
@@ -121,8 +125,10 @@ class TaskRepository(
                 if (redated) ReminderRules.rescheduled(moved, settings, now, clock.zone) else moved
             }
             tasks.update(updated.map { it.toEntity() })
+            rows.map { it.toDomain() }
         }
         onScheduleChanged()
+        return before
     }
 
     /** Completes or, for undo, reopens tasks. */

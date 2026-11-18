@@ -218,15 +218,18 @@ class TasksViewModel(
         }
     }
 
-    /** Moves a task to [date] (null: no date), keeping its time; undo puts both back. */
-    fun reschedule(id: String, date: LocalDate?) {
+    /** Moves [ids] to [date] (null for no date) keeping their times; undo puts each back where it was. */
+    fun reschedule(ids: List<String>, date: LocalDate?) {
+        if (ids.isEmpty()) return
         viewModelScope.launch {
-            val before = tasks.task(id) ?: return@launch
-            tasks.updateTask(id) { it.movedTo(date) }
+            val before = tasks.updateTasks(ids) { it.movedTo(date) }.associateBy { it.id }
             undoEvents.tryEmit(
-                UndoEvent(R.plurals.undo_rescheduled, 1) {
+                UndoEvent(R.plurals.undo_rescheduled, before.size) {
                     viewModelScope.launch {
-                        tasks.updateTask(id) { it.copy(dueDate = before.dueDate, dueTime = before.dueTime) }
+                        tasks.updateTasks(before.keys) { now ->
+                            val was = before.getValue(now.id)
+                            now.copy(dueDate = was.dueDate, dueTime = was.dueTime)
+                        }
                     }
                 },
             )

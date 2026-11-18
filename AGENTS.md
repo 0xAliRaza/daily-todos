@@ -28,23 +28,28 @@ On the phone the app is named DT. See the milestones in `PLAN.md`.
   filed elsewhere; it can be renamed but not deleted. No nesting, no sections.
 - Sub-tasks: one level of checkboxes inside a task.
 - Three priorities, optional. No labels.
-- Views: Today and Upcoming (with a week strip to jump between days) show dated tasks from every list;
-  then each list on its own. Search.
+- Views: Today and Upcoming show dated tasks from every list; then each list on its own. Search.
+  Upcoming lists the days ahead under a week strip (month, week arrows, Mon to Sun with dots for days
+  with tasks); tapping a day jumps the list to it.
+- Sub-tasks show under their task by default; the "1/3" chevron folds them.
 - Calendar: Day, 3 days, Week and Month views of dated tasks. Timed tasks sit at their time on an hour
   grid (tasks have no length); Month shows dots per day and the picked day's tasks below, and folds to
-  that day's week as the list scrolls. Reached from its own tab and from Upcoming's week strip.
+  that day's week as the list scrolls. It is Upcoming's second view: one tab, switched from the top bar,
+  and the tab reopens the view used last while the app runs; it opens as the list when the app starts. Three tabs: Today, Upcoming, Lists.
 - Gestures: swipe a task right to reschedule (today, tomorrow, next week, a picked date, no date), left
   to delete; both undo. Tap opens a task, long-press starts multi-select, the round box completes.
 - Lists show their open counts; a list's menu renames it or deletes it with its tasks (undo right after).
 - Undo on every action, multi-select, drag to reorder.
-- Sorting: inside a list, manual order with new tasks added at the bottom. In Today, overdue first, then
-  timed tasks by time, then the rest in manual order.
+- Sorting: inside a list, manual order with new tasks added at the bottom. In Today, overdue first (its
+  header reschedules them all at once), then timed tasks by time, then the rest in manual order.
 
 **Adding a task**
 
 - One line of natural language carries the date, time, priority and list ("Call bank tomorrow 4pm p1",
   "Milk #groceries"). Date and time parsing is the most important part of the app.
 - Recognised words are highlighted while typing; tapping one un-recognises it.
+- Date, priority and list can also be picked by hand from chips under the line; a pick writes the same
+  words into it ("25 nov", "p1", "#groceries"), so the line stays the one source of truth.
 - A "#name" that matches no list creates that list when the task is added ("#weekend-trip" makes
   "Weekend trip"); numbers alone ("Issue #42") stay text.
 - A task with a date and no time gets the default reminder time (10:00 unless changed).
@@ -95,7 +100,7 @@ On the phone the app is named DT. See the milestones in `PLAN.md`.
 - Signal colours, not extra accents: the check-box ring shows priority (P1 red, P2 orange, P3 blue); a due
   date is red when overdue, the accent for today, and grey after that.
 - Flat lists split by hairlines, no cards. Adding a task starts from a round + button and is one
-  line: the text, one pill for the due day, and send. Every pairing stays at WCAG AA.
+  line: the text, a pill for the default day (only when no date is typed), and send. Every pairing stays at WCAG AA.
 
 ## Rules that must hold
 

@@ -21,6 +21,12 @@ object AppIcons {
     val ChevronLeft = icon("ChevronLeft", "M15.41,7.41L14,6l-6,6 6,6 1.41,-1.41L10.83,12z")
     val ChevronRight = icon("ChevronRight", "M10,6L8.59,7.41 13.17,12l-4.58,4.59L10,18l6,-6z")
     val ChevronDown = icon("ChevronDown", "M16.59,8.59L12,13.17 7.41,8.59 6,10l6,6 6,-6z")
+    val Agenda = icon(
+        "Agenda",
+        "M19,13H5c-1.1,0 -2,0.9 -2,2v4c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2v-4C21,13.9 20.1,13 19,13z" +
+            "M19,19H5v-4h14V19zM19,3H5C3.9,3 3,3.9 3,5v4c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2V5" +
+            "C21,3.9 20.1,3 19,3zM19,9H5V5h14V9z",
+    )
     val Checklist = icon(
         "Checklist",
         "M22,7h-9v2h9V7zM22,15h-9v2h9V15zM5.54,11L2,7.46l1.41,-1.41l2.12,2.12l4.24,-4.24l1.41,1.41L5.54,11z" +

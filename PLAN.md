@@ -278,7 +278,7 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
   5, and write the answers back into this file. Then the scheduler, receivers, notifications with actions,
   the schedule mirror and catch-up, with a bare add field to create tasks. Done when the matrix below
   passes on the A54.
-- [ ] **M4 Task screens.** Section 8 items 1 to 5 and 7.
+- [ ] **M4 Task screens.** Section 8 items 1, 2, 4, 5 and 7 (the lists screen is M7).
 - [ ] **M5 Reminder health** and the first-run permission flow.
 - [ ] **M6 Focus timer.**
 - [ ] **M7 Lists.** The lists screen and `#list` in quick add. Until then every task lives in "Daily".

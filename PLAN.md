@@ -153,9 +153,9 @@ restart themselves overnight would otherwise miss every morning reminder. So:
   fails on the phone, fall back to asking for notification-policy access and `setBypassDnd(true)`.
 
 **Side effect to know about.** `setAlarmClock()` puts the alarm icon in the status bar and shows the time
-as the phone's "next alarm" **(verify how One UI shows it)**. The owner has been told; if they reject it,
-the fallback is `setExactAndAllowWhileIdle()` plus the battery exemption, with the weaker guarantee
-written down.
+as the phone's "next alarm". On the A54 (One UI 9, Android 17) no icon showed in the status bar
+(2026-11-18), so `setAlarmClock()` stays. The fallback, if ever needed, is `setExactAndAllowWhileIdle()`
+plus the battery exemption, with the weaker guarantee written down.
 
 **Limits that no app can remove** (say so in the README and on the health screen): a user force-stop, and
 some makers' background blocking until the app is allowed to autostart. In both cases nothing fires until
@@ -339,13 +339,34 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
     tomorrow if still undone.
 14. With the early heads-up at 10 minutes, a 16:00 task reminds at 15:50.
 
+**A54 results, 2026-11-18** (SM-A546E, One UI 9, Android 17). Times are when the notification posted.
+
+| # | Result |
+|---|---|
+| 1 | One UI refuses a forced deep idle from the shell. Light idle with the screen off: fired 15:20:00.1. Real deep sleep is covered overnight by #13. |
+| 2 | Pass: 15:09:00.2. |
+| 3 | Pass: the swipe killed the process; fired 15:34:00.5. |
+| 4 | Not run; #5 is the harder case. |
+| 5 | Pass: fired 15:40:01.0 from the mirror while locked, logged once after unlock. One UI blocks USB while locked, so this needs the owner's eyes. |
+| 6 | Not run. |
+| 7 | Time zone failed first: the clock kept the start zone. Fixed in `DeviceClock`; then 16:25:00.0 and 16:26:00.1 India time. Manual clock change not run. |
+| 8 | Pass: 15:48:00.5 after `adb install -r`. |
+| 9 | Pass: five notifications, all posted at 16:17:00.2. |
+| 10 | Waits for the settings screen (the override has no switch yet). |
+| 11 | Pass with the app set to Restricted (Samsung's deep sleeping): 16:11:00.5. The health-screen flag comes with M7. |
+| 12 | Pass: nothing fired; opening the app posted it at 16:05:26 (catch-up). |
+| 13 | Waiting for 09:00 on 2026-11-19. |
+| 14 | Waits for the settings screen; covered by JVM tests. |
+
+Found while testing: `notifiedFor` is an instant, so switching the zone back can remind a task again for
+the same wall-clock time. It errs towards an extra reminder, never a missed one; revisit with M4.
+
 The focus timer adds its own check in M6: the end signal keeps going until dismissed and stops by itself at
 the cap, in each of the three signal modes.
 
 ## 11. Open decisions for the owner
 
-1. **Alarm icon.** Planned as accepted. Show the owner the status-bar icon on the A54 during the M3 spike;
-   they can veto it then, which switches to the fallback in section 5.
+1. **Alarm icon.** Settled 2026-11-18: no icon shows on the A54, so it stays as built.
 2. **Planner defaults**, changeable on request: snooze lengths (10 min, 1 hour); named times of day
    (section 7); the timer waiting for a tap after each break (section 6); overdue reminders repeating
    every day at 09:00 until the task is done (section 4); the timer's end signal stopping by itself after

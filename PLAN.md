@@ -185,9 +185,10 @@ the app is opened again; catch-up then posts what was missed.
 
 ## 7. Quick-add parser (`:core`)
 
-Input: the typed line, the current date-time, and two locale flags (day-first dates, 24-hour clock).
-Output: title, date, time, priority, list, and the character ranges that were recognised (for highlighting).
-English only in v1.
+Input: the typed line, the current date-time, the list names, a day-first flag for numeric dates, and the
+ranges the user tapped to un-recognise. (A 24-hour-clock flag turned out not to change parsing: "16:30" and
+"4pm" mean the same either way, so it stays a display concern.) Output: title, date, time, priority, list,
+and the character ranges that were recognised (for highlighting). English only in v1.
 
 | Kind | Recognised |
 | --- | --- |
@@ -213,6 +214,22 @@ Rules:
 
 Tests are table-driven, at least 150 rows, and include negatives ("Read Tomorrow book", "sat down with
 Sam", "May I call back").
+
+Decided while building M1 (planner defaults, changeable on request):
+
+9. A weekday on its own, or with "on", "by" or "this", is the next such day and today counts; "next friday"
+   is the next Friday strictly after today. So on a Friday, "friday" is today and "next friday" a week out.
+10. "by" introduces a date like "on" does ("Pay rent by friday").
+11. A relative-day word capitalised in the middle of the line is a name, not a date ("Read Tomorrow book",
+    "Call Tom"). The short forms "tod" and "tom" also need "on"/"by" or to be the last word, like short
+    weekdays; "call tom" in lower case is therefore read as tomorrow, and tapping it undoes that.
+12. "Last word" ignores trailing priority and list tags, so "Gym fri p1" still ends with "fri".
+13. Morning, afternoon and evening count only directly after a date ("tomorrow morning"), after "this"
+    ("this evening" is today) or in "in the morning"; "Morning run" stays a title.
+14. Bare numbers are never times ("Buy 2 apples"); a time needs am/pm, a colon, "at", or a named time.
+    Dotted numeric dates (25.12) are not recognised, so "1.5 kg" stays a quantity.
+15. A date-only task with "date-only tasks get a reminder" switched off still gets the overdue reminder the
+    next morning; the overdue setting governs that.
 
 ## 8. Screens
 
@@ -275,7 +292,7 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
   scripts, permission tripwire, lint and detekt, `README.md` (what it is, non-goals), `SECURITY.md`,
   `CHANGELOG.md`, `THIRD_PARTY_NOTICES.md`. Done when `verify.sh` is green and the debug build installs on
   the emulator and the A54.
-- [ ] **M1 Core.** Domain model, parser with its table tests, reminder maths (next due, catch-up), sort
+- [x] **M1 Core.** Domain model, parser with its table tests, reminder maths (next due, catch-up), sort
   rules. Done when the tests pass with no Android dependency in `:core`.
 - [ ] **M2 Storage.** Entities, DAOs, repository, settings row, the default list, soft delete, schema
   export.

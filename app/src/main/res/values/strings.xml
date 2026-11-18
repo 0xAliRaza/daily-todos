@@ -4,6 +4,10 @@
     <string name="today_title">Today</string>
     <string name="today_empty_title">Nothing due today</string>
     <string name="today_empty_body">Tasks for today and anything overdue show up here.</string>
+    <string name="today_section_overdue">Overdue</string>
+    <string name="today_section_timed">Scheduled</string>
+    <string name="today_section_rest">Anytime today</string>
+    <string name="add_placeholder">Add a task, e.g. Call bank tomorrow 4pm p1</string>
     <string name="reminder_overdue">Overdue</string>
     <string name="reminder_action_done">Done</string>
     <string name="reminder_action_snooze_short">10 min</string>

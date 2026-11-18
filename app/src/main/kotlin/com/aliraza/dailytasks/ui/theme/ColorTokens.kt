@@ -5,8 +5,7 @@ import androidx.compose.ui.graphics.Color
 /**
  * Design tokens: the only place colours are defined.
  *
- * Proposed palette, waiting for the owner's yes (PLAN.md section 8). Contrast ratios are computed by
- * `ThemeContrastTest`, which fails if any text pairing drops below WCAG AA.
+ * Approved palette (PLAN.md section 8). `ThemeContrastTest` fails if any pairing drops below WCAG AA.
  *
  * Bright orange ([ColorTokens.accent]) is for fills and icons only; text in the accent colour uses
  * [ColorTokens.accentText], the darker shade.

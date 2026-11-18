@@ -9,7 +9,8 @@ Daily Tasks is a native Android to-do app for one person's daily use: Kotlin and
 offline, licensed GPL-3.0-or-later. Its promise is that a reminder always fires. Android only; there is no
 desktop or web version.
 
-Status on 2026-11-18: decisions and plan only, no code yet.
+Status on 2026-11-18: M0 to M2 done; the reminder engine (M3) and the backup logic (M8) are built and
+wait for the A54 checks and their screens. See the milestones in `PLAN.md`.
 
 ## Start here
 
@@ -101,7 +102,6 @@ streaks, location reminders, importers for other apps' files, desktop and web ve
 
 ## Still open
 
-- Exact colour values, proposed with contrast checked when the theme is built.
 - The questions listed at the end of `PLAN.md`.
 
 ## Platform and release

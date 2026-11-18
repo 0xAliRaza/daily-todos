@@ -252,8 +252,8 @@ a section; new tasks go to the bottom.
 
 Design: tokens in one file; warm orange accent on warm neutrals; light and dark; no wallpaper-based dynamic
 colour; system font; edge-to-edge; start/end layout only (right-to-left safe); works at 200% font size;
-TalkBack labels; respects the system's animation-off setting; designed empty states. Propose the exact
-palette with contrast ratios computed, and get the owner's yes before building on it.
+TalkBack labels; respects the system's animation-off setting; designed empty states. The palette in
+`ui/theme/ColorTokens.kt` was approved on 2026-11-18; `ThemeContrastTest` keeps every pairing at WCAG AA.
 
 **Reminder health screen**: one row per check, green or red, each with a fix button.
 

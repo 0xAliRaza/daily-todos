@@ -231,54 +231,69 @@ private fun InlineSubtasks(taskId: String, ctx: RowContext) {
 
 /**
  * "+ Add a sub-task" under the open sub-tasks. Tapped, it becomes a field; Enter adds and keeps the
- * field ready for the next one; leaving it empty closes it.
+ * field ready for the next one; leaving the field closes it.
  */
 @Composable
-private fun AddSubtaskLine(onAdd: (String) -> Unit) {
+internal fun AddSubtaskLine(onAdd: (String) -> Unit) {
     var editing by remember { mutableStateOf(false) }
-    var draft by remember { mutableStateOf("") }
-    val scheme = MaterialTheme.colorScheme
-    val requester = remember { FocusRequester() }
     Row(
         Modifier.offset(x = (-12).dp).fillMaxWidth().heightIn(min = 40.dp).clip(RoundedCornerShape(8.dp))
             .clickable(enabled = !editing) { editing = true },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(AppIcons.Add, null, tint = scheme.primary, modifier = Modifier.padding(horizontal = 12.dp).size(16.dp))
-        if (!editing) {
-            Text(
-                stringResource(R.string.subtask_add_inline),
-                style = MaterialTheme.typography.bodyMedium,
-                color = scheme.onSurfaceVariant,
-            )
-            return@Row
-        }
-        LaunchedEffect(Unit) { requester.requestFocus() }
-        var hadFocus by remember { mutableStateOf(false) }
-        BasicTextField(
-            value = draft,
-            onValueChange = { draft = it.replace('\n', ' ') },
-            singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = scheme.onBackground),
-            cursorBrush = SolidColor(scheme.primary),
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(onDone = {
-                if (draft.isNotBlank()) onAdd(draft.trim())
-                draft = ""
-            }),
-            modifier = Modifier.weight(1f).focusRequester(requester).onFocusChanged {
-                if (hadFocus && !it.isFocused) {
-                    if (draft.isNotBlank()) onAdd(draft.trim())
-                    draft = ""
-                    editing = false
-                }
-                hadFocus = it.isFocused
-            },
-        )
+        val tint = MaterialTheme.colorScheme.primary
+        Icon(AppIcons.Add, null, tint = tint, modifier = Modifier.padding(horizontal = 12.dp).size(16.dp))
+        if (editing) SubtaskField(onAdd, onClose = { editing = false }) else AddSubtaskHint()
     }
+}
+
+@Composable
+private fun AddSubtaskHint() {
+    Text(
+        stringResource(R.string.subtask_add_inline),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/** Takes focus when shown; what's typed is added on Enter and when focus leaves, then [onClose]. */
+@Composable
+private fun RowScope.SubtaskField(onAdd: (String) -> Unit, onClose: () -> Unit) {
+    var draft by remember { mutableStateOf("") }
+    var hadFocus by remember { mutableStateOf(false) }
+    val requester = remember { FocusRequester() }
+    val scheme = MaterialTheme.colorScheme
+    val commit = {
+        if (draft.isNotBlank()) onAdd(draft.trim())
+        draft = ""
+    }
+    LaunchedEffect(Unit) { requester.requestFocus() }
+    BasicTextField(
+        value = draft,
+        onValueChange = { draft = it.replace('\n', ' ') },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = scheme.onBackground),
+        cursorBrush = SolidColor(scheme.primary),
+        // The hint stays while the field is empty, so an open line still says what it is for.
+        decorationBox = { field ->
+            Box {
+                if (draft.isEmpty()) AddSubtaskHint()
+                field()
+            }
+        },
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.Sentences,
+            imeAction = ImeAction.Done,
+        ),
+        keyboardActions = KeyboardActions(onDone = { commit() }),
+        modifier = Modifier.weight(1f).focusRequester(requester).onFocusChanged {
+            if (hadFocus && !it.isFocused) {
+                commit()
+                onClose()
+            }
+            hadFocus = it.isFocused
+        },
+    )
 }
 
 private fun LazyListScope.section(title: Int?, tasks: List<Task>, ctx: RowContext, showDate: Boolean = false) {

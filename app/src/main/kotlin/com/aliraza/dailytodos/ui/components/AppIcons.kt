@@ -130,6 +130,18 @@ object AppIcons {
             "M16,17H8v-2h8V17zM16,13h-2v-2h2V13zM16,10h-2V8h2V10zM19,13h-2v-2h2V13zM19,10h-2V8h2V10z",
     )
 
+    /** A coffee cup: keep the screen awake. [CupFilled] while it is on. */
+    val Cup = icon(
+        "Cup",
+        "M20,3H4v10c0,2.21 1.79,4 4,4h6c2.21,0 4,-1.79 4,-4v-3h2c1.11,0 2,-0.89 2,-2V5c0,-1.11 -0.89,-2 -2,-2z" +
+            "M16,13c0,1.1 -0.9,2 -2,2H8c-1.1,0 -2,-0.9 -2,-2V5h10v8zM20,8h-2V5h2v3zM4,19h16v2H4z",
+    )
+    val CupFilled = icon(
+        "CupFilled",
+        "M20,3H4v10c0,2.21 1.79,4 4,4h6c2.21,0 4,-1.79 4,-4v-3h2c1.11,0 2,-0.9 2,-2V5c0,-1.11 -0.89,-2 -2,-2z" +
+            "M20,8h-2V5h2v3zM4,19h16v2H4z",
+    )
+
     private fun icon(name: String, path: String): ImageVector = ImageVector.Builder(
         name = name,
         defaultWidth = 24.dp,

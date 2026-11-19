@@ -103,6 +103,7 @@ fun SettingsEntity.toDomain() = Settings(
     clockFormat = enumOrDefault(clockFormat, ClockFormat.H12),
     weekStart = enumOrDefault(weekStart, WeekStart.PHONE),
     haptics = haptics,
+    keepScreenOn = keepScreenOn,
     lastBackupAt = lastBackupAt,
 )
 
@@ -123,6 +124,7 @@ fun Settings.toEntity() = SettingsEntity(
     clockFormat = clockFormat.name,
     weekStart = weekStart.name,
     haptics = haptics,
+    keepScreenOn = keepScreenOn,
     lastBackupAt = lastBackupAt,
 )
 

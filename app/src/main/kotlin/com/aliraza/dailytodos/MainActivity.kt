@@ -13,11 +13,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.aliraza.dailytodos.core.focus.keepsScreenOn
 import com.aliraza.dailytodos.core.model.ThemeMode
 import com.aliraza.dailytodos.ui.AppRoot
 import com.aliraza.dailytodos.ui.RequestNotificationPermission
 import com.aliraza.dailytodos.ui.components.ProvideDisplaySettings
 import com.aliraza.dailytodos.ui.focus.FocusViewModel
+import com.aliraza.dailytodos.ui.focus.KeepScreenOn
 import com.aliraza.dailytodos.ui.settings.SettingsViewModel
 import com.aliraza.dailytodos.ui.tasks.TasksViewModel
 import com.aliraza.dailytodos.ui.theme.DailyTodosTheme
@@ -61,13 +63,16 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
+            val focus: FocusViewModel = viewModel(factory = factory)
+            val timer by focus.timer.collectAsStateWithLifecycle()
+            KeepScreenOn(keepsScreenOn(settings.keepScreenOn, timer))
             DailyTodosTheme(dark = dark) {
                 ProvideDisplaySettings(settings) {
                     RequestNotificationPermission()
                     AppRoot(
                         tasks = tasks,
                         settings = viewModel(factory = factory),
-                        focus = viewModel(factory = factory),
+                        focus = focus,
                         opened = opened,
                         onOpenedHandled = { opened = null },
                     )

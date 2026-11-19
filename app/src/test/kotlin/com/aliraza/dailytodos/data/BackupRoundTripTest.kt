@@ -62,6 +62,7 @@ class BackupRoundTripTest {
                 clockFormat = ClockFormat.H24,
                 weekStart = WeekStart.SUNDAY,
                 haptics = false,
+                keepScreenOn = true,
             )
         }
         lists.rename(AppDatabase.DEFAULT_LIST_ID, "Today stuff")

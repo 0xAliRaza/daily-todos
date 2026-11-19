@@ -42,6 +42,7 @@ data class BackupSettings(
     val clockFormat: String = ClockFormat.H12.name,
     val weekStart: String = WeekStart.PHONE.name,
     val haptics: Boolean = true,
+    val keepScreenOn: Boolean = false,
     val lastBackupAt: String?,
 )
 

@@ -58,6 +58,7 @@ data class Settings(
     val clockFormat: ClockFormat = ClockFormat.H12,
     val weekStart: WeekStart = WeekStart.PHONE,
     val haptics: Boolean = true,
+    val keepScreenOn: Boolean = false,
     val lastBackupAt: Instant? = null,
 ) {
     companion object {

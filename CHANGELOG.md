@@ -28,6 +28,8 @@ versioning.
 - The calendar shows what was done on a picked day and how long each task was focused.
 - A progress line on the now-focusing bar.
 - Drag around the focus dial to set the length, as well as with − and +.
+- Keep screen on while focus or a break counts down: a switch in Settings → Focus and a cup on the
+  timer screen, off by default.
 - The add bar starts with the open list's tag and the picked day, so they show in the line.
 - Swipe sideways on an empty area to switch tabs; the page follows the finger and tabs slide in order.
 - The time picker opens straight from the task sheet, can switch to typing, and can remove the time.

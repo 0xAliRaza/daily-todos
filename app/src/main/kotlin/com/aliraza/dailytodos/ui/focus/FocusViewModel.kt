@@ -108,6 +108,8 @@ class FocusViewModel(
 
     fun setSignal(signal: TimerSignal) = launch { settingsRepo.update { it.copy(timerSignal = signal) } }
 
+    fun setKeepScreenOn(on: Boolean) = launch { settingsRepo.update { it.copy(keepScreenOn = on) } }
+
     private fun launch(block: suspend () -> Unit) {
         viewModelScope.launch { block() }
     }

@@ -115,19 +115,12 @@ class QuickAddState {
     private val onlyStart: Boolean get() = start.isNotEmpty() && text.trim() == start
 
     /**
-     * The line read by [parse]. The parser reads a line of words alone as a title, so the start words,
-     * before a title is typed, are read as if one stood before them: they are highlighted and fill the
-     * chips like any recognised words, and with no title of their own there is nothing to add.
+     * The line read by [parse], whose last argument says the line is untitled. While it holds only the
+     * start words it is: they are highlighted and fill the chips like any recognised words, and with no
+     * title of their own there is nothing to add.
      */
-    fun read(excluded: Set<IntRange>, parse: (String, Set<IntRange>) -> ParseResult): ParseResult {
-        if (!onlyStart) return parse(text, excluded)
-        val shift = TITLE_STAND_IN.length
-        val read = parse(TITLE_STAND_IN + text, excluded.mapTo(HashSet()) { it.first + shift..it.last + shift })
-        return read.copy(
-            title = "",
-            spans = read.spans.map { it.copy(range = it.range.first - shift..it.range.last - shift) },
-        )
-    }
+    fun read(excluded: Set<IntRange>, parse: (String, Set<IntRange>, Boolean) -> ParseResult): ParseResult =
+        parse(text, excluded, onlyStart)
 
     /**
      * Opens the bar. [words] say where it was opened from (the open list's tag, the picked day), and
@@ -218,9 +211,6 @@ class QuickAddState {
         defaultDateOff = false
     }
 }
-
-/** A word no matcher reads, standing in for a title while the line holds only its start words. */
-private const val TITLE_STAND_IN = "x "
 
 /** A line holding only [words], after a space and with the cursor before it; empty for no words. */
 private fun startLine(words: String): TextFieldValue =

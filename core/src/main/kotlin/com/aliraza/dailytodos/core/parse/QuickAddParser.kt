@@ -7,6 +7,7 @@ import com.aliraza.dailytodos.core.model.Priority
  *
  * Words are scanned left to right. At each word the matchers are tried in order and the first one whose
  * result still fits is taken: the first date and the first time win, and later ones stay in the title.
+ * A line of recognised words alone is read as a title ("Monday"), unless it is [QuickAddInput.untitled].
  */
 object QuickAddParser {
     private val matchers: List<Matcher> =
@@ -18,8 +19,8 @@ object QuickAddParser {
         val tokens = Tokenizer.tokenize(input.text)
         val ctx = ParseContext(tokens, input.now, input.dayFirst, input.listNames)
         val accepted = scan(ctx, input.excluded)
-        val title = titleWithout(tokens, accepted)
-        if (accepted.isEmpty() || title.isEmpty()) return ParseResult(title = input.text.trim())
+        val title = if (input.untitled) "" else titleWithout(tokens, accepted)
+        if (!input.untitled && (accepted.isEmpty() || title.isEmpty())) return ParseResult(title = input.text.trim())
 
         val date = accepted.firstNotNullOfOrNull { it.date }
         val time = accepted.firstNotNullOfOrNull { it.time }

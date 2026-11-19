@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.aliraza.dailytasks"
+    namespace = "com.aliraza.dailytodos"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.aliraza.dailytasks"
+        applicationId = "com.aliraza.dailytodos"
         minSdk = 26
         targetSdk = 37
         versionCode = 1

@@ -1,4 +1,4 @@
-# Daily Tasks
+# Daily Todos
 
 A to-do app for Android that does one thing well: it remembers for you, and its reminders always fire.
 
@@ -32,11 +32,11 @@ importing other apps' files, and desktop or web versions.
 
 ## Install
 
-1. On your phone, open the [latest release](https://github.com/0xAliRaza/daily-tasks/releases/latest) and
-   download `daily-tasks-<version>.apk`.
+1. On your phone, open the [latest release](https://github.com/0xAliRaza/daily-todos/releases/latest) and
+   download `daily-todos-<version>.apk`.
 2. Open the downloaded file. Android asks to allow installing from your browser or file manager the first
    time; allow it for that app, then tap Install.
-3. Open Daily Tasks, allow notifications, and check Settings → Reminder health once.
+3. Open Daily Todos, allow notifications, and check Settings → Reminder health once.
 
 Each release lists the APK's SHA-256 checksum and the signing certificate, so you can check the file.
 Updates install over the old version and keep your tasks, as long as they come from these releases.

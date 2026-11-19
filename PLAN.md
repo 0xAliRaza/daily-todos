@@ -1,4 +1,4 @@
-# Daily Tasks — implementation plan
+# Daily Todos — implementation plan
 
 Read `AGENTS.md` first: it holds the product decisions, the rules that must hold and the non-goals.
 This file is how to build it. Tick milestones as they ship and keep the plan true to the code.
@@ -49,7 +49,7 @@ test phone before the design depends on them.
 | `:app` | Room, the scheduler, receivers, notifications, focus timer, Compose UI, settings, export and import | JVM tests (Robolectric where Android classes are needed) and instrumented tests |
 
 Put logic in `:core` whenever it does not need Android. The application id and base package are
-`com.aliraza.dailytasks`.
+`com.aliraza.dailytodos`.
 
 ## 4. Data model
 

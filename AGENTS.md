@@ -1,11 +1,11 @@
-# AGENTS.md — Daily Tasks
+# AGENTS.md — Daily Todos
 
 Instructions for AI coding agents working on this app. The folder-level `../AGENTS.md` (how I build my
 own apps) applies too; this file adds the app's own decisions. `CLAUDE.md` imports this file.
 
 ## What this is
 
-Daily Tasks is a native Android to-do app for one person's daily use: Kotlin and Jetpack Compose, fully
+Daily Todos is a native Android to-do app for one person's daily use: Kotlin and Jetpack Compose, fully
 offline, licensed GPL-3.0-or-later. Its promise is that a reminder always fires. Android only; there is no
 desktop or web version.
 
@@ -152,6 +152,6 @@ streaks, location reminders, importers for other apps' files, desktop and web ve
 
 ## Platform and release
 
-- Application id: `com.aliraza.dailytasks`.
+- Application id: `com.aliraza.dailytodos`.
 - Minimum Android 8.0 (API 26).
 - Released on GitHub; F-Droid maybe later. Not planned for Google Play.

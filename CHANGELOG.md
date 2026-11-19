@@ -5,6 +5,11 @@ versioning.
 
 ## Unreleased
 
+### Changed
+
+- The app is now called Daily Todos, with the id `com.aliraza.dailytodos`. Backups made before the
+  rename still import.
+
 ## 0.1.0 — 2026-11-18
 
 The first release.

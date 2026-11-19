@@ -1,13 +1,14 @@
 # Backup file format
 
 Settings → Export writes one JSON file; Settings → Import reads it back and replaces everything after a
-confirmation. Only files written by this app are accepted.
+confirmation. Only files written by this app are accepted. Files from before the rename to Daily Todos carry
+`"format": "daily-tasks-backup"` and still import.
 
 ## Version 2
 
 ```json
 {
-  "format": "daily-tasks-backup",
+  "format": "daily-todos-backup",
   "version": 2,
   "exportedAt": "2026-11-18T12:00:00Z",
   "settings": {

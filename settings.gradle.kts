@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "daily-tasks"
+rootProject.name = "daily-todos"
 include(":core", ":app")

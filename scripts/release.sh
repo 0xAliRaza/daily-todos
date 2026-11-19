@@ -15,7 +15,7 @@ export DT_KEYSTORE_PASSWORD
 ./gradlew -q :app:assembleRelease
 
 version="$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)"
-out="$ROOT/build/release/daily-tasks-$version.apk"
+out="$ROOT/build/release/daily-todos-$version.apk"
 mkdir -p "$ROOT/build/release"
 cp app/build/outputs/apk/release/app-release.apk "$out"
 apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"

@@ -14,6 +14,8 @@ versioning.
 - A clearer Settings screen; every choice uses the same pill control.
 - Reminder health shows its status at the top and late reminders in amber.
 - A swiped task row never stays half open; a quick flick opens the timer or deletes.
+- Empty screens centre above the keyboard instead of being cut off by it.
+- The default list says so in words under its name.
 
 ### Added
 
@@ -22,6 +24,8 @@ versioning.
 - Haptic feedback for completing a task and the timer's controls, with a switch to turn it off.
 - The calendar shows what was done on a picked day and how long each task was focused.
 - A progress line on the now-focusing bar.
+- Drag around the focus dial to set the length, as well as with − and +.
+- The add bar starts with the open list's tag and the picked day, so they show in the line.
 - Swipe sideways on an empty area to switch tabs; the page follows the finger and tabs slide in order.
 - The time picker opens straight from the task sheet, can switch to typing, and can remove the time.
 - Times typed without a colon: "429pm", "4p", "1030a", "at 1630" and "1630h". A bare "429" stays text.

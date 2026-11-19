@@ -3,6 +3,7 @@ package com.aliraza.dailytodos.ui.tasks
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aliraza.dailytodos.MutableClock
+import com.aliraza.dailytodos.TestViewModels
 import com.aliraza.dailytodos.core.model.NewTask
 import com.aliraza.dailytodos.data.ListRepository
 import com.aliraza.dailytodos.data.SettingsRepository
@@ -41,6 +42,7 @@ class RescheduleManyTest {
     private lateinit var db: AppDatabase
     private lateinit var tasks: TaskRepository
     private lateinit var viewModel: TasksViewModel
+    private val viewModels = TestViewModels()
 
     @Before
     fun setUp() {
@@ -48,17 +50,21 @@ class RescheduleManyTest {
         db = AppDatabase.inMemory(ApplicationProvider.getApplicationContext())
         val settings = SettingsRepository(db.settings()) {}
         tasks = TaskRepository(db, clock, settings) {}
-        viewModel = TasksViewModel(
-            tasks,
-            SubtaskRepository(db.subtasks()),
-            ListRepository(db.lists(), clock),
-            settings,
-            clock,
-        )
+        viewModel = viewModels.add {
+            TasksViewModel(
+                tasks,
+                SubtaskRepository(db.subtasks()),
+                ListRepository(db.lists(), clock),
+                settings,
+                clock,
+            )
+        }
     }
 
+    /** The ViewModel's reads stop before the database closes under them. */
     @After
     fun tearDown() {
+        viewModels.clear()
         db.close()
         Dispatchers.resetMain()
     }

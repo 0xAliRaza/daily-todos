@@ -85,4 +85,32 @@ class QuickAddParserTest {
         val result = QuickAddParser.parse(QuickAddInput("Party 31 dec", LocalDateTime.of(2027, 1, 2, 9, 0)))
         assertEquals(LocalDate.of(2027, 12, 31), result.date)
     }
+
+    @Test
+    fun wordsAloneAreATitle() {
+        val result = parse("Tomorrow p1")
+        assertEquals("Tomorrow p1", result.title)
+        assertNull(result.date)
+        assertEquals(emptyList<Span>(), result.spans)
+    }
+
+    @Test
+    fun anUntitledLineReadsItsWordsAlone() {
+        val text = " #groceries 25 nov"
+        val result = QuickAddParser.parse(QuickAddInput(text, now, listNames = listOf("Groceries"), untitled = true))
+        assertEquals("", result.title)
+        assertEquals("Groceries", result.listName)
+        assertEquals(LocalDate.of(2026, 11, 25), result.date)
+        assertEquals(listOf("#groceries", "25 nov"), result.spans.map { text.substring(it.range) })
+    }
+
+    @Test
+    fun anUntitledLineKeepsAnEmptyTitleWhenItsWordsAreSwitchedOff() {
+        val text = " #groceries"
+        val input = QuickAddInput(text, now, listNames = listOf("Groceries"), excluded = setOf(1..10), untitled = true)
+        val result = QuickAddParser.parse(input)
+        assertEquals("", result.title)
+        assertNull(result.listName)
+        assertEquals(emptyList<Span>(), result.spans)
+    }
 }

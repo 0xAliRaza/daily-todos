@@ -286,7 +286,7 @@ private fun Pages(
     ) { stack ->
         val shown = stack.last()
         Scaffold(
-            modifier = Modifier.graphicsLayer { translationX = input.tabSeek.stretch.value },
+            modifier = Modifier.graphicsLayer { translationX = input.tabSeek.stretch },
             topBar = { topBar(shown) },
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0),

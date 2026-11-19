@@ -103,4 +103,36 @@ class TabSwipeTest {
         compose.onNodeWithTag("empty").performTouchInput { swipeRight() }
         assertEquals(listOf(Route.CALENDAR, Route.TODAY), picked)
     }
+
+    @Test
+    fun aStretchFollowsEachStepAtOnceAndSpringsBackOnLettingGo() {
+        lateinit var seek: TabSeek
+        compose.setContent { seek = rememberTabSeek() }
+        compose.runOnIdle {
+            seek.drag(null, 0f, edge = 12f)
+            assertEquals(12f, seek.stretch, 0.001f)
+            seek.end()
+        }
+        compose.mainClock.advanceTimeBy(SETTLED_MS)
+        compose.runOnIdle { assertEquals(0f, seek.stretch, 0.001f) }
+    }
+
+    @Test
+    fun aNewDragTakesOverFromASpringBack() {
+        lateinit var seek: TabSeek
+        compose.setContent { seek = rememberTabSeek() }
+        compose.runOnIdle {
+            seek.drag(null, 0f, edge = 30f)
+            seek.end()
+        }
+        compose.mainClock.advanceTimeBy(FRAME_MS * 3)
+        compose.runOnIdle { seek.drag(null, 0f, edge = 10f) }
+        compose.mainClock.advanceTimeBy(SETTLED_MS)
+        compose.runOnIdle { assertEquals(10f, seek.stretch, 0.001f) }
+    }
+
+    private companion object {
+        const val FRAME_MS = 16L
+        const val SETTLED_MS = 2_000L
+    }
 }

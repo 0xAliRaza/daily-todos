@@ -27,8 +27,9 @@ private val NOW: LocalDateTime = LocalDateTime.of(2026, 11, 18, 9, 0)
 private val TODAY: LocalDate = NOW.toLocalDate()
 private val TOMORROW: LocalDate = TODAY.plusDays(1)
 
-private fun parse(text: String, excluded: Set<IntRange>) =
-    QuickAddParser.parse(QuickAddInput(text, NOW, listNames = listOf("Daily", "Groceries"), excluded = excluded))
+private fun parse(text: String, excluded: Set<IntRange>, untitled: Boolean) = QuickAddParser.parse(
+    QuickAddInput(text, NOW, listNames = listOf("Daily", "Groceries"), excluded = excluded, untitled = untitled),
+)
 
 private fun QuickAddState.read() = read(excluded.keys, ::parse)
 
@@ -100,6 +101,8 @@ class QuickAddStartTest {
         state.edit(TextFieldValue(state.text, TextRange(5)), spans)
         assertEquals(mapOf(1..10 to "#groceries"), state.excluded)
         assertNull(state.read().listName)
+        // Switched off, the start words are still not a title of their own.
+        assertEquals("", state.read().title)
     }
 
     @Test

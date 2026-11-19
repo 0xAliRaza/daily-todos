@@ -12,6 +12,8 @@ import java.time.LocalTime
  * @property listNames the names of existing lists, for `#name`.
  * @property dayFirst the locale writes numeric dates day first (25/12) rather than month first (12/25).
  * @property excluded character ranges the user tapped to un-recognise; nothing overlapping them is matched.
+ * @property untitled the line holds no title yet, only words to read (the add bar's start words). Its
+ *   words are read even with nothing else beside them, and the title stays empty.
  */
 data class QuickAddInput(
     val text: String,
@@ -19,6 +21,7 @@ data class QuickAddInput(
     val listNames: List<String> = emptyList(),
     val dayFirst: Boolean = true,
     val excluded: Set<IntRange> = emptySet(),
+    val untitled: Boolean = false,
 )
 
 enum class SpanKind { DATE, TIME, DATE_TIME, PRIORITY, LIST }

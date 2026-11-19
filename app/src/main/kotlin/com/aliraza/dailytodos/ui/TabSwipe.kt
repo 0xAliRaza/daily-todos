@@ -1,7 +1,7 @@
 package com.aliraza.dailytodos.ui
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.runtime.Composable
@@ -18,6 +18,7 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -42,18 +43,29 @@ internal class TabSeek(private val scope: CoroutineScope) {
         private set
     var progress by mutableFloatStateOf(0f)
         private set
-    val stretch = Animatable(0f)
 
+    /** How far the page gives towards no tab, in pixels. */
+    var stretch by mutableFloatStateOf(0f)
+        private set
+
+    private var springBack: Job? = null
+
+    /** Each step of the finger, written straight away; it takes over from a page still springing back. */
     fun drag(to: String?, fraction: Float, edge: Float) {
+        springBack?.cancel()
         target = to
         progress = fraction
-        scope.launch { stretch.snapTo(edge) }
+        stretch = edge
     }
 
     fun end() {
+        springBack?.cancel()
         target = null
         progress = 0f
-        scope.launch { stretch.animateTo(0f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow)) }
+        val from = stretch
+        springBack = scope.launch {
+            animate(from, 0f, animationSpec = SpringBack) { at, _ -> stretch = at }
+        }
     }
 }
 
@@ -108,6 +120,9 @@ internal fun Modifier.tabSwipe(seek: TabSeek, route: String, onTab: ((String) ->
         }
     }
 }
+
+/** How a stretched page settles back once let go. */
+private val SpringBack = spring<Float>(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow)
 
 /** The most a page gives towards no tab, as a share of its width. */
 private const val STRETCH = 0.12f

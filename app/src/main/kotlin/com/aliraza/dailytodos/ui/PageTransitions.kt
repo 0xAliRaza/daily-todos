@@ -43,7 +43,7 @@ internal fun rememberPageTransition(
     LaunchedEffect(tabSeek) {
         snapshotFlow { tabSeek.target to tabSeek.progress }.collect { (target, progress) ->
             when {
-                target != null -> seekable.seekTo(progress, targetState = listOf(target))
+                target != null -> seekTab(seekable, from = nav.stack, to = listOf(target), progress)
                 seekable.targetState != nav.stack -> seekable.animateTo(nav.stack)
             }
         }
@@ -61,6 +61,22 @@ internal fun rememberPageTransition(
         }
     }
     return rememberTransition(seekable, label = "page")
+}
+
+/**
+ * Seeks [progress] of the way from the page [from] towards the tab [to]. A swipe that turns back past
+ * where it started heads for the tab on the other side, and seeking towards a new target would first
+ * finish the old one, turning the page under the finger into that tab. So the transition is put back
+ * on [from] first; the turn happens where the pages started, so nothing jumps.
+ */
+private suspend fun seekTab(
+    seekable: SeekableTransitionState<List<String>>,
+    from: List<String>,
+    to: List<String>,
+    progress: Float,
+) {
+    if (seekable.targetState != to && seekable.targetState != from) seekable.snapTo(from)
+    seekable.seekTo(progress, targetState = to)
 }
 
 /**

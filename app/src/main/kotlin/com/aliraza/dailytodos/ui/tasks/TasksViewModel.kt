@@ -132,8 +132,15 @@ class TasksViewModel(
 
     // Quick add
 
-    fun parse(text: String, excluded: Set<IntRange>): ParseResult = QuickAddParser.parse(
-        QuickAddInput(text, LocalDateTime.now(clock), listNames = lists.value.map { it.name }, excluded = excluded),
+    /** Reads [text] in the add bar; see [QuickAddInput.untitled]. */
+    fun parse(text: String, excluded: Set<IntRange>, untitled: Boolean = false): ParseResult = QuickAddParser.parse(
+        QuickAddInput(
+            text,
+            LocalDateTime.now(clock),
+            listNames = lists.value.map { it.name },
+            excluded = excluded,
+            untitled = untitled,
+        ),
     )
 
     /**

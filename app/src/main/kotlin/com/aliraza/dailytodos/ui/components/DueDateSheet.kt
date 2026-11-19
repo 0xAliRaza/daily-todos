@@ -1,6 +1,5 @@
-package com.aliraza.dailytodos.ui.tasks
+package com.aliraza.dailytodos.ui.components
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +16,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,44 +24,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aliraza.dailytodos.R
-import com.aliraza.dailytodos.core.model.Task
-import com.aliraza.dailytodos.ui.components.AppIcons
-import com.aliraza.dailytodos.ui.components.DateDialog
-import com.aliraza.dailytodos.ui.components.dateTone
-import com.aliraza.dailytodos.ui.components.toneColor
-import com.aliraza.dailytodos.ui.components.weekdayShort
-import kotlinx.coroutines.flow.map
-import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.temporal.TemporalAdjusters
-
-/** A day offered with one tap when rescheduling. */
-internal data class QuickDate(@param:StringRes val label: Int, val date: LocalDate)
-
-/** Today, tomorrow and next Monday: the days the sheet's date menu and the reschedule sheet offer. */
-internal fun quickDates(today: LocalDate): List<QuickDate> = listOf(
-    QuickDate(R.string.day_today, today),
-    QuickDate(R.string.day_tomorrow, today.plusDays(1)),
-    QuickDate(R.string.date_next_week, today.with(TemporalAdjusters.next(DayOfWeek.MONDAY))),
-)
-
-/** The task on another day at the same time; no date also drops the time, which needs a day. */
-internal fun Task.movedTo(date: LocalDate?): Task =
-    if (date == null) copy(dueDate = null, dueTime = null) else copy(dueDate = date)
 
 /**
- * Opened by swiping a row right, or from the overdue header for all of them: the quick days, a date
- * picker, and "No date". Each day shows its weekday and its due colour, so "Next week" reads as "Mon".
+ * The one sheet for picking a due date: the quick days, a date picker, and "No date" while there is a
+ * [current] date to remove. Each day shows its weekday and its due colour, so "Next week" reads as "Mon".
+ * Used to reschedule, by the add bar's Date chip and by a task's date row.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun RescheduleSheet(
+internal fun DueDateSheet(
     title: String,
     current: LocalDate?,
     today: LocalDate,
@@ -87,7 +61,7 @@ internal fun RescheduleSheet(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
         )
-        quickDates(today).forEach { quick ->
+        quickDates(today, LocalWeekStart.current).forEach { quick ->
             val ink = toneColor(dateTone(quick.date, today))
             DayOption(AppIcons.Today, stringResource(quick.label), weekdayShort(quick.date), ink) { pick(quick.date) }
         }
@@ -116,23 +90,4 @@ private fun DayOption(icon: ImageVector, label: String, weekday: String?, ink: C
             Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-}
-
-/** Hosts the reschedule sheet for [ids] while it is open: one task by its title, several by their count. */
-@Composable
-internal fun RescheduleHost(viewModel: TasksViewModel, ids: List<String>, onDone: () -> Unit) {
-    val now by viewModel.now.collectAsStateWithLifecycle()
-    val today = now.toLocalDate()
-    val pick = { date: LocalDate? -> viewModel.reschedule(ids, date) }
-    if (ids.size > 1) {
-        // Several tasks may mix dated and undated ones, so "No date" is always offered.
-        val title = pluralStringResource(R.plurals.reschedule_many, ids.size, ids.size)
-        RescheduleSheet(title, current = today, today, onPick = pick, onDismiss = onDone)
-        return
-    }
-    // Null while loading; empty once the task is gone (completed or deleted elsewhere), which closes the sheet.
-    val found by remember(ids) { viewModel.observeTask(ids.first()).map { listOfNotNull(it) } }
-        .collectAsStateWithLifecycle(null)
-    val task = found?.let { it.firstOrNull() ?: return LaunchedEffect(Unit) { onDone() } } ?: return
-    RescheduleSheet(task.title, task.dueDate, today, onPick = pick, onDismiss = onDone)
 }

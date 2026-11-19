@@ -2,9 +2,7 @@ package com.aliraza.dailytodos.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Transition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -17,12 +15,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -128,7 +128,9 @@ fun AppRoot(
         onFocus = nav::openFocus,
         onHandled = onOpenedHandled,
     )
-    BackHandler(enabled = selection.active || nav.canGoBack) { if (selection.active) selection.clear() else nav.back() }
+    // Clearing a selection wins over going back; a back swipe otherwise lets the page below peek in.
+    BackHandler(enabled = selection.active) { selection.clear() }
+    val pages = rememberPageTransition(nav, backEnabled = !selection.active)
 
     val snackbar = remember { SnackbarHostState() }
     UndoSnackbars(tasks, snackbar)
@@ -139,8 +141,13 @@ fun AppRoot(
         onFocus = nav::openFocus,
     ) { sheetTask = it }
     val quickAdd = remember { QuickAddState() }
-    val showsAdd = route in Route.takesTasks || route.listId() != null
-    val canAdd = showsAdd && !selection.active
+    val canAdd = showsAdd(route) && !selection.active
+    val topBar: @Composable (String) -> Unit = { shown ->
+        // A page sliding away keeps its title; only the page in front shows the selection.
+        RootTopBar(shown, selection.active && shown == route, selection, tasks, nav) {
+            if (it.isNotEmpty()) rescheduling = ArrayList(it)
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -154,9 +161,6 @@ fun AppRoot(
                 )
             }
         },
-        topBar = {
-            RootTopBar(selection, tasks, nav) { if (it.isNotEmpty()) rescheduling = ArrayList(it) }
-        },
         floatingActionButton = {
             if (canAdd && !quickAdd.open) AddButton(quickAdd::show)
         },
@@ -164,6 +168,7 @@ fun AppRoot(
             BottomBars(
                 route,
                 showAdd = canAdd && quickAdd.open,
+                picking = quickAdd.picking,
                 onTab = nav::tab,
                 nowFocusing = nowFocusing(focus, route, nav::openFocus),
             ) {
@@ -172,7 +177,7 @@ fun AppRoot(
         },
     ) { padding ->
         val screens = Screens(tasks, settings, focus, ctx, upcoming, calendar, nav)
-        Content(route, screens, padding, addButton = showsAdd, typing = quickAdd.focused)
+        Pages(pages, screens, topBar, padding, typing = quickAdd.focused)
     }
     rescheduling?.let { ids -> RescheduleHost(tasks, ids) { rescheduling = null } }
     sheetTask?.let { id ->
@@ -215,31 +220,50 @@ private fun nowFocusing(focus: FocusViewModel, route: String, onOpen: (String) -
     return { NowFocusingBar(timer, title.orEmpty(), focus::now) { onOpen(taskId) } }
 }
 
-/** The selection bar while picking several tasks, else the title bar. */
+/** Whether [route] has the + button that adds tasks: the dated views and every list. */
+private fun showsAdd(route: String): Boolean = route in Route.takesTasks || route.listId() != null
+
+/** The selection bar while [selecting] several tasks, else [route]'s title bar. */
 @Composable
 private fun RootTopBar(
+    route: String,
+    selecting: Boolean,
     selection: Selection,
     tasks: TasksViewModel,
     nav: Navigation,
     onReschedule: (Collection<String>) -> Unit,
 ) {
-    if (selection.active) {
+    if (selecting) {
         SelectionBar(selection, tasks, onReschedule)
         return
     }
-    TopBar(nav.route, tasks, nav::back, nav::open)
+    TopBar(route, tasks, nav::back, nav::open)
 }
 
 /**
- * The current screen, faded between routes. With an [addButton] the last row keeps clear of it; while
- * [typing] a tap anywhere only closes the keyboard.
+ * The pages of the back stack, each its [topBar] over its screen, moved as one by [transition] while the
+ * bars at the bottom stay put. A page with the + button keeps its last row clear of it; while [typing] a
+ * tap on the screen only closes the keyboard.
  */
 @Composable
-private fun Content(route: String, screens: Screens, padding: PaddingValues, addButton: Boolean, typing: Boolean) {
-    val inner = if (addButton) padding.clearOfAddButton() else padding
-    KeyboardGuardBox(alsoWhen = typing) {
-        AnimatedContent(route, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "route") { shown ->
-            RouteContent(shown, screens, inner)
+private fun Pages(
+    transition: Transition<List<String>>,
+    screens: Screens,
+    topBar: @Composable (String) -> Unit,
+    padding: PaddingValues,
+    typing: Boolean,
+) {
+    transition.AnimatedContent(transitionSpec = { pageTransform() }, contentKey = { it.last() }) { stack ->
+        val shown = stack.last()
+        Scaffold(
+            topBar = { topBar(shown) },
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0),
+        ) { inner ->
+            val page = PaddingValues(top = inner.calculateTopPadding(), bottom = padding.calculateBottomPadding())
+            KeyboardGuardBox(alsoWhen = typing) {
+                RouteContent(shown, screens, if (showsAdd(shown)) page.clearOfAddButton() else page)
+            }
         }
     }
 }
@@ -346,13 +370,15 @@ private fun RouteContent(route: String, s: Screens, padding: PaddingValues) {
 
 /**
  * The add bar or the now-focusing bar above the tabs. While typing the tabs step aside, so the add bar
- * sits on the keyboard.
+ * sits on the keyboard. While [picking] (a picker hides the keyboard) the bar keeps the keyboard's room,
+ * so it stays still behind the picker and drops only if the keyboard doesn't come back.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BottomBars(
     route: String,
     showAdd: Boolean,
+    picking: Boolean,
     onTab: (String) -> Unit,
     nowFocusing: (@Composable () -> Unit)?,
     addBar: @Composable () -> Unit,
@@ -361,11 +387,19 @@ private fun BottomBars(
     val focus = LocalFocusManager.current
     // Closing the keyboard ends the edit, so no cursor is left blinking in the bar.
     LaunchedEffect(typing) { if (!typing) focus.clearFocus() }
-    Column(if (typing) Modifier.imePadding() else Modifier) {
-        val focusing = nowFocusing.takeIf { !showAdd && !typing }
+    val hold = rememberKeyboardHold(picking)
+    val held = showAdd && hold.holding
+    val room = when {
+        held -> WindowInsets.ime.union(WindowInsets(bottom = hold.height))
+        typing -> WindowInsets.ime
+        else -> null
+    }
+    Column(room?.let { Modifier.windowInsetsPadding(it) } ?: Modifier) {
+        val raised = typing || held
+        val focusing = nowFocusing.takeIf { !showAdd && !raised }
         if (showAdd) addBar()
         focusing?.invoke()
-        if (route in Route.top && !typing) {
+        if (route in Route.top && !raised) {
             TabBar(route, onTab)
         } else if (showAdd || focusing != null) {
             Spacer(Modifier.navigationBarsPadding())

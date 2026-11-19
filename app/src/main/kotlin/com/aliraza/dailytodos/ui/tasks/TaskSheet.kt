@@ -65,7 +65,7 @@ import com.aliraza.dailytodos.core.model.Task
 import com.aliraza.dailytodos.core.model.TaskList
 import com.aliraza.dailytodos.data.TaskFocusTotal
 import com.aliraza.dailytodos.ui.components.AppIcons
-import com.aliraza.dailytodos.ui.components.DateDialog
+import com.aliraza.dailytodos.ui.components.DueDateSheet
 import com.aliraza.dailytodos.ui.components.RoundCheck
 import com.aliraza.dailytodos.ui.components.dayLabel
 import com.aliraza.dailytodos.ui.components.dueTone
@@ -266,13 +266,17 @@ private fun Properties(viewModel: TasksViewModel, task: Task, now: LocalDateTime
     var dialog by remember { mutableStateOf<String?>(null) }
     val set = { change: (Task) -> Task -> viewModel.update(task.id, change) }
     val ink = task.dueTone(now)?.let { toneColor(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant
-    DateRow(task, today, ink, set) { dialog = "date" }
+    DateRow(task, today, ink) { dialog = "date" }
     TimeRow(task, ink, set) { dialog = "time" }
     PriorityRow(task, set)
     when (dialog) {
-        "date" -> DateDialog(task.dueDate ?: today, onDismiss = { dialog = null }) { date ->
-            set { it.copy(dueDate = date) }
-        }
+        "date" -> DueDateSheet(
+            title = stringResource(R.string.due_date_title),
+            current = task.dueDate,
+            today = today,
+            onPick = { date -> set { it.movedTo(date) } },
+            onDismiss = { dialog = null },
+        )
 
         "time" -> TimeDialog(task.dueTime ?: LocalTime.of(DEFAULT_PICK_HOUR, 0), onDismiss = { dialog = null }) {
             set { task -> task.copy(dueTime = it, dueDate = task.dueDate ?: today) }
@@ -280,17 +284,16 @@ private fun Properties(viewModel: TasksViewModel, task: Task, now: LocalDateTime
     }
 }
 
+/** The due day; tapping it opens the due date sheet. */
 @Composable
-private fun DateRow(task: Task, today: LocalDate, ink: Color, set: ((Task) -> Task) -> Unit, onPick: () -> Unit) {
-    MenuRow(
+private fun DateRow(task: Task, today: LocalDate, ink: Color, onOpen: () -> Unit) {
+    PropertyRow(
         icon = AppIcons.Today,
         label = task.dueDate?.let { dayLabel(it, today) } ?: stringResource(R.string.task_no_date),
         ink = ink,
-    ) { close ->
-        quickDates(today).forEach { quick -> Option(quick.label, close) { set { it.movedTo(quick.date) } } }
-        Option(R.string.date_pick, close, onPick)
-        if (task.dueDate != null) Option(R.string.task_no_date, close) { set { it.movedTo(null) } }
-    }
+        iconTint = ink,
+        onClick = onOpen,
+    )
 }
 
 @Composable
@@ -373,7 +376,20 @@ private fun FocusRow(focused: TaskFocusTotal, canStart: Boolean, onStart: () -> 
     }
 }
 
-/** One property of the task: an icon and its value. Tapping opens a menu of choices. */
+/** One property of the task: an icon and its value, as a row to tap. */
+@Composable
+private fun PropertyRow(icon: ImageVector, label: String, ink: Color, iconTint: Color, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 48.dp).padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(18.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = ink)
+    }
+}
+
+/** A property row whose tap opens a menu of choices. */
 @Composable
 private fun MenuRow(
     icon: ImageVector,
@@ -384,14 +400,7 @@ private fun MenuRow(
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
-        Row(
-            Modifier.fillMaxWidth().clickable { open = true }.heightIn(min = 48.dp).padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(18.dp))
-            Text(label, style = MaterialTheme.typography.bodyLarge, color = ink)
-        }
+        PropertyRow(icon, label, ink, iconTint) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             menu { open = false }
         }

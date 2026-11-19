@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aliraza.dailytodos.MutableClock
+import com.aliraza.dailytodos.TestViewModels
 import com.aliraza.dailytodos.data.BackupRepository
 import com.aliraza.dailytodos.data.ListRepository
 import com.aliraza.dailytodos.data.SettingsRepository
@@ -33,21 +34,28 @@ class SettingsScreenTest {
     private val clock = MutableClock(Instant.parse("2026-11-18T11:00:00Z"), ZoneId.of("Europe/Zurich"))
     private val db = AppDatabase.inMemory(ApplicationProvider.getApplicationContext())
     private val lists = ListRepository(db.lists(), clock)
+    private val viewModels = TestViewModels()
 
     private fun viewModel(): SettingsViewModel {
         val settings = SettingsRepository(db.settings()) {}
-        return SettingsViewModel(
-            settings,
-            BackupRepository(db, settings, clock) {},
-            TaskRepository(db, clock, settings) {},
-            lists,
-            db.reminderLog(),
-            clock,
-        )
+        return viewModels.add {
+            SettingsViewModel(
+                settings,
+                BackupRepository(db, settings, clock) {},
+                TaskRepository(db, clock, settings) {},
+                lists,
+                db.reminderLog(),
+                clock,
+            )
+        }
     }
 
+    /** The ViewModel's reads stop before the database closes under them. */
     @After
-    fun tearDown() = db.close()
+    fun tearDown() {
+        viewModels.clear()
+        db.close()
+    }
 
     private fun waitForText(text: String) =
         compose.waitUntil(TIMEOUT_MS) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }

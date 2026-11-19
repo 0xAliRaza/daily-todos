@@ -1,11 +1,11 @@
 package com.aliraza.dailytodos.core.focus
 
+import com.aliraza.dailytodos.core.time.startOfWeek
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.temporal.TemporalAdjusters
 
 /**
  * One stretch of focus on a task, as recorded when it ended. [taskId] is null once the task was deleted
@@ -23,19 +23,27 @@ data class TaskFocus(val taskId: String?, val title: String?, val focused: Durat
 data class FocusStats(
     val total: Duration,
     val today: Duration,
-    val thisWeek: Duration,
     val sessions: Int,
     /** The last [DAYS] days, oldest first, ending today. */
     val lastDays: List<DayFocus>,
     /** The tasks with the most focus, at most [TOP] of them. */
     val topTasks: List<TaskFocus>,
 ) {
+    /**
+     * Focus from the start of this week to today, for weeks that start on [firstDay]. A week never reaches
+     * further back than [lastDays], so they hold every day it needs.
+     */
+    fun thisWeek(firstDay: DayOfWeek): Duration {
+        val start = lastDays.last().day.startOfWeek(firstDay)
+        return lastDays.filter { !it.day.isBefore(start) }.fold(Duration.ZERO) { sum, d -> sum.plus(d.focused) }
+    }
+
     companion object {
         const val DAYS = 7
         const val TOP = 5
 
         /**
-         * Totals from every recorded session. A session counts on the day it ended; weeks start on Monday.
+         * Totals from every recorded session. A session counts on the day it ended.
          * [titles] holds the tasks that still exist; sessions of any other task count as deleted.
          */
         fun from(
@@ -45,7 +53,6 @@ data class FocusStats(
             zone: ZoneId,
         ): FocusStats {
             val byDay = sessions.groupBy { it.endedAt.atZone(zone).toLocalDate() }.mapValues { (_, day) -> day.sum() }
-            val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
             val lastDays = (DAYS - 1 downTo 0).map { back ->
                 val day = today.minusDays(back.toLong())
                 DayFocus(day, byDay[day] ?: Duration.ZERO)
@@ -53,7 +60,6 @@ data class FocusStats(
             return FocusStats(
                 total = sessions.sum(),
                 today = byDay[today] ?: Duration.ZERO,
-                thisWeek = byDay.filterKeys { it in weekStart..today }.values.fold(Duration.ZERO, Duration::plus),
                 sessions = sessions.size,
                 lastDays = lastDays,
                 topTasks = sessions

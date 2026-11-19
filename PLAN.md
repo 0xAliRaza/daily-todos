@@ -70,8 +70,8 @@ write a migration test from the first schema change.
   get a reminder" (on), early heads-up minutes (0, 10, 30 or 60; default 0), overdue reminders (on), overdue
   reminder time (09:00), Do Not Disturb override (off), focus minutes (25), break minutes (5), the custom
   focus and break minutes of the timer's fourth chip (90, 20), timer signal (sound, vibrate, both), theme
-  (system, light, dark), clock format (12-hour or 24-hour; default 12-hour), week start (phone, Monday or
-  Sunday; default phone), haptics (on), last backup time.
+  (system, light, dark), clock format (12-hour, 24-hour; default 12-hour), first day of the week (phone,
+  Monday, Sunday; default phone), haptics (on), last backup time.
 - `timer_state` (one row): phase (idle, focus, break due, break), `ends_at`, `task_id` (set whenever the
   timer is not idle), `paused_remaining_ms`, `round_ms` (the length of the current round). Persisted so the
   timer survives the process being killed.
@@ -80,8 +80,8 @@ write a migration test from the first schema change.
   (full length) or is stopped early, by Stop, completing or deleting the task, or starting another task's
   timer (the time spent, if 1 minute or more).
 
-Schema version 4 (2026-11-19). Migration 3 → 4 adds `clock_format`, `week_start` and `haptics` to
-`settings`. Migration 2 → 3 adds `focus_custom_minutes` (default 90) and
+Schema version 4 (2026-11-19). Migration 3 → 4 adds `clock_format` (default `H12`), `week_start` (default
+`PHONE`) and `haptics` (default on) to `settings`. Migration 2 → 3 adds `focus_custom_minutes` (default 90) and
 `break_custom_minutes` (default 20) to `settings`. Migration 1 → 2 adds `focus_sessions`, rebuilds `settings` without
 `breaks_enabled`, and rebuilds `timer_state` with `round_ms` in place of the round number. A timer running
 during the upgrade is dropped; SQLite before Android 12 cannot drop a column, and a lost countdown costs one

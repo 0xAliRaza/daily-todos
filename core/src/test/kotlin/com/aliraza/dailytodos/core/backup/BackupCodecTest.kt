@@ -1,6 +1,7 @@
 package com.aliraza.dailytodos.core.backup
 
 import com.aliraza.dailytodos.core.focus.FocusSession
+import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.FiredBy
 import com.aliraza.dailytodos.core.model.HeadsUp
 import com.aliraza.dailytodos.core.model.Priority
@@ -11,6 +12,7 @@ import com.aliraza.dailytodos.core.model.Task
 import com.aliraza.dailytodos.core.model.TaskList
 import com.aliraza.dailytodos.core.model.ThemeMode
 import com.aliraza.dailytodos.core.model.TimerSignal
+import com.aliraza.dailytodos.core.model.WeekStart
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -18,6 +20,7 @@ import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -40,6 +43,9 @@ class BackupCodecTest {
             breakCustomMinutes = 7,
             timerSignal = TimerSignal.VIBRATE,
             theme = ThemeMode.DARK,
+            clockFormat = ClockFormat.H24,
+            weekStart = WeekStart.SUNDAY,
+            haptics = false,
             lastBackupAt = Instant.parse("2026-11-01T08:00:00Z"),
         ),
         lists = listOf(TaskList("default", "Daily", 0, true), TaskList("g", "Groceries", 1, false)),
@@ -176,6 +182,37 @@ class BackupCodecTest {
         assertTrue(valid().contains("\"breakCustomMinutes\": 7"))
     }
 
+    /** A version 2 file written before the display settings: no clock, week start or haptics. */
+    @Test
+    fun aVersionTwoFileWithoutDisplaySettingsImportsWithTheDefaults() {
+        val older = edited { root ->
+            val settings = root.getValue("settings").jsonObject
+            JsonObject(root + ("settings" to JsonObject(settings - "clockFormat" - "weekStart" - "haptics")))
+        }
+        val defaults = Settings()
+        val expected = sample.settings.copy(
+            clockFormat = defaults.clockFormat,
+            weekStart = defaults.weekStart,
+            haptics = defaults.haptics,
+        )
+        assertEquals(BackupReadResult.Accepted(sample.copy(settings = expected)), BackupCodec.decode(older))
+    }
+
+    @Test
+    fun exportsTheDisplaySettings() {
+        assertTrue(valid().contains("\"clockFormat\": \"H24\""))
+        assertTrue(valid().contains("\"weekStart\": \"SUNDAY\""))
+        assertTrue(valid().contains("\"haptics\": false"))
+    }
+
+    /** docs/backup-format.md documents every settings field the app writes. */
+    @Test
+    fun theFormatDocListsEverySetting() {
+        val doc = File("../docs/backup-format.md").readText()
+        val fields = json.parseToJsonElement(valid()).jsonObject.getValue("settings").jsonObject.keys
+        fields.forEach { assertTrue("$it is not in the format doc", doc.contains("\"$it\":")) }
+    }
+
     @Test
     fun refusesOtherVersions() {
         assertRejected(RejectReason.NEWER_VERSION, edited { JsonObject(it + ("version" to JsonPrimitive(3))) })
@@ -236,6 +273,8 @@ class BackupCodecTest {
             { f -> f.copy(settings = f.settings.copy(focusCustomMinutes = 181)) },
             { f -> f.copy(settings = f.settings.copy(breakCustomMinutes = 0)) },
             { f -> f.copy(settings = f.settings.copy(theme = "NEON")) },
+            { f -> f.copy(settings = f.settings.copy(clockFormat = "H36")) },
+            { f -> f.copy(settings = f.settings.copy(weekStart = "FRIDAY")) },
             { f -> f.copy(reminderHistory = f.reminderHistory.map { it.copy(firedBy = "MAGIC") }) },
             { f -> f.copy(focusSessions = f.focusSessions.map { it.copy(focusedMs = -1) }) },
             // More focus than the session lasted.

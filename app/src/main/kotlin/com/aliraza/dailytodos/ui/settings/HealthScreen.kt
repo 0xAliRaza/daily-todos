@@ -76,7 +76,8 @@ fun HealthScreen(viewModel: SettingsViewModel, padding: PaddingValues) {
     val history by viewModel.history.collectAsStateWithLifecycle()
     Messages(viewModel)
     val checks = rememberHealthChecks(settings.dndOverride)
-    val testTitle = stringResource(R.string.health_test_title)
+    val appName = stringResource(R.string.app_name)
+    val testTitle = stringResource(R.string.health_test_title, appName)
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         Text(
             stringResource(if (checks.all { it.ok }) R.string.health_all_good else R.string.health_needs_attention),
@@ -86,7 +87,7 @@ fun HealthScreen(viewModel: SettingsViewModel, padding: PaddingValues) {
         )
         Group(R.string.health_checks) { checks.forEach { CheckRow(it) } }
         Group(R.string.health_maker_steps) {
-            val steps = stringArrayResource(makerSteps())
+            val steps = stringArrayResource(makerSteps()).map { it.format(appName) }
             Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
                 steps.forEachIndexed { i, step ->
                     Text(

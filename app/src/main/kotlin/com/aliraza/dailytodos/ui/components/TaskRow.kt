@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -105,7 +106,7 @@ fun toneColor(tone: DateTone): Color = with(MaterialTheme.tokens) {
 
 /**
  * A round check box whose ring shows the priority, so it reads before the title does. A ticked box
- * fills with the same colour.
+ * fills with the same colour. Ticking it gives a short confirming tick of haptic feedback.
  */
 @Composable
 fun RoundCheck(
@@ -125,11 +126,15 @@ fun RoundCheck(
     val edge by animateColorAsState(if (checked) filled else ring, label = "checkEdge")
     val weight = if (priority == Priority.NONE) 1.5.dp else 2.dp
     val label = checkLabel(checked, priority)
+    val tick = rememberTick(HapticFeedbackType.Confirm)
     Box(
         modifier = modifier
             .size(40.dp)
             .clip(CircleShape)
-            .clickable(role = Role.Checkbox, onClick = onClick)
+            .clickable(role = Role.Checkbox) {
+                if (!checked) tick()
+                onClick()
+            }
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {

@@ -54,5 +54,14 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(V1_TO_V2, V2_TO_V3)
+    /** Version 4: the display settings, clock format, first day of the week and haptics. */
+    val V3_TO_V4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `settings` ADD COLUMN `clock_format` TEXT NOT NULL DEFAULT 'H12'")
+            db.execSQL("ALTER TABLE `settings` ADD COLUMN `week_start` TEXT NOT NULL DEFAULT 'PHONE'")
+            db.execSQL("ALTER TABLE `settings` ADD COLUMN `haptics` INTEGER NOT NULL DEFAULT 1")
+        }
+    }
+
+    val ALL = arrayOf(V1_TO_V2, V2_TO_V3, V3_TO_V4)
 }

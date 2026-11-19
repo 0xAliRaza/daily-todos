@@ -25,6 +25,9 @@ confirmation. Only files written by this app are accepted. Files from before the
     "breakCustomMinutes": 20,
     "timerSignal": "BOTH",
     "theme": "SYSTEM",
+    "clockFormat": "H12",
+    "weekStart": "PHONE",
+    "haptics": true,
     "lastBackupAt": "2026-11-18T12:00:00Z"
   },
   "lists": [{ "id": "default", "name": "Daily", "position": 0, "isDefault": true }],
@@ -49,9 +52,11 @@ confirmation. Only files written by this app are accepted. Files from before the
   ISO-8601 UTC timestamps.
 - `priority`: 0 none, 1 to 3 (1 is the most urgent). `headsUpMinutes`: 0, 10, 30 or 60.
   `timerSignal`: `SOUND`, `VIBRATE` or `BOTH`. `theme`: `SYSTEM`, `LIGHT` or `DARK`.
+  `clockFormat`: `H12` or `H24`. `weekStart`: `PHONE`, `MONDAY` or `SUNDAY`.
   `firedBy`: `ALARM`, `CATCH_UP` or `BEFORE_UNLOCK`.
 - `focusMinutes` and `focusCustomMinutes` are 1 to 180; `breakMinutes` and `breakCustomMinutes` are 1 to 60.
   The two custom lengths are the timer's fourth chip; a file without them reads as 90 and 20.
+- A file without `clockFormat`, `weekStart` or `haptics` reads them as `H12`, `PHONE` and `true`.
 - Exactly one list has `isDefault: true`.
 - Deleted tasks and lists are not exported. The running focus timer is not exported.
 - `focusSessions` holds the focus time kept per session. `focusedMs` is between 0 and the time from

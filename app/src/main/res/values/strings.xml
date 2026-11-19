@@ -174,35 +174,50 @@
     <string name="channel_timer_description">When focus or a break ends. The app plays the sound and vibration itself.</string>
     <string name="channel_timer_running">Timer running</string>
 
+    <!-- part A -->
+    <string name="settings_heads_up_hint">For tasks with a time</string>
+    <string name="settings_health_ok">All set</string>
+    <plurals name="settings_health_fix">
+        <item quantity="one">%1$d thing to fix</item>
+        <item quantity="other">%1$d things to fix</item>
+    </plurals>
+    <string name="settings_signal_hint">When focus or a break ends</string>
+    <string name="settings_clock">Time format</string>
+    <string name="clock_12">12-hour</string>
+    <string name="clock_24">24-hour</string>
+    <string name="settings_week_start">Week starts on</string>
+    <string name="week_start_phone">Phone (%1$s)</string>
+    <string name="settings_haptics">Haptic feedback</string>
+    <string name="settings_haptics_hint">A light tick on key taps</string>
+
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_reminders">Reminders</string>
     <string name="settings_default_time">Default reminder time</string>
     <string name="settings_default_time_hint">For tasks with a date and no time</string>
-    <string name="settings_undated_tomorrow">New Daily tasks get tomorrow</string>
-    <string name="settings_undated_tomorrow_hint">Shown in the add bar while typing</string>
+    <string name="settings_undated_tomorrow">New %1$s tasks get tomorrow</string>
+    <string name="settings_undated_tomorrow_hint">Tasks typed without a date</string>
     <string name="settings_date_only">Remind tasks without a time</string>
     <string name="settings_date_only_hint">At the default reminder time</string>
-    <string name="settings_heads_up">Early heads-up for timed tasks</string>
+    <string name="settings_heads_up">Early heads-up</string>
     <string name="settings_heads_up_none">On time</string>
     <string name="settings_overdue">Overdue reminders</string>
-    <string name="settings_overdue_hint">Undone tasks remind again each morning</string>
+    <string name="settings_overdue_hint">Undone tasks remind each morning</string>
     <string name="settings_overdue_time">Overdue reminder time</string>
     <string name="settings_dnd">Break through Do Not Disturb</string>
-    <string name="settings_dnd_hint">Reminders and timer ends ring at alarm volume, even on silent or Do Not Disturb.</string>
+    <string name="settings_dnd_hint">Reminders and timer ends ring on silent</string>
     <string name="settings_reliability">Reliability</string>
-    <string name="settings_health_hint">Permissions, battery and a test reminder</string>
-    <string name="settings_battery">Battery optimisation</string>
+        <string name="settings_battery">Battery optimisation</string>
     <string name="settings_battery_ok">Unrestricted</string>
     <string name="settings_battery_todo">Restricted · tap to allow background use</string>
     <string name="settings_focus">Focus</string>
     <string name="stats_title">Focus stats</string>
-    <string name="stats_hint">Time spent focusing, and what it adds up to</string>
+    <string name="stats_hint">Time spent focusing</string>
     <string name="settings_signal">End signal</string>
     <string name="signal_sound">Sound</string>
     <string name="signal_vibrate">Vibrate</string>
     <string name="signal_both">Both</string>
-    <string name="settings_appearance">Appearance</string>
+    <string name="settings_general">General</string>
     <string name="settings_theme">Theme</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
@@ -259,7 +274,7 @@
     <string name="backup_never">never</string>
     <string name="backup_saved">Backup saved</string>
     <string name="backup_failed">Could not write the backup</string>
-    <string name="backup_rejected">That file is not a DT backup</string>
+    <string name="backup_rejected">That file is not a %1$s backup</string>
     <string name="backup_restored">Backup restored</string>
     <string name="backup_confirm_title">Replace everything?</string>
     <string name="backup_confirm_body">Everything on this phone is replaced by the backup (tasks: %1$d, lists: %2$d).</string>
@@ -278,7 +293,7 @@
     <string name="health_exact_fix">Not allowed · tap to allow</string>
     <string name="health_maker_steps">Steps for this phone</string>
     <string name="health_test">Send a test reminder</string>
-    <string name="health_test_title">DT test reminder</string>
+    <string name="health_test_title">%1$s test reminder</string>
     <string name="health_test_sent">A test reminder arrives in about a minute</string>
     <string name="health_history">Recent reminders</string>
     <string name="health_history_empty">No reminders yet.</string>
@@ -289,38 +304,38 @@
     <string name="health_history_note">History stays on this phone and stores no task titles.</string>
 
     <string-array name="steps_samsung">
-        <item>Settings → Apps → DT → Battery → Unrestricted.</item>
-        <item>Settings → Battery → Background usage limits: keep DT out of Sleeping apps and Deep sleeping apps.</item>
+        <item>Settings → Apps → %1$s → Battery → Unrestricted.</item>
+        <item>Settings → Battery → Background usage limits: keep %1$s out of Sleeping apps and Deep sleeping apps.</item>
         <item>An unrestricted app is never put to sleep, so “Put unused apps to sleep” can stay on.</item>
     </string-array>
     <string-array name="steps_xiaomi">
-        <item>Settings → Apps → Manage apps → DT → Autostart: on.</item>
+        <item>Settings → Apps → Manage apps → %1$s → Autostart: on.</item>
         <item>Same page → Battery saver → No restrictions.</item>
-        <item>Recent apps: long-press DT and tap the lock so it is not cleared.</item>
+        <item>Recent apps: long-press %1$s and tap the lock so it is not cleared.</item>
     </string-array>
     <string-array name="steps_oppo">
-        <item>Settings → Apps → App management → DT → Battery usage: allow background activity and auto launch.</item>
-        <item>Settings → Battery → More settings: turn off optimisation for DT.</item>
+        <item>Settings → Apps → App management → %1$s → Battery usage: allow background activity and auto launch.</item>
+        <item>Settings → Battery → More settings: turn off optimisation for %1$s.</item>
     </string-array>
     <string-array name="steps_vivo">
-        <item>Settings → Battery → Background power consumption management → DT: allow.</item>
-        <item>i Manager → App manager → Autostart manager → DT: on.</item>
+        <item>Settings → Battery → Background power consumption management → %1$s: allow.</item>
+        <item>i Manager → App manager → Autostart manager → %1$s: on.</item>
     </string-array>
     <string-array name="steps_oneplus">
-        <item>Settings → Apps → DT → Battery → Unrestricted (or “Don’t optimise”).</item>
+        <item>Settings → Apps → %1$s → Battery → Unrestricted (or “Don’t optimise”).</item>
         <item>Settings → Battery → Advanced: turn off adaptive and sleep standby optimisation if reminders arrive late.</item>
     </string-array>
     <string-array name="steps_huawei">
-        <item>Settings → Battery → App launch → DT: switch to manage manually and allow all three options.</item>
-        <item>Settings → Apps → DT → Battery: allow running in the background.</item>
+        <item>Settings → Battery → App launch → %1$s: switch to manage manually and allow all three options.</item>
+        <item>Settings → Apps → %1$s → Battery: allow running in the background.</item>
     </string-array>
     <string-array name="steps_transsion">
-        <item>Phone Master → App management → Auto-start: allow DT.</item>
-        <item>Settings → Battery → App power saving → DT: no restrictions.</item>
+        <item>Phone Master → App management → Auto-start: allow %1$s.</item>
+        <item>Settings → Battery → App power saving → %1$s: no restrictions.</item>
     </string-array>
     <string-array name="steps_generic">
-        <item>Settings → Apps → DT → Battery: Unrestricted (or “Don’t optimise”).</item>
-        <item>If the phone has an autostart or background-launch list, allow DT there.</item>
+        <item>Settings → Apps → %1$s → Battery: Unrestricted (or “Don’t optimise”).</item>
+        <item>If the phone has an autostart or background-launch list, allow %1$s there.</item>
     </string-array>
     <string name="week_previous">Previous week</string>
     <string name="week_next">Next week</string>

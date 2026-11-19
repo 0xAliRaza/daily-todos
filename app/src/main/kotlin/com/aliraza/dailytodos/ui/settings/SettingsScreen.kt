@@ -22,15 +22,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,8 +56,8 @@ import com.aliraza.dailytodos.core.model.ThemeMode
 import com.aliraza.dailytodos.core.model.TimerSignal
 import com.aliraza.dailytodos.core.model.WeekStart
 import com.aliraza.dailytodos.ui.components.AppIcons
-import com.aliraza.dailytodos.ui.components.LocalClockFormat
 import com.aliraza.dailytodos.ui.components.PillChoice
+import com.aliraza.dailytodos.ui.components.TimeDialog
 import com.aliraza.dailytodos.ui.components.phoneFirstDay
 import com.aliraza.dailytodos.ui.components.timeLabel
 import com.aliraza.dailytodos.ui.focus.signalLabel
@@ -344,7 +341,6 @@ private fun <T> ChoiceRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimeRow(title: Int, hint: Int?, time: LocalTime, onPick: (LocalTime) -> Unit) {
     var open by remember { mutableStateOf(false) }
@@ -352,22 +348,5 @@ private fun TimeRow(title: Int, hint: Int?, time: LocalTime, onPick: (LocalTime)
         RowText(stringResource(title), hint?.let { stringResource(it) }, Modifier.weight(1f))
         Text(timeLabel(time), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
     }
-    if (open) {
-        val state = rememberTimePickerState(
-            time.hour,
-            time.minute,
-            is24Hour = LocalClockFormat.current == ClockFormat.H24,
-        )
-        AlertDialog(
-            onDismissRequest = { open = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    onPick(LocalTime.of(state.hour, state.minute))
-                    open = false
-                }) { Text(stringResource(R.string.action_ok)) }
-            },
-            dismissButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_cancel)) } },
-            text = { TimePicker(state) },
-        )
-    }
+    if (open) TimeDialog(time, onDismiss = { open = false }, onPick = onPick)
 }

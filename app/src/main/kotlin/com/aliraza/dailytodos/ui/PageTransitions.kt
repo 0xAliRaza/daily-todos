@@ -49,12 +49,21 @@ internal fun rememberPageTransition(nav: Navigation, backEnabled: Boolean): Tran
 }
 
 /**
- * How one page gives way to the next: a fade between tabs; a push slides the new page in from the right
+ * How one page gives way to the next: tabs slide sideways in their bar order, as a swipe between them
+ * does; a push slides the new page in from the right
  * over the old one, which drifts a little left; a pop plays that in reverse.
  */
 internal fun AnimatedContentTransitionScope<List<String>>.pageTransform(): ContentTransform =
     when (transitionKind(initialState, targetState)) {
-        TransitionKind.TAB -> fadeIn() togetherWith fadeOut()
+        TransitionKind.TAB -> when (val side = tabSide(initialState.first(), targetState.first())) {
+            0 -> fadeIn() togetherWith fadeOut()
+
+            else ->
+                slideInHorizontally(tween(PAGE_MS, easing = FastOutSlowInEasing)) { side * it } +
+                    fadeIn(tween(PAGE_MS)) togetherWith
+                    slideOutHorizontally(tween(PAGE_MS, easing = FastOutSlowInEasing)) { -side * it } +
+                    fadeOut(tween(PAGE_MS))
+        }
 
         TransitionKind.PUSH ->
             slideInHorizontally(tween(PAGE_MS, easing = FastOutSlowInEasing)) { it } +
@@ -71,6 +80,13 @@ internal fun AnimatedContentTransitionScope<List<String>>.pageTransform(): Conte
             targetContentZIndex = -1f,
         )
     }
+
+/** 1 when [to] sits right of [from] in the tab bar, -1 when left, 0 when either is not a tab. */
+internal fun tabSide(from: String, to: String): Int {
+    val start = Route.tabs.indexOf(from)
+    val end = Route.tabs.indexOf(to)
+    return if (start < 0 || end < 0) 0 else end.compareTo(start)
+}
 
 private const val PAGE_MS = 300
 

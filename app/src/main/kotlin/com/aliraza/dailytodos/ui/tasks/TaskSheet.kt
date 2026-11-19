@@ -20,7 +20,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,10 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -59,7 +55,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aliraza.dailytodos.R
-import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.Priority
 import com.aliraza.dailytodos.core.model.Subtask
 import com.aliraza.dailytodos.core.model.Task
@@ -67,8 +62,8 @@ import com.aliraza.dailytodos.core.model.TaskList
 import com.aliraza.dailytodos.data.TaskFocusTotal
 import com.aliraza.dailytodos.ui.components.AppIcons
 import com.aliraza.dailytodos.ui.components.DueDateSheet
-import com.aliraza.dailytodos.ui.components.LocalClockFormat
 import com.aliraza.dailytodos.ui.components.RoundCheck
+import com.aliraza.dailytodos.ui.components.TimeDialog
 import com.aliraza.dailytodos.ui.components.dayLabel
 import com.aliraza.dailytodos.ui.components.dueTone
 import com.aliraza.dailytodos.ui.components.priorityColor
@@ -269,7 +264,7 @@ private fun Properties(viewModel: TasksViewModel, task: Task, now: LocalDateTime
     val set = { change: (Task) -> Task -> viewModel.update(task.id, change) }
     val ink = task.dueTone(now)?.let { toneColor(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant
     DateRow(task, today, ink) { dialog = "date" }
-    TimeRow(task, ink, set) { dialog = "time" }
+    TimeRow(task, ink) { dialog = "time" }
     PriorityRow(task, set)
     when (dialog) {
         "date" -> DueDateSheet(
@@ -280,9 +275,12 @@ private fun Properties(viewModel: TasksViewModel, task: Task, now: LocalDateTime
             onDismiss = { dialog = null },
         )
 
-        "time" -> TimeDialog(task.dueTime ?: LocalTime.of(DEFAULT_PICK_HOUR, 0), onDismiss = { dialog = null }) {
-            set { task -> task.copy(dueTime = it, dueDate = task.dueDate ?: today) }
-        }
+        "time" -> TimeDialog(
+            initial = task.dueTime ?: LocalTime.of(DEFAULT_PICK_HOUR, 0),
+            onDismiss = { dialog = null },
+            onPick = { time -> set { it.copy(dueTime = time, dueDate = it.dueDate ?: today) } },
+            onClear = { set { it.copy(dueTime = null) } }.takeIf { task.dueTime != null },
+        )
     }
 }
 
@@ -298,16 +296,17 @@ private fun DateRow(task: Task, today: LocalDate, ink: Color, onOpen: () -> Unit
     )
 }
 
+/** The due time; tapping it opens the clock, which can also remove the time. */
 @Composable
-private fun TimeRow(task: Task, ink: Color, set: ((Task) -> Task) -> Unit, onPick: () -> Unit) {
-    MenuRow(
+private fun TimeRow(task: Task, ink: Color, onOpen: () -> Unit) {
+    val ink2 = if (task.dueTime != null) ink else MaterialTheme.colorScheme.onSurfaceVariant
+    PropertyRow(
         icon = AppIcons.Clock,
         label = task.dueTime?.let { timeLabel(it) } ?: stringResource(R.string.task_no_time),
-        ink = if (task.dueTime != null) ink else MaterialTheme.colorScheme.onSurfaceVariant,
-    ) { close ->
-        Option(R.string.time_pick, close, onPick)
-        if (task.dueTime != null) Option(R.string.task_no_time, close) { set { it.copy(dueTime = null) } }
-    }
+        ink = ink2,
+        iconTint = ink2,
+        onClick = onOpen,
+    )
 }
 
 @Composable
@@ -337,14 +336,6 @@ private fun priorityLabel(priority: Priority): String = if (priority == Priority
     stringResource(R.string.priority_none)
 } else {
     stringResource(R.string.priority_long, priority.level)
-}
-
-@Composable
-private fun Option(label: Int, close: () -> Unit, onClick: () -> Unit) {
-    DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
-        onClick()
-        close()
-    })
 }
 
 /** The focus spent on the task so far; tapping it opens the task's timer. */
@@ -407,27 +398,6 @@ private fun MenuRow(
             menu { open = false }
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimeDialog(initial: LocalTime, onDismiss: () -> Unit, onPick: (LocalTime) -> Unit) {
-    val state = rememberTimePickerState(
-        initialHour = initial.hour,
-        initialMinute = initial.minute,
-        is24Hour = LocalClockFormat.current == ClockFormat.H24,
-    )
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = {
-                onPick(LocalTime.of(state.hour, state.minute))
-                onDismiss()
-            }) { Text(stringResource(R.string.action_ok)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
-        text = { TimePicker(state) },
-    )
 }
 
 @Composable

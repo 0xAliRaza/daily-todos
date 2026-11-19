@@ -269,7 +269,8 @@ private fun Pages(
             contentWindowInsets = WindowInsets(0),
         ) { inner ->
             val page = PaddingValues(top = inner.calculateTopPadding(), bottom = padding.calculateBottomPadding())
-            KeyboardGuardBox(alsoWhen = typing, Modifier.tabSwipe(shown, onTab)) {
+            val swipe = rememberTabSwipeState(shown)
+            KeyboardGuardBox(alsoWhen = typing, Modifier.tabSwipe(swipe, shown, onTab)) {
                 RouteContent(shown, screens, if (clearsAddButton(shown, addBarOpen)) page.clearOfAddButton() else page)
             }
         }

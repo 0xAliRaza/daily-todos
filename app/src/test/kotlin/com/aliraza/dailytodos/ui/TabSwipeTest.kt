@@ -43,10 +43,18 @@ class TabSwipeTest {
     }
 
     @Test
+    fun tabsSlideTowardsTheirPlaceInTheBar() {
+        assertEquals(1, tabSide(Route.TODAY, Route.CALENDAR))
+        assertEquals(-1, tabSide(Route.LISTS, Route.UPCOMING))
+        assertEquals(0, tabSide(Route.TODAY, Route.SETTINGS))
+    }
+
+    @Test
     fun anEmptyAreaSwitchesTabsButASwipeableRowKeepsItsSwipe() {
         val picked = mutableListOf<String>()
         compose.setContent {
-            Column(Modifier.size(400.dp).tabSwipe(Route.UPCOMING) { picked += it }) {
+            val swipe = rememberTabSwipeState(Route.UPCOMING)
+            Column(Modifier.size(400.dp).tabSwipe(swipe, Route.UPCOMING) { picked += it }) {
                 Box(
                     Modifier.fillMaxWidth().height(100.dp).testTag("row")
                         .draggable(rememberDraggableState {}, Orientation.Horizontal),

@@ -31,7 +31,10 @@
     <string name="day_yesterday">Yesterday</string>
     <string name="date_next_week">Next week</string>
     <string name="date_pick">Pick a date…</string>
-    <string name="time_pick">Pick a time…</string>
+    <string name="time_dialog_title">Select time</string>
+    <string name="time_remove">Remove time</string>
+    <string name="time_use_keyboard">Type the time</string>
+    <string name="time_use_clock">Use the clock</string>
 
     <!-- Today, Upcoming, Lists, Search -->
     <string name="today_title">Today</string>

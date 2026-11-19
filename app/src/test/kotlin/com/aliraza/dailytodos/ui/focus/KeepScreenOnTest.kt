@@ -64,7 +64,7 @@ class KeepScreenOnTest {
                 setting = it
             })
         }
-        val toggle = compose.onNodeWithContentDescription("Keep screen on")
+        val toggle = compose.onNodeWithContentDescription("Caffeinated")
         toggle.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).assertIsOff()
 
         toggle.performClick()
@@ -76,7 +76,7 @@ class KeepScreenOnTest {
 
     @Test
     fun flippingItSaysWhatItNowDoes() {
-        assertEquals(R.string.keep_screen_on_notice_on, keepScreenOnNotice(on = true))
-        assertEquals(R.string.keep_screen_on_notice_off, keepScreenOnNotice(on = false))
+        assertEquals(R.string.caffeinated_on_title, keepScreenOnNotice(on = true).title)
+        assertEquals(R.string.caffeinated_off_title, keepScreenOnNotice(on = false).title)
     }
 }

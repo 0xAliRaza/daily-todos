@@ -197,7 +197,7 @@ the app is opened again; catch-up then posts what was missed.
    ends: "25 min of focus done", break presets 5, 10 and 15 minutes plus the same kind of fourth chip
    (20 until then), with − and + by the green dial, Skip break and Start break. The end or skip of a
    break goes back to Ready. The last lengths, both fourth chips and the signal are remembered in settings.
-   A cup at the end of the task's row switches Keep screen on, the same setting as in Settings: while it
+   A steaming mug at the end of the task's row switches Caffeinated (keep screen on), the same setting as in Settings: while it
    is on and a round or break counts down, `MainActivity` keeps the window awake (`keepsScreenOn`,
    `View.keepScreenOn`), on any screen, only while the app is in front.
 5. Focus time is kept in `focus_sessions` (section 4). A round that ends on its own records its full
@@ -298,7 +298,7 @@ Decided while building M1 (planner defaults, changeable on request):
 7. Search.
 8. Settings, including Reminder health, Export / Import, a direct "Battery optimisation" row that
    opens the phone's battery setting for this app (the same action as the fix button on the health screen),
-   and a Focus group with Focus stats, the end signal choice and Keep screen on. The Do Not Disturb override stays under
+   and a Focus group with Focus stats, the end signal choice and Caffeinated. The Do Not Disturb override stays under
    Reminders.
 
 Behaviour: swipe right opens the task's focus timer, swipe left deletes; undo snackbar after complete,

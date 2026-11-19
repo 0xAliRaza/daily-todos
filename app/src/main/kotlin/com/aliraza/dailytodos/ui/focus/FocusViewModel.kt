@@ -1,5 +1,7 @@
 package com.aliraza.dailytodos.ui.focus
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aliraza.dailytodos.R
@@ -13,6 +15,7 @@ import com.aliraza.dailytodos.data.SettingsRepository
 import com.aliraza.dailytodos.data.TaskFocusTotal
 import com.aliraza.dailytodos.data.TaskRepository
 import com.aliraza.dailytodos.data.TimerRepository
+import com.aliraza.dailytodos.ui.components.AppIcons
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -111,10 +114,10 @@ class FocusViewModel(
 
     fun setSignal(signal: TimerSignal) = launch { settingsRepo.update { it.copy(timerSignal = signal) } }
 
-    private val noticeEvents = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+    private val noticeEvents = MutableSharedFlow<FocusNotice>(extraBufferCapacity = 1)
 
-    /** A short word on what a tap just did, as a string resource, for the app's snackbar. */
-    val notices: SharedFlow<Int> = noticeEvents
+    /** A short word on what a tap just did, for the app's snackbar. */
+    val notices: SharedFlow<FocusNotice> = noticeEvents
 
     /** Flips keep-screen-on from the timer and says what it now does. */
     fun setKeepScreenOn(on: Boolean) = launch {
@@ -131,6 +134,12 @@ class FocusViewModel(
     }
 }
 
-/** What the timer's keep-screen-on toggle says once flipped [on] or off. */
-internal fun keepScreenOnNotice(on: Boolean): Int =
-    if (on) R.string.keep_screen_on_notice_on else R.string.keep_screen_on_notice_off
+/** A word from the timer for the snackbar: a [title] and a [detail] line (string resources) by an [icon]. */
+data class FocusNotice(@param:StringRes val title: Int, @param:StringRes val detail: Int, val icon: ImageVector)
+
+/** What the timer's caffeinated toggle says once flipped [on] or off. */
+internal fun keepScreenOnNotice(on: Boolean): FocusNotice = if (on) {
+    FocusNotice(R.string.caffeinated_on_title, R.string.caffeinated_on_detail, AppIcons.CupFilled)
+} else {
+    FocusNotice(R.string.caffeinated_off_title, R.string.caffeinated_off_detail, AppIcons.Cup)
+}

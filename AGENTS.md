@@ -108,10 +108,10 @@ See the milestones in `PLAN.md`.
 - Notifications name the task. While a round runs: "Focus · ends at 11:42" (or Break) with a live
   countdown, Pause and Stop (or End break). At a focus end: Start break and Skip break. At a break end:
   Start focus. The end alerts have no Stop. An alert whose next step no longer applies is removed.
-- Keep screen on: one setting, off by default, switched in the Focus group or by the cup on the timer
+- Caffeinated (keep screen on): one setting, off by default, switched in the Focus group or by the steaming mug on the timer
   screen. While on, the screen stays awake on any of the app's screens as long as focus or a break counts
   down; paused, waiting or idle, the phone sleeps as usual. Only while the app is in front; no wake lock.
-- Settings has a Focus group: Focus stats, the end signal choice and Keep screen on. The Do Not Disturb
+- Settings has a Focus group: Focus stats, the end signal choice and Caffeinated. The Do Not Disturb
   override stays with Reminders.
 - Focus stats: the all-time total, Today, This week and Sessions, a 7-day bar chart, the top 5
   tasks (deleted ones grouped as "Deleted tasks"), and one comparison from bundled facts ("That's as long
@@ -129,7 +129,7 @@ See the milestones in `PLAN.md`.
 
 - Groups: Reminders, Reliability (Reminder health with its status, Battery optimisation), Focus, General
   and Your data. Every choice is the same pill control; on/off settings are switches.
-- Focus: Focus stats, the end signal, and Keep screen on (off by default).
+- Focus: Focus stats, the end signal, and Caffeinated (off by default).
 - General: theme; time format, 12-hour by default; week starts on, following the phone by default, or
   Monday or Sunday; haptic feedback, on by default, for completing a task and the timer's controls.
 - Android's cloud backup of app data is switched off.

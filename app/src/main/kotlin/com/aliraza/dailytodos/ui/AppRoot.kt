@@ -45,8 +45,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -89,6 +87,8 @@ import com.aliraza.dailytodos.ui.components.AddOptions
 import com.aliraza.dailytodos.ui.components.AppIcons
 import com.aliraza.dailytodos.ui.components.KeyboardGuardBox
 import com.aliraza.dailytodos.ui.components.LocalWeekStart
+import com.aliraza.dailytodos.ui.components.Notice
+import com.aliraza.dailytodos.ui.components.NoticeCard
 import com.aliraza.dailytodos.ui.components.QuickAddBar
 import com.aliraza.dailytodos.ui.components.QuickAddState
 import com.aliraza.dailytodos.ui.components.due
@@ -172,14 +172,7 @@ fun AppRoot(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
-            SnackbarHost(snackbar) { data ->
-                Snackbar(
-                    data,
-                    shape = MaterialTheme.shapes.large,
-                    containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    actionColor = MaterialTheme.colorScheme.inversePrimary,
-                )
-            }
+            SnackbarHost(snackbar) { data -> NoticeCard(data) }
         },
         floatingActionButton = {
             AnimatedVisibility(
@@ -470,7 +463,11 @@ private fun BottomBars(
 private fun FocusNotices(focus: FocusViewModel, host: SnackbarHostState) {
     val resources = LocalResources.current
     LaunchedEffect(focus) {
-        focus.notices.collectLatest { host.showSnackbar(resources.getString(it), duration = SnackbarDuration.Short) }
+        focus.notices.collectLatest { notice ->
+            host.showSnackbar(
+                Notice(resources.getString(notice.title), resources.getString(notice.detail), notice.icon),
+            )
+        }
     }
 }
 
@@ -481,7 +478,7 @@ private fun UndoSnackbars(tasks: TasksViewModel, host: SnackbarHostState) {
     LaunchedEffect(tasks) {
         tasks.undo.collectLatest { event ->
             val message = resources.getQuantityString(event.message, event.count, event.count)
-            val result = host.showSnackbar(message, actionLabel = undoLabel, duration = SnackbarDuration.Short)
+            val result = host.showSnackbar(Notice(message, actionLabel = undoLabel))
             if (result == SnackbarResult.ActionPerformed) event.undo()
         }
     }

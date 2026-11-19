@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
@@ -269,7 +270,10 @@ private fun Pages(
             contentWindowInsets = WindowInsets(0),
         ) { inner ->
             val page = PaddingValues(top = inner.calculateTopPadding(), bottom = padding.calculateBottomPadding())
-            KeyboardGuardBox(alsoWhen = input.typing) {
+            // The bars below already make room for the keyboard while the add bar is open; marking that
+            // room as used keeps a page's own keyboard padding (a centred message) from counting it twice.
+            val below = PaddingValues(bottom = padding.calculateBottomPadding())
+            KeyboardGuardBox(alsoWhen = input.typing, Modifier.consumeWindowInsets(below)) {
                 val clear = clearsAddButton(shown, input.addBarOpen)
                 RouteContent(shown, screens, if (clear) page.clearOfAddButton() else page)
             }

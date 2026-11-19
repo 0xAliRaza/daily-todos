@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -448,12 +449,16 @@ private fun HeaderButton(action: HeaderAction) {
     }
 }
 
-/** A calm, centred message for a screen with nothing to show; [icon] says which kind of empty it is. */
+/**
+ * A calm, centred message for a screen with nothing to show; [icon] says which kind of empty it is. It
+ * centres in the room the keyboard leaves, so an open keyboard moves it up rather than covering it.
+ */
 @Composable
 fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, icon: ImageVector = AppIcons.Check) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .imePadding()
             .padding(horizontal = 40.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,

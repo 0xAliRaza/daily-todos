@@ -4,6 +4,7 @@ import androidx.annotation.PluralsRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aliraza.dailytodos.R
+import com.aliraza.dailytodos.core.focus.DoneDay
 import com.aliraza.dailytodos.core.model.NewTask
 import com.aliraza.dailytodos.core.model.Settings
 import com.aliraza.dailytodos.core.model.Subtask
@@ -107,6 +108,10 @@ class TasksViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), emptyList())
 
     fun completedInList(listId: String): Flow<List<Task>> = tasks.observeCompletedInList(listId)
+
+    /** What was done on each day from [first] to [last], for the calendar's month. */
+    fun doneBetween(first: LocalDate, last: LocalDate): Flow<Map<LocalDate, DoneDay>> =
+        tasks.done.observeBetween(first, last)
 
     /** Open tasks per list id, for the Lists screen. */
     val listCounts: StateFlow<Map<String, Int>> = tasks.observeOpenCounts()

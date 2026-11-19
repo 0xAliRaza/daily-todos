@@ -509,22 +509,28 @@ private fun ListRow(list: TaskList, open: Int, modifier: Modifier, onClick: () -
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .rowDivider(MaterialTheme.tokens.divider)
+            .rowDivider(MaterialTheme.tokens.divider, start = ListTextStart)
             .clickable(onClick = onClick)
             .heightIn(min = 52.dp)
-            .padding(start = 18.dp, end = 12.dp),
+            .padding(start = ListTextStart, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(AppIcons.Lists, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(14.dp))
-        Text(list.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        if (list.isDefault) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                stringResource(R.string.list_default_tag),
-                style = MaterialTheme.typography.labelSmall,
-                color = scheme.onSurfaceVariant,
-                modifier = Modifier.padding(end = 10.dp),
+                list.name,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
+            if (list.isDefault) {
+                Icon(
+                    AppIcons.Pin,
+                    stringResource(R.string.list_default_mark),
+                    tint = scheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 6.dp).size(14.dp),
+                )
+            }
         }
         if (open > 0) {
             Text(open.toString(), style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
@@ -533,12 +539,15 @@ private fun ListRow(list: TaskList, open: Int, modifier: Modifier, onClick: () -
     }
 }
 
+/** Where list names start, in line with the page title; the hairlines under them start there too. */
+private val ListTextStart = 16.dp
+
 @Composable
 private fun NewListField(onCreate: (String) -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
     val scheme = MaterialTheme.colorScheme
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 18.dp, end = 12.dp),
+        Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = ListTextStart, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(AppIcons.Add, null, tint = scheme.primary, modifier = Modifier.size(20.dp))
@@ -601,13 +610,16 @@ fun ListContent(viewModel: TasksViewModel, listId: String, ctx: RowContext, padd
             } else {
                 Modifier.animateItem()
             }
+            // The handles show only while picking tasks, so the list reads as calm as the others.
             TaskItem(task, ctx, ctx.meta(task, showDate = true, showList = false), rowModifier) {
-                Icon(
-                    AppIcons.DragHandle,
-                    stringResource(R.string.action_drag),
-                    tint = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.size(40.dp).padding(8.dp).dragHandle(reorder, task.id, viewModel::reorder),
-                )
+                if (ctx.selection.active) {
+                    Icon(
+                        AppIcons.DragHandle,
+                        stringResource(R.string.action_drag),
+                        tint = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(40.dp).padding(8.dp).dragHandle(reorder, task.id, viewModel::reorder),
+                    )
+                }
             }
         }
         completedSection(done, ctx, showDone, inList = true) { showDone = !showDone }

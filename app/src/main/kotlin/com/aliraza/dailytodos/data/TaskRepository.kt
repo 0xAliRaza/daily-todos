@@ -30,6 +30,9 @@ class TaskRepository(
     private val tasks = db.tasks()
     private val lists = db.lists()
 
+    /** What was done on each day, with the focus spent on it. */
+    val done = DoneLog(db, clock)
+
     private fun now(): Instant = clock.instant()
 
     private fun today(): LocalDate = LocalDate.now(clock)

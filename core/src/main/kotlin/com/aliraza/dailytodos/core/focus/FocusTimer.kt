@@ -37,6 +37,17 @@ data class FocusTimer(
         ?: endsAt?.let { Duration.between(now, it).coerceAtLeast(Duration.ZERO) }
         ?: Duration.ZERO
 
+    /**
+     * How much of the round has passed at [now], from 0 to 1: the elapsed share of [roundLength]. It holds
+     * still while paused, and is full while the break waits, as the focus round before it has ended.
+     * Zero when idle.
+     */
+    fun progress(now: Instant): Float {
+        val length = roundLength?.takeIf { isActive && !it.isZero } ?: return 0f
+        val elapsed = length.minus(remaining(now)).toMillis().toFloat()
+        return (elapsed / length.toMillis()).coerceIn(0f, 1f)
+    }
+
     companion object {
         val Idle = FocusTimer()
     }

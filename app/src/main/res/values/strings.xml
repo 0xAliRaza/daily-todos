@@ -47,12 +47,12 @@
     <string name="calendar_next">Later</string>
     <string name="calendar_nothing">Nothing on this day</string>
     <plurals name="calendar_hidden_above">
-        <item quantity="one">%1$d task above, show it</item>
-        <item quantity="other">%1$d tasks above, show them</item>
+        <item quantity="one">%1$d earlier</item>
+        <item quantity="other">%1$d earlier</item>
     </plurals>
     <plurals name="calendar_hidden_below">
-        <item quantity="one">%1$d task below, show it</item>
-        <item quantity="other">%1$d tasks below, show them</item>
+        <item quantity="one">%1$d later</item>
+        <item quantity="other">%1$d later</item>
     </plurals>
     <string name="completed_title">Completed · %1$d</string>
     <string name="completed_toggle">Show or hide completed tasks</string>
@@ -67,7 +67,6 @@
     <string name="action_focus">Focus</string>
     <string name="subtask_add_inline">Add a sub-task</string>
     <string name="lists_title">Lists</string>
-    <string name="list_default_tag">Default</string>
     <string name="list_new">New list</string>
     <string name="list_rename">Rename list</string>
     <string name="list_empty_title">Nothing here yet</string>
@@ -267,8 +266,6 @@
 
     <!-- Reminder health -->
     <string name="health_title">Reminder health</string>
-    <string name="health_all_good">Everything reminders need is in place.</string>
-    <string name="health_needs_attention">Something needs a tap before reminders are reliable.</string>
     <string name="health_checks">Checks</string>
     <string name="health_notifications">Notifications</string>
     <string name="health_allowed">Allowed</string>
@@ -282,10 +279,9 @@
     <string name="health_test_sent">A test reminder arrives in about a minute</string>
     <string name="health_history">Recent reminders</string>
     <string name="health_history_empty">No reminders yet.</string>
-    <string name="health_history_due">%1$s, due %2$s</string>
-    <string name="health_history_fired">Fired %1$s</string>
+    <string name="health_history_due">Due %1$s · Fired %2$s</string>
     <string name="health_on_time">On time</string>
-    <string name="health_late">%1$d min late</string>
+    <string name="health_late">%1$s late</string>
     <string name="health_history_note">History stays on this phone and stores no task titles.</string>
 
     <string-array name="steps_samsung">
@@ -324,4 +320,15 @@
     </string-array>
     <string name="week_previous">Previous week</string>
     <string name="week_next">Next week</string>
+    <!-- part C -->
+    <string name="list_default_mark">Default list</string>
+    <string name="calendar_done">Done · %1$d</string>
+    <string name="calendar_done_focused">Done · %1$d · %2$s focused</string>
+    <string name="calendar_done_at">Done %1$s</string>
+    <string name="calendar_done_at_focused">Done %1$s · Focused %2$s</string>
+    <string name="health_all_set">All set</string>
+    <plurals name="health_to_fix">
+        <item quantity="one">%1$d thing to fix</item>
+        <item quantity="other">%1$d things to fix</item>
+    </plurals>
 </resources>

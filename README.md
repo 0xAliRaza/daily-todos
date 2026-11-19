@@ -12,7 +12,7 @@ after a restart, or when the phone was switched off across the reminder time.
 
 - Lists (one built-in "Daily" list plus your own), sub-tasks, three optional priorities.
 - Four tabs: Today, Upcoming (with a week strip), a Day, 3-day, Week and Month Calendar, and Lists;
-  search; undo on every action.
+  swipe sideways to move between them; search; undo on every action.
 - Swipe a task right to focus on it, left to delete it. Reschedule from the task, from a multi-select, or
   every overdue task at once.
 - Pick the date, priority or list by hand while adding, or just type them.
@@ -21,7 +21,12 @@ after a restart, or when the phone was switched off across the reminder time.
   keeps a history of when each reminder was due and when it actually fired.
 - A focus timer for each task, with focus and break rounds whose ends are scheduled like reminders and
   signalled by sound, a long vibration or both. A bar shows the running round on every screen.
+- Drag around the focus dial to set a round's length; switch Caffeinated on to keep the screen awake
+  while a round counts down.
 - Focus stats: total focus time, today, this week, a 7-day chart and the tasks you focused on most.
+- The calendar shows what was done on a picked day and how long each task was focused.
+- A 12-hour or 24-hour clock, the week starting on the phone's first day or on Monday or Sunday, and
+  haptic feedback you can switch off.
 - Export and import of everything as one JSON file.
 
 ## What it does not do

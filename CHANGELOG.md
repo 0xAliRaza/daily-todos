@@ -21,6 +21,7 @@ versioning.
 - Haptic feedback for completing a task and the timer's controls, with a switch to turn it off.
 - The calendar shows what was done on a picked day and how long each task was focused.
 - A progress line on the now-focusing bar.
+- Times typed without a colon: "429pm", "4p", "1030a", "at 1630" and "1630h". A bare "429" stays text.
 
 ## 0.1.0 — 2026-11-18
 

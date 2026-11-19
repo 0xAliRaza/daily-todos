@@ -17,6 +17,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -32,7 +36,8 @@ import java.time.Instant
 
 /**
  * The timer at a glance from everywhere else: its task and the countdown, the accent during focus and
- * green for a break. A waiting break reads "Break time". A tap goes back to the timer.
+ * green for a break, with a thin line along the top that fills as the round goes. A waiting break reads
+ * "Break time". A tap goes back to the timer.
  */
 @Composable
 fun NowFocusingBar(timer: FocusTimer, title: String, now: () -> Instant, onOpen: () -> Unit) {
@@ -51,12 +56,17 @@ fun NowFocusingBar(timer: FocusTimer, title: String, now: () -> Instant, onOpen:
         timer.isPaused -> stringResource(R.string.focus_paused)
         else -> countdown(timer.remaining(at))
     }
+    val ink = if (focusing) tokens.accent else tokens.rest
+    val progress = timer.progress(at)
     Row(
-        Modifier.fillMaxWidth().background(scheme.surface).clickable(role = Role.Button, onClick = onOpen)
+        Modifier.fillMaxWidth().background(scheme.surface).drawWithContent {
+            drawContent()
+            progressLine(tokens.divider, ink, progress)
+        }.clickable(role = Role.Button, onClick = onOpen)
             .heightIn(min = 48.dp).padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(AppIcons.Timer, null, tint = if (focusing) tokens.accent else tokens.rest, modifier = Modifier.size(20.dp))
+        Icon(AppIcons.Timer, null, tint = ink, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Text(
             title,
@@ -73,5 +83,14 @@ fun NowFocusingBar(timer: FocusTimer, title: String, now: () -> Instant, onOpen:
         )
     }
 }
+
+/** The round's line along the bar's top edge: a hairline track, filled in [ink] up to [progress]. */
+private fun DrawScope.progressLine(track: Color, ink: Color, progress: Float) {
+    val height = ProgressHeight.toPx()
+    drawRect(track, size = Size(size.width, height))
+    drawRect(ink, size = Size(size.width * progress, height))
+}
+
+private val ProgressHeight = 2.dp
 
 private const val TICK_MS = 1_000L

@@ -13,8 +13,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,8 +35,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aliraza.dailytodos.R
-import com.aliraza.dailytodos.ui.components.AppIcons
-import com.aliraza.dailytodos.ui.components.TodayButton
+import com.aliraza.dailytodos.core.time.startOfWeek
+import com.aliraza.dailytodos.ui.components.DateNavLine
+import com.aliraza.dailytodos.ui.components.DateStep
 import com.aliraza.dailytodos.ui.components.rowDivider
 import com.aliraza.dailytodos.ui.components.sectionDay
 import com.aliraza.dailytodos.ui.components.weekdayShort
@@ -47,21 +46,21 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-import java.time.temporal.TemporalAdjusters
 
 private const val DAYS_SHOWN = 7L
 private val MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
 
-private fun mondayOf(day: LocalDate): LocalDate = day.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-
-/** Upcoming's strip: which week it shows and which day is picked. The add bar files new tasks under the pick. */
+/**
+ * Upcoming's strip: which week it shows and which day is picked. The add bar files new tasks under the pick.
+ * Weeks start on [firstDay].
+ */
 @Stable
-class UpcomingState(private val today: LocalDate) {
-    var weekStart by mutableStateOf(mondayOf(today))
+class UpcomingState(private val today: LocalDate, private val firstDay: DayOfWeek = DayOfWeek.MONDAY) {
+    var weekStart by mutableStateOf(today.startOfWeek(firstDay))
         private set
     var selected by mutableStateOf(today.plusDays(1))
 
-    val thisWeek: LocalDate get() = mondayOf(today)
+    val thisWeek: LocalDate get() = today.startOfWeek(firstDay)
     val isHome: Boolean get() = weekStart == thisWeek && selected == today.plusDays(1)
 
     /** The week shown, counted in weeks from this one: the strip's page. */
@@ -84,7 +83,7 @@ class UpcomingState(private val today: LocalDate) {
     /** Picks [day] as the list scrolls to it, bringing its week into the strip. */
     fun follow(day: LocalDate) {
         selected = day
-        weekStart = mondayOf(day)
+        weekStart = day.startOfWeek(firstDay)
     }
 
     fun home() {
@@ -129,30 +128,25 @@ fun dayAt(days: List<LocalDate>, taskCount: (LocalDate) -> Int, index: Int): Loc
 }
 
 /**
- * The week over the Upcoming list: the month with week arrows (and Today to come back), then Monday to
- * Sunday with a dot under days that have tasks. Tapping a day picks it; past days are greyed and inert.
+ * The week over the Upcoming list: the month with week arrows (and Today to come back) as the line under
+ * the page title, then the week's days with a dot under days that have tasks. Tapping a day picks it;
+ * past days are greyed and inert.
  * The days are pages: they follow the finger sideways and settle on the next or previous week, and the
  * arrows (or the list scrolling into another week) turn them the same way.
  */
 @Composable
 fun WeekStrip(state: UpcomingState, today: LocalDate, hasTasks: (LocalDate) -> Boolean, actions: WeekStripActions) {
-    Column(Modifier.rowDivider(MaterialTheme.tokens.divider, start = 0.dp).padding(horizontal = 12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                state.weekStart.format(MONTH),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f).padding(start = 8.dp),
-            )
-            if (!state.isHome) TodayButton(actions.onHome)
-            IconButton(onClick = { actions.onPage(false) }, enabled = state.weekStart.isAfter(state.thisWeek)) {
-                Icon(AppIcons.ChevronLeft, stringResource(R.string.week_previous))
-            }
-            IconButton(onClick = { actions.onPage(true) }) {
-                Icon(AppIcons.ChevronRight, stringResource(R.string.week_next))
-            }
-        }
-        WeekPager(state, today, hasTasks, actions)
+    Column(Modifier.rowDivider(MaterialTheme.tokens.divider, start = 0.dp)) {
+        DateNavLine(
+            state.weekStart.format(MONTH),
+            onToday = actions.onHome.takeIf { !state.isHome },
+            previous = DateStep(
+                stringResource(R.string.week_previous),
+                enabled = state.weekStart.isAfter(state.thisWeek),
+            ) { actions.onPage(false) },
+            next = DateStep(stringResource(R.string.week_next)) { actions.onPage(true) },
+        )
+        WeekPager(state, today, hasTasks, actions, Modifier.padding(horizontal = 12.dp))
     }
 }
 
@@ -166,6 +160,7 @@ private fun WeekPager(
     today: LocalDate,
     hasTasks: (LocalDate) -> Boolean,
     actions: WeekStripActions,
+    modifier: Modifier = Modifier,
 ) {
     val pager = rememberPagerState(initialPage = state.week) { UpcomingState.WEEKS }
     val onWeek by rememberUpdatedState(actions.onWeek)
@@ -173,7 +168,7 @@ private fun WeekPager(
     LaunchedEffect(state.week) { if (pager.currentPage != state.week) pager.animateScrollToPage(state.week) }
     // A swipe that settles on another week shows it.
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { onWeek(it) } }
-    HorizontalPager(pager, Modifier.fillMaxWidth().padding(bottom = 4.dp), key = { it }) { page ->
+    HorizontalPager(pager, modifier.fillMaxWidth().padding(bottom = 4.dp), key = { it }) { page ->
         val start = state.thisWeek.plusWeeks(page.toLong())
         Row(Modifier.fillMaxWidth()) {
             for (offset in 0 until DAYS_SHOWN) {

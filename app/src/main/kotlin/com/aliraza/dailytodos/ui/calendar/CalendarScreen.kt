@@ -12,25 +12,25 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,10 +59,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -70,19 +69,26 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aliraza.dailytodos.R
+import com.aliraza.dailytodos.core.focus.DoneDay
+import com.aliraza.dailytodos.core.focus.DoneTask
 import com.aliraza.dailytodos.core.model.Priority
 import com.aliraza.dailytodos.core.model.Task
 import com.aliraza.dailytodos.ui.AddButtonClearance
 import com.aliraza.dailytodos.ui.components.AppIcons
+import com.aliraza.dailytodos.ui.components.DateNavLine
+import com.aliraza.dailytodos.ui.components.DateStep
 import com.aliraza.dailytodos.ui.components.LocalClockFormat
+import com.aliraza.dailytodos.ui.components.LocalWeekStart
+import com.aliraza.dailytodos.ui.components.PillChoice
+import com.aliraza.dailytodos.ui.components.RoundCheck
 import com.aliraza.dailytodos.ui.components.SectionHeader
-import com.aliraza.dailytodos.ui.components.TodayButton
 import com.aliraza.dailytodos.ui.components.hourLabel
 import com.aliraza.dailytodos.ui.components.priorityColor
 import com.aliraza.dailytodos.ui.components.rowDivider
 import com.aliraza.dailytodos.ui.components.sectionDay
 import com.aliraza.dailytodos.ui.components.timeLabel
 import com.aliraza.dailytodos.ui.components.weekdayShort
+import com.aliraza.dailytodos.ui.focus.focusDuration
 import com.aliraza.dailytodos.ui.tasks.RowContext
 import com.aliraza.dailytodos.ui.tasks.TaskItem
 import com.aliraza.dailytodos.ui.tasks.TasksViewModel
@@ -98,7 +104,7 @@ private const val MINUTES_PER_HOUR = 60f
 private const val BLOCK_TINT = 0.16f
 private const val MONTH_DOTS = 3
 
-/** The chevron turned to point up. */
+/** The arrow turned to point down. */
 private const val UPSIDE_DOWN = 180f
 
 /** Hours shown above the current time when a view opens, so "now" sits near the top. */
@@ -138,68 +144,50 @@ fun CalendarContent(viewModel: TasksViewModel, ctx: RowContext, state: CalendarS
         Header(state, ctx.today)
         ModeTabs(state)
         if (state.mode == CalendarMode.MONTH) {
-            MonthView(state, ctx, tasks, padding.calculateBottomPadding())
+            MonthView(viewModel, state, ctx, tasks, padding.calculateBottomPadding())
         } else {
             TimeGrid(state, ctx, tasks, settings.defaultReminderTime, padding.calculateBottomPadding())
         }
     }
 }
 
+/** The month under the page title, with Today and the arrows that step the view. */
 @Composable
 private fun Header(state: CalendarState, today: LocalDate) {
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            state.anchor.format(MONTH_YEAR),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.weight(1f),
-        )
-        if (state.anchor != today) TodayButton(onClick = { state.anchor = today })
-        IconButton(onClick = { state.anchor = step(state.mode, state.anchor, forward = false) }) {
-            Icon(AppIcons.ChevronLeft, stringResource(R.string.calendar_previous))
-        }
-        IconButton(onClick = { state.anchor = step(state.mode, state.anchor, forward = true) }) {
-            Icon(AppIcons.ChevronRight, stringResource(R.string.calendar_next))
-        }
-    }
+    DateNavLine(
+        state.anchor.format(MONTH_YEAR),
+        onToday = { state.anchor = today }.takeIf { state.anchor != today },
+        previous = DateStep(stringResource(R.string.calendar_previous)) {
+            state.anchor = step(state.mode, state.anchor, forward = false)
+        },
+        next = DateStep(stringResource(R.string.calendar_next)) {
+            state.anchor = step(state.mode, state.anchor, forward = true)
+        },
+    )
 }
 
 @Composable
 private fun ModeTabs(state: CalendarState) {
-    val labels = mapOf(
-        CalendarMode.DAY to R.string.calendar_day,
-        CalendarMode.THREE_DAYS to R.string.calendar_three_days,
-        CalendarMode.WEEK to R.string.calendar_week,
-        CalendarMode.MONTH to R.string.calendar_month,
-    )
-    val scheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
-    Row(
-        Modifier.padding(horizontal = 12.dp, vertical = 6.dp).fillMaxWidth().clip(CircleShape)
-            .background(scheme.surfaceVariant).padding(3.dp),
-    ) {
-        labels.forEach { (mode, label) ->
-            val on = state.mode == mode
-            ModeTab(stringResource(label), on) {
-                // Month again while folded opens the whole month.
-                if (on && mode == CalendarMode.MONTH) scope.launch { state.fold.unfold() }
-                state.mode = mode
-            }
-        }
-    }
+    PillChoice(
+        options = CalendarMode.entries,
+        selected = state.mode,
+        label = { stringResource(modeLabel(it)) },
+        onPick = { mode ->
+            // Month again while folded opens the whole month.
+            if (mode == state.mode && mode == CalendarMode.MONTH) scope.launch { state.fold.unfold() }
+            state.mode = mode
+        },
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp).fillMaxWidth(),
+        fill = true,
+    )
 }
 
-@Composable
-private fun RowScope.ModeTab(label: String, on: Boolean, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Text(
-        label,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-        color = if (on) scheme.onSurface else scheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.weight(1f).clip(CircleShape).background(if (on) scheme.surface else Color.Transparent)
-            .clickable(role = Role.Tab, onClick = onClick).padding(vertical = 7.dp),
-    )
+private fun modeLabel(mode: CalendarMode): Int = when (mode) {
+    CalendarMode.DAY -> R.string.calendar_day
+    CalendarMode.THREE_DAYS -> R.string.calendar_three_days
+    CalendarMode.WEEK -> R.string.calendar_week
+    CalendarMode.MONTH -> R.string.calendar_month
 }
 
 // Day, 3 days, week
@@ -212,7 +200,7 @@ private fun TimeGrid(
     untimedAt: LocalTime,
     bottom: Dp,
 ) {
-    val days = visibleDays(state.mode, state.anchor)
+    val days = visibleDays(state.mode, state.anchor, LocalWeekStart.current)
     val hour = if (state.mode == CalendarMode.WEEK) 48.dp else 56.dp
     val scroll = rememberScrollState()
     val hourPx = with(LocalDensity.current) { hour.toPx() }
@@ -246,8 +234,8 @@ private fun TimeGrid(
 private data class Placed(val task: Task, val at: LocalTime)
 
 /**
- * "↑ 2" at the top and "↓ 3" at the bottom while tasks are scrolled out of view; tapping one scrolls
- * to the nearest of them. Nothing shows when every task is in view.
+ * "↑ 2 earlier" at the top and "↓ 3 later" at the bottom while tasks are scrolled out of view; tapping
+ * one scrolls to the nearest of them. Nothing shows when every task is in view.
  */
 @Composable
 private fun BoxScope.OffscreenHints(times: List<LocalTime>, scroll: ScrollState, hourPx: Float, bottom: Dp) {
@@ -283,19 +271,18 @@ private fun HintPill(up: Boolean, count: Int, modifier: Modifier, onClick: () ->
     )
     Row(
         modifier.shadow(2.dp, CircleShape).clip(CircleShape).background(scheme.surface)
-            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = label }
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            AppIcons.ChevronDown,
+            AppIcons.ArrowUp,
             null,
             tint = scheme.secondary,
-            modifier = Modifier.size(16.dp).rotate(if (up) UPSIDE_DOWN else 0f),
+            modifier = Modifier.size(14.dp).rotate(if (up) 0f else UPSIDE_DOWN),
         )
         Spacer(Modifier.width(4.dp))
-        Text(count.toString(), style = MaterialTheme.typography.labelMedium, color = scheme.secondary)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = scheme.secondary)
     }
 }
 
@@ -418,8 +405,16 @@ private fun Block(task: Task, ctx: RowContext, time: LocalTime?, modifier: Modif
 // Month
 
 @Composable
-private fun MonthView(state: CalendarState, ctx: RowContext, tasks: Map<LocalDate, List<Task>>, bottom: Dp) {
-    val days = visibleDays(CalendarMode.MONTH, state.anchor)
+private fun MonthView(
+    viewModel: TasksViewModel,
+    state: CalendarState,
+    ctx: RowContext,
+    tasks: Map<LocalDate, List<Task>>,
+    bottom: Dp,
+) {
+    val days = visibleDays(CalendarMode.MONTH, state.anchor, LocalWeekStart.current)
+    val done by remember(days.first(), days.last()) { viewModel.doneBetween(days.first(), days.last()) }
+        .collectAsStateWithLifecycle(emptyMap())
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
         days.take(DAYS_IN_WEEK).forEach { day ->
             Text(
@@ -440,18 +435,26 @@ private fun MonthView(state: CalendarState, ctx: RowContext, tasks: Map<LocalDat
         weeks.forEach { week ->
             Row(Modifier.fillMaxWidth().height(MonthRowHeight)) {
                 week.forEach { day ->
-                    MonthCell(day, state, ctx.today, tasks[day].orEmpty(), Modifier.weight(1f))
+                    MonthCell(
+                        day,
+                        state,
+                        ctx.today,
+                        tasks[day].orEmpty(),
+                        done[day]?.tasks?.size ?: 0,
+                        Modifier.weight(1f),
+                    )
                 }
             }
         }
     }
     val picked = tasks[state.anchor].orEmpty()
+    val pickedDone = done[state.anchor] ?: DoneDay.None
     LazyColumn(
         Modifier.fillMaxSize().nestedScroll(connection),
         contentPadding = PaddingValues(bottom = bottom),
     ) {
         item { SectionHeader(sectionDay(state.anchor, ctx.today)) }
-        if (picked.isEmpty()) {
+        if (picked.isEmpty() && pickedDone.tasks.isEmpty()) {
             item {
                 Text(
                     stringResource(R.string.calendar_nothing),
@@ -462,6 +465,75 @@ private fun MonthView(state: CalendarState, ctx: RowContext, tasks: Map<LocalDat
             }
         }
         items(picked, key = { it.id }) { task -> TaskItem(task, ctx, ctx.meta(task, showDate = false)) }
+        doneSection(pickedDone, ctx)
+    }
+}
+
+/**
+ * What was ticked off on the picked day, under its open tasks: "Done · 3 · 1 h 20 min focused", then
+ * each task crossed out with when it was done and its focus that day. Tapping one opens it, where it can
+ * be reopened.
+ */
+private fun LazyListScope.doneSection(done: DoneDay, ctx: RowContext) {
+    if (done.tasks.isEmpty()) return
+    item(key = "done") { DoneHeader(done) }
+    // Keyed apart from the open rows, so a task reopened a moment ago never shares a key with itself.
+    items(done.tasks, key = { "done-${it.task.id}" }) { DoneRow(it, ctx) }
+}
+
+/** A quiet line, like the folded "Completed" one elsewhere, so done tasks don't compete with open ones. */
+@Composable
+private fun DoneHeader(done: DoneDay) {
+    val count = done.tasks.size
+    Text(
+        if (done.focused.toMinutes() > 0) {
+            stringResource(R.string.calendar_done_focused, count, focusDuration(done.focused))
+        } else {
+            stringResource(R.string.calendar_done, count)
+        },
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 14.dp, top = 14.dp, bottom = 8.dp),
+    )
+}
+
+/** A done task: its ticked box, its title crossed out and "Done 3:12 PM · Focused 45 min". */
+@Composable
+private fun DoneRow(done: DoneTask, ctx: RowContext) {
+    val task = done.task
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        Modifier.fillMaxWidth().rowDivider(MaterialTheme.tokens.divider)
+            .clickable { if (ctx.selection.active) ctx.selection.toggle(task.id) else ctx.open(task.id) }
+            .heightIn(min = 48.dp).padding(start = 8.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+    ) {
+        RoundCheck(checked = true, onClick = { ctx.toggle(task) }, priority = task.priority)
+        Spacer(Modifier.width(4.dp))
+        Column(
+            Modifier.weight(1f).padding(top = 9.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                task.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = muted,
+                textDecoration = TextDecoration.LineThrough,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(doneMeta(done), style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1)
+        }
+    }
+}
+
+/** "Done 3:12 PM · Focused 45 min", or just "Done 3:12 PM" without focus that day. */
+@Composable
+private fun doneMeta(done: DoneTask): String {
+    val at = timeLabel(done.at)
+    return if (done.focused.toMinutes() > 0) {
+        stringResource(R.string.calendar_done_at_focused, at, focusDuration(done.focused))
+    } else {
+        stringResource(R.string.calendar_done_at, at)
     }
 }
 
@@ -504,16 +576,26 @@ private class FoldConnection(private val fold: MonthFold, private val max: Float
     }
 }
 
-/** A day of the month: its number, filled when picked, accent when today; dots for its tasks. */
+/**
+ * A day of the month: its number, filled when picked, accent when today, greyed when past or outside
+ * the month; dots for its open tasks, then grey ones for what was done that day.
+ */
 @Composable
-private fun MonthCell(day: LocalDate, state: CalendarState, today: LocalDate, tasks: List<Task>, modifier: Modifier) {
+private fun MonthCell(
+    day: LocalDate,
+    state: CalendarState,
+    today: LocalDate,
+    open: List<Task>,
+    done: Int,
+    modifier: Modifier,
+) {
     val scheme = MaterialTheme.colorScheme
     val picked = day == state.anchor
     val inMonth = day.month == state.anchor.month
     val ink = when {
         picked -> scheme.onPrimary
         day == today -> scheme.secondary
-        inMonth -> scheme.onBackground
+        inMonth && !day.isBefore(today) -> scheme.onBackground
         else -> scheme.outline
     }
     Column(
@@ -532,13 +614,21 @@ private fun MonthCell(day: LocalDate, state: CalendarState, today: LocalDate, ta
             )
         }
         Row(Modifier.height(8.dp).padding(top = 3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            tasks.take(MONTH_DOTS).forEach { task ->
-                val dot = if (task.priority == Priority.NONE) scheme.outline else priorityColor(task.priority)
-                Box(Modifier.size(5.dp).clip(CircleShape).background(dot))
+            open.take(MONTH_DOTS).forEach { task ->
+                Dot(if (task.priority == Priority.NONE) scheme.outline else priorityColor(task.priority))
+            }
+            repeat(done.coerceAtMost((MONTH_DOTS - open.size).coerceAtLeast(0))) {
+                Dot(scheme.outline.copy(alpha = DONE_DOT_ALPHA))
             }
         }
     }
 }
+
+@Composable
+private fun Dot(color: Color) = Box(Modifier.size(5.dp).clip(CircleShape).background(color))
+
+/** Done dots are a paler grey than an open task's, so the two still read apart. */
+private const val DONE_DOT_ALPHA = 0.4f
 
 private const val DAYS_IN_WEEK = 7
 

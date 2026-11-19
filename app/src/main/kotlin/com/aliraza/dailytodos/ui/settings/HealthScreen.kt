@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -44,20 +45,17 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aliraza.dailytodos.R
 import com.aliraza.dailytodos.core.model.ReminderLogEntry
+import com.aliraza.dailytodos.core.reminder.Lateness
+import com.aliraza.dailytodos.core.reminder.lateness
 import com.aliraza.dailytodos.reminder.canPostNotifications
 import com.aliraza.dailytodos.ui.components.AppIcons
 import com.aliraza.dailytodos.ui.components.dayLabel
 import com.aliraza.dailytodos.ui.components.timeLabel
-import java.time.Duration
+import com.aliraza.dailytodos.ui.focus.focusDuration
+import com.aliraza.dailytodos.ui.theme.tokens
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import android.provider.Settings as AndroidSettings
-
-/** A reminder that fired within this long of its time counts as on time. */
-private val ON_TIME: Duration = Duration.ofSeconds(60)
-
-internal data class Check(val title: Int, val ok: Boolean, val okHint: Int, val fixHint: Int, val fix: (() -> Unit)?)
 
 /** The reminder checks, run again whenever the app comes back to the front. Settings shows their summary. */
 @Composable
@@ -67,6 +65,8 @@ internal fun rememberHealthChecks(dndOverride: Boolean): List<Check> {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumed++ }
     return remember(resumed, dndOverride) { checks(context) }
 }
+
+internal data class Check(val title: Int, val ok: Boolean, val okHint: Int, val fixHint: Int, val fix: (() -> Unit)?)
 
 /** Every permission and battery setting reminders depend on, the maker's steps, a test and the history. */
 @Composable
@@ -79,12 +79,7 @@ fun HealthScreen(viewModel: SettingsViewModel, padding: PaddingValues) {
     val appName = stringResource(R.string.app_name)
     val testTitle = stringResource(R.string.health_test_title, appName)
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-        Text(
-            stringResource(if (checks.all { it.ok }) R.string.health_all_good else R.string.health_needs_attention),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 28.dp),
-        )
+        StatusBanner(checks.count { !it.ok })
         Group(R.string.health_checks) { checks.forEach { CheckRow(it) } }
         Group(R.string.health_maker_steps) {
             val steps = stringArrayResource(makerSteps()).map { it.format(appName) }
@@ -137,6 +132,25 @@ fun HealthScreen(viewModel: SettingsViewModel, padding: PaddingValues) {
     }
 }
 
+/** "All set" with a green tick, or how many checks need a tap, with an amber mark. */
+@Composable
+private fun StatusBanner(toFix: Int) {
+    val text = if (toFix == 0) {
+        stringResource(R.string.health_all_set)
+    } else {
+        pluralStringResource(R.plurals.health_to_fix, toFix, toFix)
+    }
+    Row(
+        Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        StatusDot(ok = toFix == 0)
+        Spacer(Modifier.width(14.dp))
+        Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
 @Composable
 private fun CheckRow(check: Check) {
     val scheme = MaterialTheme.colorScheme
@@ -156,54 +170,49 @@ private fun CheckRow(check: Check) {
     }
 }
 
+/** A green tick for a pass, an amber mark for something to fix, each on a faint ring of its colour. */
 @Composable
 private fun StatusDot(ok: Boolean) {
-    val scheme = MaterialTheme.colorScheme
+    val ink = if (ok) MaterialTheme.tokens.rest else MaterialTheme.tokens.warning
     Box(
-        Modifier.size(28.dp).clip(CircleShape).background(if (ok) scheme.surfaceVariant else scheme.primaryContainer),
+        Modifier.size(28.dp).clip(CircleShape).background(ink.copy(alpha = DOT_TINT)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            if (ok) AppIcons.Check else AppIcons.Info,
-            null,
-            tint = if (ok) scheme.onSurfaceVariant else scheme.onPrimaryContainer,
-            modifier = Modifier.size(16.dp),
-        )
+        Icon(if (ok) AppIcons.Check else AppIcons.Alert, null, tint = ink, modifier = Modifier.size(18.dp))
     }
 }
+
+private const val DOT_TINT = 0.14f
 
 @Composable
 private fun HistoryRow(entry: ReminderLogEntry, zone: ZoneId) {
     val due = entry.dueAt.atZone(zone)
     val fired = entry.firedAt.atZone(zone)
-    val late = Duration.between(entry.dueAt, entry.firedAt)
-    val onTime = late <= ON_TIME
+    val late = lateness(entry.dueAt, entry.firedAt)
     val scheme = MaterialTheme.colorScheme
+    val lateInk = if (late is Lateness.Late) MaterialTheme.tokens.warning else scheme.onSurfaceVariant
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RowText(
-            stringResource(
-                R.string.health_history_due,
-                dayLabel(due.toLocalDate(), LocalDate.now(zone)),
-                timeLabel(due.toLocalTime()),
-            ),
-            stringResource(R.string.health_history_fired, fired.format(SECONDS)),
+            dayLabel(due.toLocalDate(), LocalDate.now(zone)),
+            stringResource(R.string.health_history_due, timeLabel(due.toLocalTime()), timeLabel(fired.toLocalTime())),
             Modifier.weight(1f),
         )
         Text(
-            if (onTime) {
-                stringResource(
-                    R.string.health_on_time,
-                )
-            } else {
-                stringResource(R.string.health_late, late.toMinutes().coerceAtLeast(1))
-            },
+            latenessLabel(late),
             style = MaterialTheme.typography.labelMedium,
-            color = if (onTime) scheme.onSurfaceVariant else scheme.secondary,
+            color = lateInk,
         )
     }
+}
+
+/** "On time", or "3 h 42 min late". */
+@Composable
+private fun latenessLabel(late: Lateness): String = when (late) {
+    Lateness.OnTime -> stringResource(R.string.health_on_time)
+    is Lateness.Late -> stringResource(R.string.health_late, focusDuration(late.by))
 }
 
 private fun checks(context: Context): List<Check> {
@@ -259,5 +268,3 @@ private fun makerSteps(): Int = when (Build.MANUFACTURER.lowercase()) {
     "tecno", "infinix", "itel" -> R.array.steps_transsion
     else -> R.array.steps_generic
 }
-
-private val SECONDS: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")

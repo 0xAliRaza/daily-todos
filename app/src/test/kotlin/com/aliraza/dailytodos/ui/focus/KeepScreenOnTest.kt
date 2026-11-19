@@ -15,6 +15,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.aliraza.dailytodos.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -71,5 +72,11 @@ class KeepScreenOnTest {
         toggle.performClick()
         toggle.assertIsOff()
         assertEquals(listOf(true, false), picks)
+    }
+
+    @Test
+    fun flippingItSaysWhatItNowDoes() {
+        assertEquals(R.string.keep_screen_on_notice_on, keepScreenOnNotice(on = true))
+        assertEquals(R.string.keep_screen_on_notice_off, keepScreenOnNotice(on = false))
     }
 }

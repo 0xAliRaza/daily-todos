@@ -2,6 +2,7 @@ package com.aliraza.dailytodos.ui.focus
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aliraza.dailytodos.R
 import com.aliraza.dailytodos.core.focus.FocusPresets
 import com.aliraza.dailytodos.core.focus.FocusStats
 import com.aliraza.dailytodos.core.focus.FocusTimer
@@ -14,6 +15,8 @@ import com.aliraza.dailytodos.data.TaskRepository
 import com.aliraza.dailytodos.data.TimerRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -108,7 +111,16 @@ class FocusViewModel(
 
     fun setSignal(signal: TimerSignal) = launch { settingsRepo.update { it.copy(timerSignal = signal) } }
 
-    fun setKeepScreenOn(on: Boolean) = launch { settingsRepo.update { it.copy(keepScreenOn = on) } }
+    private val noticeEvents = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+
+    /** A short word on what a tap just did, as a string resource, for the app's snackbar. */
+    val notices: SharedFlow<Int> = noticeEvents
+
+    /** Flips keep-screen-on from the timer and says what it now does. */
+    fun setKeepScreenOn(on: Boolean) = launch {
+        settingsRepo.update { it.copy(keepScreenOn = on) }
+        noticeEvents.emit(keepScreenOnNotice(on))
+    }
 
     private fun launch(block: suspend () -> Unit) {
         viewModelScope.launch { block() }
@@ -118,3 +130,7 @@ class FocusViewModel(
         const val STOP_MS = 5_000L
     }
 }
+
+/** What the timer's keep-screen-on toggle says once flipped [on] or off. */
+internal fun keepScreenOnNotice(on: Boolean): Int =
+    if (on) R.string.keep_screen_on_notice_on else R.string.keep_screen_on_notice_off

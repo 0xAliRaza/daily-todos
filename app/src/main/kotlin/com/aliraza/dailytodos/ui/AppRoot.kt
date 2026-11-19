@@ -151,6 +151,7 @@ fun AppRoot(
 
     val snackbar = remember { SnackbarHostState() }
     UndoSnackbars(tasks, snackbar)
+    FocusNotices(focus, snackbar)
     val ctx = rememberRowContext(
         tasks,
         selection,
@@ -461,6 +462,15 @@ private fun BottomBars(
         } else if (showAdd || focusing != null) {
             Spacer(Modifier.navigationBarsPadding())
         }
+    }
+}
+
+/** The timer's short words on what a tap did, in the same snackbar as undo. */
+@Composable
+private fun FocusNotices(focus: FocusViewModel, host: SnackbarHostState) {
+    val resources = LocalResources.current
+    LaunchedEffect(focus) {
+        focus.notices.collectLatest { host.showSnackbar(resources.getString(it), duration = SnackbarDuration.Short) }
     }
 }
 

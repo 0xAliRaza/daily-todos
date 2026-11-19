@@ -201,7 +201,7 @@ fun AppRoot(
     ) { padding ->
         val screens = Screens(tasks, settings, focus, ctx, upcoming, calendar, nav)
         val onTab = nav::tab.takeIf { !selection.active && !quickAdd.open }
-        Pages(pages, screens, topBar, padding, PageInput(quickAdd.focused, quickAdd.open, tabSeek, onTab))
+        Pages(pages, screens, topBar, padding, PageInput(route, quickAdd.focused, quickAdd.open, tabSeek, onTab))
     }
     rescheduling?.let { ids -> RescheduleHost(tasks, ids) { rescheduling = null } }
     sheetTask?.let { id ->
@@ -283,11 +283,16 @@ private fun Pages(
     padding: PaddingValues,
     input: PageInput,
 ) {
-    transition.AnimatedContent(transitionSpec = { pageTransform() }, contentKey = { it.last() }) { stack ->
+    // The swipe is read here, outside the pages: the pages move with the finger, so a reading taken on
+    // them would see only part of each move and the page would trail behind it.
+    transition.AnimatedContent(
+        transitionSpec = { pageTransform() },
+        contentKey = { it.last() },
+        modifier = Modifier.tabSwipe(input.tabSeek, input.route, input.onTab),
+    ) { stack ->
         val shown = stack.last()
         Scaffold(
-            modifier = Modifier.graphicsLayer { translationX = input.tabSeek.stretch.value }
-                .tabSwipe(input.tabSeek, shown, input.onTab),
+            modifier = Modifier.graphicsLayer { translationX = input.tabSeek.stretch.value },
             topBar = { topBar(shown) },
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0),
@@ -302,10 +307,11 @@ private fun Pages(
 }
 
 /**
- * What the pages need from the bars around them: whether the add bar is [typing] or [addBarOpen], and
- * the tab swipe ([onTab] null while it is off).
+ * What the pages need from around them: the [route] in front, whether the add bar is [typing] or
+ * [addBarOpen], and the tab swipe ([onTab] null while it is off).
  */
 private class PageInput(
+    val route: String,
     val typing: Boolean,
     val addBarOpen: Boolean,
     val tabSeek: TabSeek,

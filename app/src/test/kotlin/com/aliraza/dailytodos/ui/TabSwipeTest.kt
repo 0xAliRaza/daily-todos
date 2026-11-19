@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.unit.dp
@@ -66,6 +67,22 @@ class TabSwipeTest {
         assertEquals(1, tabSide(Route.TODAY, Route.CALENDAR))
         assertEquals(-1, tabSide(Route.LISTS, Route.UPCOMING))
         assertEquals(0, tabSide(Route.TODAY, Route.SETTINGS))
+    }
+
+    @Test
+    fun aShortQuickFlickSwitchesTabsAndAShortSlowDragDoesNot() {
+        val picked = mutableListOf<String>()
+        compose.setContent {
+            Box(Modifier.size(400.dp).testTag("page").tabSwipe(rememberTabSeek(), Route.UPCOMING) { picked += it })
+        }
+        // A flick of a sixth of the width in 50 ms, and the same distance dragged over a second.
+        compose.onNodeWithTag("page").performTouchInput {
+            swipe(center, center.copy(x = center.x - width / 6f), durationMillis = 50)
+        }
+        compose.onNodeWithTag("page").performTouchInput {
+            swipe(center, center.copy(x = center.x + width / 6f), durationMillis = 1000)
+        }
+        assertEquals(listOf(Route.CALENDAR), picked)
     }
 
     @Test

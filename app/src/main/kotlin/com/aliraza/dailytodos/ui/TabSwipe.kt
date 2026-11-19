@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -99,7 +100,7 @@ internal fun Modifier.tabSwipe(seek: TabSeek, route: String, onTab: ((String) ->
             onDragCancel = { seek.end() },
         ) { change, amount ->
             change.consume()
-            velocity.addPosition(change.uptimeMillis, change.position)
+            velocity.addPointerInputChange(change)
             dx += amount
             val target = swipedTab(route, dx, threshold = 0f)
             val fraction = if (target == null) 0f else seekFraction(abs(dx) / size.width)

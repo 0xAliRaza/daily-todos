@@ -73,11 +73,10 @@ internal fun AnimatedContentTransitionScope<List<String>>.pageTransform(): Conte
         TransitionKind.TAB -> when (val side = tabSide(initialState.first(), targetState.first())) {
             0 -> fadeIn() togetherWith fadeOut()
 
+            // Side by side like a pager, no fade: the two pages stay fully drawn under the finger.
             else ->
-                slideInHorizontally(tween(PAGE_MS, easing = FastOutSlowInEasing)) { side * it } +
-                    fadeIn(tween(PAGE_MS)) togetherWith
-                    slideOutHorizontally(tween(PAGE_MS, easing = FastOutSlowInEasing)) { -side * it } +
-                    fadeOut(tween(PAGE_MS))
+                slideInHorizontally(tween(PAGE_MS, easing = PageEasing)) { side * it } togetherWith
+                    slideOutHorizontally(tween(PAGE_MS, easing = PageEasing)) { -side * it }
         }
 
         TransitionKind.PUSH ->

@@ -179,7 +179,7 @@ fun AppRoot(
         },
     ) { padding ->
         val screens = Screens(tasks, settings, focus, ctx, upcoming, calendar, nav)
-        Pages(pages, screens, topBar, padding, typing = quickAdd.focused)
+        Pages(pages, screens, topBar, padding, typing = quickAdd.focused, addBarOpen = quickAdd.open)
     }
     rescheduling?.let { ids -> RescheduleHost(tasks, ids) { rescheduling = null } }
     sheetTask?.let { id ->
@@ -225,6 +225,9 @@ private fun nowFocusing(focus: FocusViewModel, route: String, onOpen: (String) -
 /** Whether [route] has the + button that adds tasks: the dated views and every list. */
 private fun showsAdd(route: String): Boolean = route in Route.takesTasks || route.listId() != null
 
+/** Whether [route] keeps room at its bottom for the + button: only while the button shows. */
+internal fun clearsAddButton(route: String, addBarOpen: Boolean): Boolean = showsAdd(route) && !addBarOpen
+
 /** The selection bar while [selecting] several tasks, else [route]'s title bar. */
 @Composable
 private fun RootTopBar(
@@ -254,6 +257,7 @@ private fun Pages(
     topBar: @Composable (String) -> Unit,
     padding: PaddingValues,
     typing: Boolean,
+    addBarOpen: Boolean,
 ) {
     transition.AnimatedContent(transitionSpec = { pageTransform() }, contentKey = { it.last() }) { stack ->
         val shown = stack.last()
@@ -264,7 +268,7 @@ private fun Pages(
         ) { inner ->
             val page = PaddingValues(top = inner.calculateTopPadding(), bottom = padding.calculateBottomPadding())
             KeyboardGuardBox(alsoWhen = typing) {
-                RouteContent(shown, screens, if (showsAdd(shown)) page.clearOfAddButton() else page)
+                RouteContent(shown, screens, if (clearsAddButton(shown, addBarOpen)) page.clearOfAddButton() else page)
             }
         }
     }

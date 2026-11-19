@@ -95,7 +95,8 @@ data class SettingsEntity(
     @ColumnInfo(name = "dnd_override") val dndOverride: Boolean,
     @ColumnInfo(name = "focus_minutes") val focusMinutes: Int,
     @ColumnInfo(name = "break_minutes") val breakMinutes: Int,
-    @ColumnInfo(name = "breaks_enabled") val breaksEnabled: Boolean,
+    @ColumnInfo(name = "focus_custom_minutes", defaultValue = "90") val focusCustomMinutes: Int,
+    @ColumnInfo(name = "break_custom_minutes", defaultValue = "20") val breakCustomMinutes: Int,
     @ColumnInfo(name = "timer_signal") val timerSignal: String,
     val theme: String,
     @ColumnInfo(name = "last_backup_at") val lastBackupAt: Instant?,
@@ -105,7 +106,10 @@ data class SettingsEntity(
     }
 }
 
-/** The focus timer, persisted so it survives the process being killed. One row, like settings. */
+/**
+ * The focus timer, persisted so it survives the process being killed. One row, like settings. The task
+ * has no foreign key: the timer engine stops a timer whose task is done or gone.
+ */
 @Entity(tableName = "timer_state")
 data class TimerStateEntity(
     @PrimaryKey val id: Int = SettingsEntity.SINGLE_ROW,
@@ -113,5 +117,35 @@ data class TimerStateEntity(
     @ColumnInfo(name = "ends_at") val endsAt: Instant?,
     @ColumnInfo(name = "task_id") val taskId: String?,
     @ColumnInfo(name = "paused_remaining_ms") val pausedRemainingMs: Long?,
-    val round: Int,
+    @ColumnInfo(name = "round_ms") val roundMs: Long?,
 )
+
+/**
+ * One stretch of focus, written when it ends. Deleting a task for good keeps its time in the totals:
+ * [taskId] becomes null.
+ */
+@Entity(
+    tableName = "focus_sessions",
+    foreignKeys = [
+        ForeignKey(
+            entity = TaskEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["task_id"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
+    indices = [Index("task_id"), Index("ended_at")],
+)
+data class FocusSessionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(name = "task_id") val taskId: String?,
+    @ColumnInfo(name = "started_at") val startedAt: Instant,
+    @ColumnInfo(name = "ended_at") val endedAt: Instant,
+    @ColumnInfo(name = "focused_ms") val focusedMs: Long,
+)
+
+/** A task's focus so far, as [FocusSessionDao.observeForTask] reads it. */
+data class TaskFocusRow(val focusedMs: Long, val sessions: Int)
+
+/** A task's id and title, as [TaskDao.observeKeptTitles] reads them. */
+data class TaskTitleRow(val id: String, val title: String)

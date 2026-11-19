@@ -57,6 +57,22 @@ class UpcomingStateTest {
     }
 
     @Test
+    fun aSwipeShowsTheWeekItSettledOnOnce() {
+        val today = LocalDate.of(2026, 11, 18)
+        val state = UpcomingState(today)
+        // This week is already shown, and there is nothing before it or past the last page.
+        assertEquals(null, state.showWeek(0))
+        assertEquals(null, state.showWeek(-1))
+        assertEquals(null, state.showWeek(UpcomingState.WEEKS))
+        assertEquals(LocalDate.of(2026, 11, 30), state.showWeek(2))
+        assertEquals(2, state.week)
+        assertEquals(null, state.showWeek(2))
+        // The list following a day into another week moves the page with it.
+        state.follow(LocalDate.of(2026, 12, 9))
+        assertEquals(3, state.week)
+    }
+
+    @Test
     fun theTopItemBelongsToTheNearestHeaderAboveIt() {
         assertEquals(mon, dayAt(days, count, 0))
         assertEquals(mon, dayAt(days, count, 2))

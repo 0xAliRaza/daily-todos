@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,10 +43,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -65,6 +68,7 @@ import com.aliraza.dailytasks.data.SubtaskProgress
 import com.aliraza.dailytasks.ui.components.AppIcons
 import com.aliraza.dailytasks.ui.components.DateTone
 import com.aliraza.dailytasks.ui.components.EmptyState
+import com.aliraza.dailytasks.ui.components.HeaderAction
 import com.aliraza.dailytasks.ui.components.RoundCheck
 import com.aliraza.dailytasks.ui.components.RowMeta
 import com.aliraza.dailytasks.ui.components.SectionHeader
@@ -114,6 +118,7 @@ class RowContext(
     val addSubtask: (taskId: String, title: String) -> Unit = { _, _ -> },
     val delete: (Task) -> Unit = {},
     val reschedule: (List<String>) -> Unit = {},
+    val focus: (String) -> Unit = {},
 ) {
     val today: LocalDate get() = now.toLocalDate()
 
@@ -135,12 +140,13 @@ fun rememberRowContext(
     viewModel: TasksViewModel,
     selection: Selection,
     onReschedule: (List<String>) -> Unit,
+    onFocus: (String) -> Unit,
     open: (String) -> Unit,
 ): RowContext {
     val now by viewModel.now.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val progress by viewModel.subtaskProgress.collectAsStateWithLifecycle()
-    return remember(now, lists, selection, open, progress, onReschedule) {
+    return remember(now, lists, selection, open, progress, onReschedule, onFocus) {
         RowContext(
             now,
             lists.associateBy { it.id },
@@ -153,6 +159,7 @@ fun rememberRowContext(
             addSubtask = viewModel::addSubtask,
             delete = { task -> viewModel.delete(listOf(task.id)) },
             reschedule = onReschedule,
+            focus = onFocus,
         )
     }
 }
@@ -171,8 +178,8 @@ internal fun TaskItem(
     val fold = meta.subtasks?.let { SubtaskFold(open, onToggle = { open = !open }) { InlineSubtasks(task.id, ctx) } }
     SwipeRow(
         enabled = !ctx.selection.active,
-        canReschedule = task.completedAt == null,
-        onReschedule = { ctx.reschedule(listOf(task.id)) },
+        canFocus = task.completedAt == null,
+        onFocus = { ctx.focus(task.id) },
         onDelete = { ctx.delete(task) },
         modifier = modifier,
     ) {
@@ -190,17 +197,18 @@ internal fun TaskItem(
     }
 }
 
-/** The sub-tasks under an open row: tap one, box or text, to tick it. */
+/**
+ * The sub-tasks under an open row, one step in from the title, with a hairline rail down their left
+ * that ties them to their task. Tap one, box or text, to tick it.
+ */
 @Composable
 private fun InlineSubtasks(taskId: String, ctx: RowContext) {
     val subtasks by remember(taskId) { ctx.subtasksOf(taskId) }.collectAsStateWithLifecycle(emptyList())
     val scheme = MaterialTheme.colorScheme
-    Column(Modifier.padding(top = 2.dp)) {
+    Column(Modifier.padding(top = 4.dp).subtaskRail(MaterialTheme.tokens.divider)) {
         subtasks.forEach { sub ->
             Row(
-                // Pulled left so the small boxes line up under the title's first letter.
-                Modifier.offset(x = (-12).dp).fillMaxWidth().clip(RoundedCornerShape(8.dp))
-                    .clickable { ctx.setSubtaskDone(sub, !sub.done) },
+                Modifier.subtaskLine().clickable { ctx.setSubtaskDone(sub, !sub.done) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RoundCheck(
@@ -212,7 +220,7 @@ private fun InlineSubtasks(taskId: String, ctx: RowContext) {
                 Text(
                     sub.title,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (sub.done) scheme.onSurfaceVariant else scheme.onBackground,
+                    color = if (sub.done) scheme.onSurfaceVariant else scheme.onSurface,
                     textDecoration = if (sub.done) TextDecoration.LineThrough else null,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -223,6 +231,23 @@ private fun InlineSubtasks(taskId: String, ctx: RowContext) {
     }
 }
 
+/** How far the sub-tasks sit in from the rail, which runs under the title's first letter. */
+private val RAIL_INSET = 6.dp
+private val RAIL_WIDTH = 1.5.dp
+
+/** The rail: a short rounded line down the block's left edge, kept clear of its first and last row's ends. */
+private fun Modifier.subtaskRail(color: Color): Modifier = drawBehind {
+    val inset = 10.dp.toPx()
+    val x = RAIL_WIDTH.toPx() / 2
+    drawLine(color, Offset(x, inset), Offset(x, size.height - inset), RAIL_WIDTH.toPx(), StrokeCap.Round)
+}
+
+/** One line in the block, a sub-task or the add line: the same height, inset and press shape. */
+private fun Modifier.subtaskLine(): Modifier =
+    padding(start = RAIL_INSET).fillMaxWidth().heightIn(min = SUBTASK_HEIGHT).clip(RoundedCornerShape(8.dp))
+
+private val SUBTASK_HEIGHT = 40.dp
+
 /**
  * "+ Add a sub-task" under the open sub-tasks. Tapped, it becomes a field; Enter adds and keeps the
  * field ready for the next one; leaving the field closes it.
@@ -231,13 +256,15 @@ private fun InlineSubtasks(taskId: String, ctx: RowContext) {
 internal fun AddSubtaskLine(onAdd: (String) -> Unit) {
     var editing by remember { mutableStateOf(false) }
     Row(
-        Modifier.offset(x = (-12).dp).fillMaxWidth().heightIn(min = 34.dp).clip(RoundedCornerShape(8.dp))
-            .clickable(enabled = !editing) { editing = true },
+        Modifier.subtaskLine().clickable(enabled = !editing) { editing = true },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Quiet on purpose: it sits under every open list of sub-tasks, so it shouldn't compete with them.
+        // The plus takes the same 40dp column as a sub-task's box, so the two line up.
         val tint = MaterialTheme.colorScheme.onSurfaceVariant
-        Icon(AppIcons.Add, null, tint = tint, modifier = Modifier.padding(start = 13.dp, end = 13.dp).size(14.dp))
+        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+            Icon(AppIcons.Add, null, tint = tint, modifier = Modifier.size(16.dp))
+        }
         if (editing) SubtaskField(onAdd, onClose = { editing = false }) else AddSubtaskHint()
     }
 }
@@ -246,7 +273,7 @@ internal fun AddSubtaskLine(onAdd: (String) -> Unit) {
 private fun AddSubtaskHint() {
     Text(
         stringResource(R.string.subtask_add_inline),
-        style = MaterialTheme.typography.bodySmall,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
@@ -297,7 +324,7 @@ private fun LazyListScope.section(
     tasks: List<Task>,
     ctx: RowContext,
     showDate: Boolean = false,
-    action: Pair<String, () -> Unit>? = null,
+    action: HeaderAction? = null,
 ) {
     if (tasks.isEmpty()) return
     if (title != null) {
@@ -335,7 +362,9 @@ fun TodayContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVal
     // Timed tasks first, then the rest, as one group. It gets a header only to set it apart from overdue.
     val due = current.timed + current.rest
     val overdueIds = current.overdue.map { it.id }
-    val moveAll = stringResource(R.string.today_reschedule_overdue) to { ctx.reschedule(overdueIds) }
+    val moveAll = HeaderAction(AppIcons.Reschedule, stringResource(R.string.today_reschedule_overdue)) {
+        ctx.reschedule(overdueIds)
+    }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
         // Everything for today ticked off: say so above what was done, rather than leave a bare header.
         if (current.all.isEmpty()) {
@@ -372,6 +401,7 @@ fun UpcomingContent(viewModel: TasksViewModel, ctx: RowContext, state: UpcomingS
                 jump(state.selected)
             },
             onPage = { forward -> state.page(forward)?.let(jump) },
+            onWeek = { index -> state.showWeek(index)?.let(jump) },
             onPick = { day ->
                 state.selected = day
                 jump(day)

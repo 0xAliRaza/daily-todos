@@ -17,32 +17,33 @@ internal object Route {
     const val SEARCH = "search"
     const val SETTINGS = "settings"
     const val HEALTH = "health"
-    const val FOCUS = "focus"
+    const val FOCUS_STATS = "focus-stats"
     const val LIST_PREFIX = "list/"
 
-    val tabs = listOf(TODAY, UPCOMING, LISTS)
+    /** A task's focus timer. */
+    const val FOCUS_PREFIX = "focus/"
 
-    /** Upcoming as a list or as a calendar: one place, two views, under one tab. */
-    val upcomingViews = setOf(UPCOMING, CALENDAR)
+    val tabs = listOf(TODAY, UPCOMING, CALENDAR, LISTS)
 
     /** Where the + button adds tasks (lists too, by their own routes). */
     val takesTasks = setOf(TODAY, UPCOMING, CALENDAR)
 
-    /** Top-level places: the tabs and the calendar view; they get the large title and the tab bar. */
-    val top = tabs.toSet() + CALENDAR
+    /** Top-level places: the tabs; they get the large title and the tab bar. */
+    val top = tabs.toSet()
+
+    fun list(id: String) = LIST_PREFIX + id
+
+    fun focus(taskId: String) = FOCUS_PREFIX + taskId
 }
 
-/**
- * The back stack, and the rules for moving through it. A tab starts a fresh stack; the Upcoming tab
- * reopens whichever of its two views was used last while the app runs, and starts as the list whenever
- * the app opens again (the view isn't saved).
- */
-@Stable
-internal class Navigation(stack: List<String>, upcomingView: String = Route.UPCOMING) {
-    var stack by mutableStateOf(stack)
-        private set
+internal fun String.listId(): String? = removePrefix(Route.LIST_PREFIX).takeIf { startsWith(Route.LIST_PREFIX) }
 
-    var upcomingView by mutableStateOf(upcomingView)
+internal fun String.focusTaskId(): String? = removePrefix(Route.FOCUS_PREFIX).takeIf { startsWith(Route.FOCUS_PREFIX) }
+
+/** The back stack, and the rules for moving through it. A tab starts a fresh stack. */
+@Stable
+internal class Navigation(stack: List<String>) {
+    var stack by mutableStateOf(stack)
         private set
 
     val route: String get() = stack.last()
@@ -57,30 +58,21 @@ internal class Navigation(stack: List<String>, upcomingView: String = Route.UPCO
     }
 
     fun tab(target: String) {
-        stack = listOf(if (target == Route.UPCOMING) upcomingView else target)
+        stack = listOf(target)
     }
 
-    /** The timer from a notification: on top, once, wherever the app was. */
-    fun openFocus() {
-        stack = stack.filter { it != Route.FOCUS } + Route.FOCUS
-    }
-
-    /** Flips Upcoming between its list and its calendar, and returns the view now shown. */
-    fun switchUpcomingView(): String {
-        upcomingView = if (route == Route.CALENDAR) Route.UPCOMING else Route.CALENDAR
-        stack = listOf(upcomingView)
-        return upcomingView
+    /**
+     * Opens [taskId]'s timer on top of where the app is. Opened again (from its notification, say) it moves
+     * to the top rather than stacking a second copy, so back always leaves the timer in one step.
+     */
+    fun openFocus(taskId: String) {
+        val timer = Route.focus(taskId)
+        stack = stack.filter { it != timer } + timer
     }
 
     companion object {
-        /**
-         * Keeps the screen across rotation and theme changes, which recreate the activity. A fresh start
-         * of the app saves nothing, so Upcoming then opens as its list.
-         */
-        val Saver = listSaver<Navigation, String>(
-            save = { listOf(it.upcomingView) + it.stack },
-            restore = { Navigation(it.drop(1), it.first()) },
-        )
+        /** Keeps the screen across rotation and theme changes, which recreate the activity. */
+        val Saver = listSaver<Navigation, String>(save = { it.stack }, restore = { Navigation(it) })
     }
 }
 

@@ -15,8 +15,8 @@ class SwipeActionTest {
     }
 
     @Test
-    fun rightPastTheThresholdReschedulesAndLeftDeletes() {
-        assertEquals(SwipeAction.RESCHEDULE, swipeAction(300f, width))
+    fun rightPastTheThresholdOpensFocusAndLeftDeletes() {
+        assertEquals(SwipeAction.FOCUS, swipeAction(300f, width))
         assertEquals(SwipeAction.DELETE, swipeAction(-300f, width))
     }
 

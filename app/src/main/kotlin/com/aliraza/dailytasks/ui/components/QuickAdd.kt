@@ -3,6 +3,7 @@ package com.aliraza.dailytasks.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,17 +37,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -55,6 +61,7 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.aliraza.dailytasks.R
 import com.aliraza.dailytasks.core.model.Priority
 import com.aliraza.dailytasks.core.parse.ParseResult
@@ -211,6 +218,9 @@ fun due(
 /**
  * The one-line add bar: a plus, the text, a pill saying when the task will be due, and send. Words the
  * parser read are highlighted in place; tapping one un-recognises it, and tapping the pill drops the date.
+ *
+ * The bar is forgiving to touch: a tap anywhere on it, or on the soft fade just above it, gives the
+ * keyboard back to the line instead of falling through to the list behind and closing the bar.
  */
 @Composable
 fun QuickAddBar(
@@ -227,22 +237,49 @@ fun QuickAddBar(
     // The bar opens from the + button, so it comes with the keyboard, and gets it back after a picker.
     val requester = remember { FocusRequester() }
     LaunchedEffect(state.picking) { if (!state.picking) requester.requestFocus() }
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(scheme.surfaceVariant),
-    ) {
-        Row(
-            Modifier.heightIn(min = 48.dp).padding(start = 14.dp, end = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) { InputRow(state, parsed, due, today, placeholder, requester, onSubmit) }
-        AddOptionsRow(state, parsed, due, today, options)
+    val shape = RoundedCornerShape(BAR_CORNER)
+    Column(modifier.fillMaxWidth().keepsTyping(requester)) {
+        // The list fades out under the bar, which sets the bar apart and widens what counts as a tap on it.
+        Spacer(
+            Modifier.fillMaxWidth().height(FADE_HEIGHT)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, scheme.background))),
+        )
+        Column(
+            Modifier.fillMaxWidth().background(scheme.background).padding(start = 12.dp, end = 12.dp, bottom = 6.dp)
+                .shadow(
+                    BAR_ELEVATION,
+                    shape,
+                    ambientColor = MaterialTheme.tokens.accent,
+                    spotColor = MaterialTheme.tokens.accent,
+                )
+                .clip(shape)
+                .background(scheme.surfaceVariant),
+        ) {
+            Row(
+                Modifier.heightIn(min = 54.dp).padding(start = 14.dp, end = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) { InputRow(state, parsed, due, today, placeholder, requester, onSubmit) }
+            AddOptionsRow(state, parsed, due, today, options)
+        }
     }
     // A picker open when the bar goes away (say, a notification opens another screen) mustn't stay "open".
     DisposableEffect(state) { onDispose { state.picking = false } }
 }
+
+private val FADE_HEIGHT = 24.dp
+private val BAR_CORNER = 28.dp
+private val BAR_ELEVATION = 6.dp
+
+/** The line's text: a touch larger than body text, since it is what the bar is for. */
+@Composable
+private fun lineStyle(): TextStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 24.sp)
+
+/**
+ * Taps on the bar that no control inside takes (the plus, the gaps, the fade) put the cursor back in the
+ * line. Without it they would reach the list behind, whose keyboard guard closes the bar.
+ */
+private fun Modifier.keepsTyping(requester: FocusRequester): Modifier =
+    pointerInput(requester) { detectTapGestures { requester.requestFocus() } }
 
 @Composable
 private fun RowScope.InputRow(
@@ -255,13 +292,13 @@ private fun RowScope.InputRow(
     onSubmit: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    Icon(AppIcons.Add, null, tint = scheme.primary, modifier = Modifier.size(22.dp))
+    Icon(AppIcons.Add, null, tint = scheme.primary, modifier = Modifier.size(24.dp))
     Spacer(Modifier.width(10.dp))
     Box(Modifier.weight(1f).padding(vertical = 12.dp)) {
         if (state.text.isEmpty()) {
             Text(
                 placeholder,
-                style = MaterialTheme.typography.bodyLarge,
+                style = lineStyle(),
                 color = scheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -270,7 +307,7 @@ private fun RowScope.InputRow(
         BasicTextField(
             value = state.value,
             onValueChange = { state.edit(it, parsed.spans.map(Span::range), tied = due?.words.orEmpty()) },
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = scheme.onSurface),
+            textStyle = lineStyle().copy(color = scheme.onSurface),
             cursorBrush = SolidColor(scheme.primary),
             visualTransformation = SpanHighlight(
                 parsed.spans,
@@ -456,7 +493,7 @@ private fun SendButton(onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .padding(start = 6.dp)
-            .size(36.dp)
+            .size(40.dp)
             .clip(CircleShape)
             .background(scheme.primary)
             .clickable(role = Role.Button, onClick = onClick),
@@ -466,7 +503,7 @@ private fun SendButton(onClick: () -> Unit) {
             imageVector = AppIcons.Send,
             contentDescription = stringResource(R.string.action_add),
             tint = scheme.onPrimary,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(20.dp),
         )
     }
 }

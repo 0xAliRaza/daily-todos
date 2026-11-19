@@ -68,6 +68,20 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE id = :id")
     suspend fun get(id: String): TaskEntity?
 
+    /** The task exists, is not done and is not deleted, nor is its list. */
+    @Query(
+        "SELECT COUNT(*) > 0 FROM tasks JOIN lists ON lists.id = tasks.list_id WHERE tasks.id = :id " +
+            "AND tasks.completed_at IS NULL AND tasks.deleted_at IS NULL AND lists.deleted_at IS NULL",
+    )
+    suspend fun isOpen(id: String): Boolean
+
+    /** Titles of every task that is not deleted, done ones included: what Focus stats names. */
+    @Query(
+        "SELECT tasks.id AS id, tasks.title AS title FROM tasks JOIN lists ON lists.id = tasks.list_id " +
+            "WHERE tasks.deleted_at IS NULL AND lists.deleted_at IS NULL",
+    )
+    fun observeKeptTitles(): Flow<List<TaskTitleRow>>
+
     @Query("SELECT * FROM tasks WHERE id = :id")
     fun observe(id: String): Flow<TaskEntity?>
 
@@ -222,4 +236,28 @@ interface TimerDao {
 
     @Upsert
     suspend fun upsert(state: TimerStateEntity)
+}
+
+@Dao
+interface FocusSessionDao {
+    @Insert
+    suspend fun insert(session: FocusSessionEntity)
+
+    @Query("SELECT * FROM focus_sessions ORDER BY ended_at, id")
+    fun observeAll(): Flow<List<FocusSessionEntity>>
+
+    @Query("SELECT * FROM focus_sessions ORDER BY ended_at, id")
+    suspend fun all(): List<FocusSessionEntity>
+
+    @Query(
+        "SELECT COALESCE(SUM(focused_ms), 0) AS focusedMs, COUNT(*) AS sessions FROM focus_sessions " +
+            "WHERE task_id = :taskId",
+    )
+    fun observeForTask(taskId: String): Flow<TaskFocusRow>
+
+    @Insert
+    suspend fun insertAll(sessions: List<FocusSessionEntity>)
+
+    @Query("DELETE FROM focus_sessions")
+    suspend fun deleteAll()
 }

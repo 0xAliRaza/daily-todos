@@ -12,6 +12,7 @@ internal object BackupValidator {
             Triple("tasks", file.tasks.size, Limits.MAX_TASKS),
             Triple("subtasks", file.subtasks.size, Limits.MAX_SUBTASKS),
             Triple("reminderHistory", file.reminderHistory.size, Limits.MAX_HISTORY),
+            Triple("focusSessions", file.focusSessions.size, Limits.MAX_FOCUS_SESSIONS),
         )
         val over = counts.firstOrNull { (_, count, max) -> count > max } ?: return null
         return BackupCodec.reject(RejectReason.TOO_LARGE, over.first)
@@ -57,7 +58,12 @@ internal object BackupValidator {
         val taskIds = file.tasks.map { it.id }.toSet()
         return when {
             file.tasks.any { it.listId !in listIds } -> BackupCodec.reject(RejectReason.INVALID, "tasks.listId")
+
             file.subtasks.any { it.taskId !in taskIds } -> BackupCodec.reject(RejectReason.INVALID, "subtasks.taskId")
+
+            file.focusSessions.any { it.taskId != null && it.taskId !in taskIds } ->
+                BackupCodec.reject(RejectReason.INVALID, "focusSessions.taskId")
+
             else -> null
         }
     }

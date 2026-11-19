@@ -47,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aliraza.dailytasks.BuildConfig
 import com.aliraza.dailytasks.R
 import com.aliraza.dailytasks.core.backup.BackupContent
 import com.aliraza.dailytasks.core.model.HeadsUp
@@ -67,7 +68,12 @@ private val BACKUP_TIME: DateTimeFormatter = DateTimeFormatter.ofLocalizedDateTi
 )
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, padding: PaddingValues, onHealth: () -> Unit) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel,
+    padding: PaddingValues,
+    onHealth: () -> Unit,
+    onFocusStats: () -> Unit,
+) {
     val s by viewModel.settings.collectAsStateWithLifecycle()
     val pending by viewModel.pendingImport.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -92,6 +98,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, padding: PaddingValues, onHealt
             }
         }
         Group(R.string.settings_focus) {
+            LinkRow(R.string.stats_title, stringResource(R.string.stats_hint), onFocusStats)
             ChoiceRow(
                 R.string.settings_signal,
                 TimerSignal.entries,
@@ -118,7 +125,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, padding: PaddingValues, onHealt
             }
         }
         Text(
-            stringResource(R.string.settings_footer),
+            "${stringResource(R.string.app_name)} ${BuildConfig.VERSION_NAME}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth().padding(top = 20.dp),

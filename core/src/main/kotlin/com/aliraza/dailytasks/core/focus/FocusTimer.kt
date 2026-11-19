@@ -7,25 +7,30 @@ import java.time.Instant
 enum class FocusPhase {
     IDLE,
     FOCUS,
-    BREAK,
 
-    /** A round has ended and the next focus waits for a tap. */
-    WAITING,
+    /** Focus has ended and the break waits for a tap: "Start break", or skip it. */
+    BREAK_DUE,
+    BREAK,
 }
 
 /**
- * The focus timer as stored. A running round has [endsAt]; a paused one has [pausedRemaining] instead.
- * [round] counts focus rounds since the timer was started.
+ * The focus timer as stored. It always belongs to one task, [taskId], while it is not [FocusPhase.IDLE].
+ * A running round has [endsAt]; a paused one has [pausedRemaining] instead. [roundLength] is the length
+ * the round was started with, so the time actually spent can be measured; while the break waits it is
+ * still the focus round that just ended.
  */
 data class FocusTimer(
     val phase: FocusPhase = FocusPhase.IDLE,
+    val taskId: String? = null,
     val endsAt: Instant? = null,
     val pausedRemaining: Duration? = null,
-    val taskId: String? = null,
-    val round: Int = 0,
+    val roundLength: Duration? = null,
 ) {
     val isRunning: Boolean get() = endsAt != null
     val isPaused: Boolean get() = pausedRemaining != null
+
+    /** A round runs or the break waits: the timer is busy with [taskId]. */
+    val isActive: Boolean get() = phase != FocusPhase.IDLE
 
     /** Time left in the current round at [now]; zero once it has ended. */
     fun remaining(now: Instant): Duration = pausedRemaining
@@ -37,28 +42,26 @@ data class FocusTimer(
     }
 }
 
-/** What a scheduler run did to the timer: the new state, and the round that just ended, if one did. */
-data class FocusStep(val timer: FocusTimer, val ended: FocusPhase? = null)
+/**
+ * What a scheduler run did to the timer: the new state, and the round that just ended, as it was when it
+ * ended (its phase, task and length), if one did.
+ */
+data class FocusStep(val timer: FocusTimer, val ended: FocusTimer? = null)
 
 /**
- * The timer's rules (PLAN.md section 6), with no clock or storage of their own. When focus ends the break
- * starts by itself; when the break ends the timer waits for "start next focus". A round that ended while
- * the app was not running is counted from its planned end, so catch-up lands where it would have.
+ * The timer's rules (PLAN.md section 6), with no clock or storage of their own. There is focus and there
+ * is a break, nothing else, and nothing starts by itself: when focus ends the break waits for "Start
+ * break" or a skip, and when the break ends (or is skipped) the timer is idle again, ready for the next
+ * focus on the same task.
  */
 object FocusRounds {
-    fun start(taskId: String?, settings: Settings, now: Instant): FocusTimer = FocusTimer(
-        phase = FocusPhase.FOCUS,
-        endsAt = now.plus(minutes(settings.focusMinutes)),
-        taskId = taskId,
-        round = 1,
-    )
+    /** Shorter partial focus is not worth a line in the stats. */
+    val MIN_SESSION: Duration = Duration.ofMinutes(1)
 
-    fun next(timer: FocusTimer, settings: Settings, now: Instant): FocusTimer = timer.copy(
-        phase = FocusPhase.FOCUS,
-        endsAt = now.plus(minutes(settings.focusMinutes)),
-        pausedRemaining = null,
-        round = timer.round + 1,
-    )
+    fun start(taskId: String, settings: Settings, now: Instant): FocusTimer {
+        val length = minutes(settings.focusMinutes)
+        return FocusTimer(FocusPhase.FOCUS, taskId, endsAt = now.plus(length), roundLength = length)
+    }
 
     fun pause(timer: FocusTimer, now: Instant): FocusTimer {
         val endsAt = timer.endsAt ?: return timer
@@ -70,37 +73,63 @@ object FocusRounds {
         return timer.copy(endsAt = now.plus(left), pausedRemaining = null)
     }
 
-    /** Skips the running break straight to the next focus round. */
-    fun skipBreak(timer: FocusTimer, settings: Settings, now: Instant): FocusTimer =
-        if (timer.phase == FocusPhase.BREAK) next(timer, settings, now) else timer
+    /** Starts the break that waits after a focus round. */
+    fun startBreak(timer: FocusTimer, settings: Settings, now: Instant): FocusTimer {
+        if (timer.phase != FocusPhase.BREAK_DUE) return timer
+        val length = minutes(settings.breakMinutes)
+        return timer.copy(
+            phase = FocusPhase.BREAK,
+            endsAt = now.plus(length),
+            pausedRemaining = null,
+            roundLength = length,
+        )
+    }
 
-    /**
-     * Moves the timer on past any round that has ended by [now]. A timer started from a task stops, with no
-     * alert, once [taskOpen] says the task is done.
-     */
-    fun settle(timer: FocusTimer, settings: Settings, now: Instant, taskOpen: Boolean): FocusStep {
+    /** Skips the break, waiting or running: the timer is idle, ready for the next focus. */
+    fun skipBreak(timer: FocusTimer): FocusTimer = if (timer.phase in BREAK_PHASES) FocusTimer.Idle else timer
+
+    private val BREAK_PHASES = setOf(FocusPhase.BREAK, FocusPhase.BREAK_DUE)
+
+    /** How much of the running focus round has been spent by [now], pauses left out. Zero outside focus. */
+    fun focused(timer: FocusTimer, now: Instant): Duration {
+        val length = timer.roundLength
+        if (timer.phase != FocusPhase.FOCUS || length == null) return Duration.ZERO
+        return length.minus(timer.remaining(now)).coerceIn(Duration.ZERO, length)
+    }
+
+    /** Moves the timer on past a round that has ended by [now]. */
+    fun settle(timer: FocusTimer, now: Instant): FocusStep {
         val endsAt = timer.endsAt
         return when {
-            timer.phase == FocusPhase.IDLE -> FocusStep(timer)
-            timer.taskId != null && !taskOpen -> FocusStep(FocusTimer.Idle)
             endsAt == null || endsAt.isAfter(now) -> FocusStep(timer)
-            timer.phase == FocusPhase.FOCUS -> endFocus(timer, endsAt, settings, now)
-            else -> FocusStep(timer.waiting(), FocusPhase.BREAK)
+
+            timer.phase == FocusPhase.FOCUS -> FocusStep(
+                timer.copy(phase = FocusPhase.BREAK_DUE, endsAt = null, pausedRemaining = null),
+                ended = timer,
+            )
+
+            timer.phase == FocusPhase.BREAK -> FocusStep(FocusTimer.Idle, ended = timer)
+
+            else -> FocusStep(timer)
         }
     }
 
-    /** Focus has ended: the break starts by itself, unless breaks are off or it is already over too. */
-    private fun endFocus(timer: FocusTimer, endedAt: Instant, settings: Settings, now: Instant): FocusStep {
-        if (!settings.breaksEnabled) return FocusStep(timer.waiting(), FocusPhase.FOCUS)
-        val breakEnds = endedAt.plus(minutes(settings.breakMinutes))
-        return if (breakEnds.isAfter(now)) {
-            FocusStep(timer.copy(phase = FocusPhase.BREAK, endsAt = breakEnds), FocusPhase.FOCUS)
-        } else {
-            FocusStep(timer.waiting(), FocusPhase.BREAK)
-        }
+    /**
+     * Whether the alert for a round that ended in [ended] on [taskId] still offers the next step for
+     * [timer]. A focus end offers the break, so it stays while that break waits; a break end offers the next
+     * focus, so it stays while nothing runs.
+     */
+    fun alertApplies(ended: FocusPhase, taskId: String?, timer: FocusTimer): Boolean = when (ended) {
+        FocusPhase.FOCUS -> timer.phase == FocusPhase.BREAK_DUE && timer.taskId == taskId
+        FocusPhase.BREAK -> timer.phase == FocusPhase.IDLE
+        else -> false
     }
 
-    private fun FocusTimer.waiting() = copy(phase = FocusPhase.WAITING, endsAt = null, pausedRemaining = null)
+    /** How many times a round's end sounds: three for focus, two for a break. Then it stops. */
+    fun pulses(ended: FocusPhase): Int = if (ended == FocusPhase.FOCUS) FOCUS_PULSES else BREAK_PULSES
+
+    private const val FOCUS_PULSES = 3
+    private const val BREAK_PULSES = 2
 
     private fun minutes(value: Int): Duration = Duration.ofMinutes(value.toLong())
 }

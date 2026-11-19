@@ -50,6 +50,8 @@ android {
 
     buildFeatures {
         compose = true
+        // For the version shown at the foot of Settings.
+        buildConfig = true
     }
 
     lint {

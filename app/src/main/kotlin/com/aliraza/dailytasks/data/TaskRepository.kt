@@ -70,6 +70,13 @@ class TaskRepository(
 
     suspend fun task(id: String): Task? = tasks.get(id)?.toDomain()
 
+    /** The task can still be worked on: not done, not deleted, nor in a deleted list. */
+    suspend fun isOpen(id: String): Boolean = tasks.isOpen(id)
+
+    /** Titles of every task that is not deleted, by id. */
+    fun observeTitles(): Flow<Map<String, String>> =
+        tasks.observeKeptTitles().map { rows -> rows.associate { it.id to it.title } }
+
     // Task writes
 
     /** Creates a task at the bottom of its list and returns it. */

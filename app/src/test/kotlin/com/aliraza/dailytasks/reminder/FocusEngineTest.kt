@@ -4,18 +4,22 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aliraza.dailytasks.MutableClock
 import com.aliraza.dailytasks.core.focus.FocusPhase
+import com.aliraza.dailytasks.core.focus.FocusRounds
 import com.aliraza.dailytasks.core.focus.FocusTimer
 import com.aliraza.dailytasks.core.model.FiredBy
 import com.aliraza.dailytasks.core.model.NewTask
-import com.aliraza.dailytasks.core.model.TimerSignal
+import com.aliraza.dailytasks.core.model.Settings
+import com.aliraza.dailytasks.data.ListRepository
 import com.aliraza.dailytasks.data.SettingsRepository
 import com.aliraza.dailytasks.data.TaskRepository
 import com.aliraza.dailytasks.data.TimerRepository
 import com.aliraza.dailytasks.data.db.AppDatabase
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -26,7 +30,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 
-/** The focus timer travels the scheduler's single alarm, like every reminder. */
+/** The focus timer travels the scheduler's single alarm, like every reminder, and records its focus. */
 @RunWith(AndroidJUnit4::class)
 class FocusEngineTest {
     @get:Rule
@@ -41,13 +45,15 @@ class FocusEngineTest {
     private lateinit var tasks: TaskRepository
     private lateinit var timers: TimerRepository
     private lateinit var scheduler: ReminderScheduler
+    private lateinit var taskId: String
 
     @Before
-    fun setUp() {
+    fun setUp() = runTest {
         db = AppDatabase.inMemory(ApplicationProvider.getApplicationContext())
         val settings = SettingsRepository(db.settings()) {}
-        tasks = TaskRepository(db, clock, settings) {}
-        timers = TimerRepository(db.timer(), settings, clock) {}
+        // Every write re-runs the scheduler, as in the app.
+        tasks = TaskRepository(db, clock, settings) { scheduler.run(FiredBy.CATCH_UP) }
+        timers = TimerRepository(db.timer(), db.focusSessions(), settings, clock) { scheduler.run(FiredBy.CATCH_UP) }
         val mirror = ScheduleMirror(File(folder.root, ScheduleMirror.FILE_NAME))
         scheduler = ReminderScheduler(
             tasks,
@@ -59,67 +65,161 @@ class FocusEngineTest {
             clock,
             timer = FocusEngine(timers, tasks, signals),
         )
+        // An undated task, so no reminder shares the alarm with the timer.
+        val work = ListRepository(db.lists(), clock).create("Work")
+        taskId = tasks.addTask(NewTask("Write report", listId = work.id)).id
     }
 
     @After
     fun tearDown() = db.close()
 
+    private suspend fun timersList(): String = tasks.task(taskId)!!.listId
+
     private fun minutes(n: Long): Instant = start.plus(Duration.ofMinutes(n))
+
+    private suspend fun sessions() = timers.observeSessions().first()
+
+    private suspend fun focusEnded() {
+        timers.start(taskId)
+        clock.now = minutes(25)
+        scheduler.run(FiredBy.ALARM)
+    }
 
     @Test
     fun aRunningRoundArmsTheSingleAlarm() = runTest {
-        timers.start(taskId = null)
-        scheduler.run(FiredBy.CATCH_UP)
+        timers.start(taskId)
         assertEquals(minutes(25), alarm.armedAt)
         assertEquals(FocusPhase.FOCUS, signals.progress?.phase)
+        assertEquals("Write report", signals.progressTitle)
     }
 
     @Test
-    fun theAlarmEndsFocusAlertsAndArmsTheBreakEnd() = runTest {
-        timers.start(taskId = null)
-        clock.now = minutes(25)
+    fun focusEndAlertsWithTheTaskRecordsTheRoundAndTheBreakWaits() = runTest {
+        focusEnded()
+        assertEquals(listOf(Alert(FocusPhase.FOCUS, taskId, "Write report")), signals.alerts)
+        assertEquals(FocusPhase.BREAK_DUE, timers.current().phase)
+        assertNull(alarm.armedAt)
+        val recorded = sessions().single()
+        assertEquals(taskId, recorded.taskId)
+        assertEquals(Duration.ofMinutes(25), recorded.focused)
+        assertEquals(minutes(25), recorded.endedAt)
+    }
+
+    @Test
+    fun aLateAlarmStillRecordsTheRoundAtItsRealEnd() = runTest {
+        timers.start(taskId)
+        clock.now = minutes(40)
         scheduler.run(FiredBy.ALARM)
-        assertEquals(listOf(FocusPhase.FOCUS to TimerSignal.BOTH), signals.alerts)
-        assertEquals(FocusPhase.BREAK, timers.current().phase)
-        assertEquals(minutes(30), alarm.armedAt)
+        assertEquals(minutes(25), sessions().single().endedAt)
     }
 
     @Test
-    fun breakEndWaitsAndLeavesNoAlarm() = runTest {
-        timers.start(taskId = null)
+    fun startingTheBreakArmsItsEndAndDropsTheAlert() = runTest {
+        focusEnded()
+        clock.now = minutes(27)
+        timers.startBreak()
+        assertEquals(FocusPhase.BREAK, timers.current().phase)
+        assertEquals(minutes(32), alarm.armedAt)
+        assertEquals(FocusPhase.BREAK, signals.synced?.phase)
+    }
+
+    @Test
+    fun skippingTheBreakLeavesTheTimerIdleAndSyncsTheAlertAway() = runTest {
+        focusEnded()
+        timers.skipBreak()
+        assertEquals(FocusTimer.Idle, timers.current())
+        assertEquals(FocusTimer.Idle, signals.synced)
+        assertEquals(false, FocusRounds.alertApplies(FocusPhase.FOCUS, taskId, signals.synced!!))
+    }
+
+    @Test
+    fun breakEndAlertsOffersTheNextFocusAndLeavesNoAlarm() = runTest {
+        focusEnded()
+        timers.startBreak()
         clock.now = minutes(30)
         scheduler.run(FiredBy.ALARM)
-        assertEquals(FocusPhase.WAITING, timers.current().phase)
+        assertEquals(Alert(FocusPhase.BREAK, taskId, "Write report"), signals.alerts.last())
+        assertEquals(FocusTimer.Idle, timers.current())
         assertNull(alarm.armedAt)
         assertNull(signals.progress?.endsAt)
+        // Only focus counts.
+        assertEquals(1, sessions().size)
     }
 
     @Test
-    fun completingTheTaskStopsTheTimerWithoutAnAlert() = runTest {
-        val task = tasks.addTask(NewTask(title = "Write the report"))
-        timers.start(task.id)
-        tasks.setCompleted(listOf(task.id), completed = true)
-        scheduler.run(FiredBy.CATCH_UP)
+    fun stoppingFocusEarlyKeepsTheTimeSpent() = runTest {
+        timers.start(taskId)
+        clock.now = minutes(10)
+        timers.stop()
         assertEquals(FocusTimer.Idle, timers.current())
-        assertEquals(emptyList<Pair<FocusPhase, TimerSignal>>(), signals.alerts)
-        assertEquals(1, signals.cleared)
+        assertEquals(Duration.ofMinutes(10), sessions().single().focused)
+        assertTrue(signals.alerts.isEmpty())
     }
 
+    @Test
+    fun lessThanAMinuteIsNotRecorded() = runTest {
+        timers.start(taskId)
+        clock.now = start.plusSeconds(40)
+        timers.stop()
+        assertTrue(sessions().isEmpty())
+    }
+
+    @Test
+    fun completingTheTaskStopsItsTimerQuietlyAndKeepsTheTimeSpent() = runTest {
+        timers.start(taskId)
+        clock.now = minutes(12)
+        tasks.setCompleted(listOf(taskId), completed = true)
+        assertEquals(FocusTimer.Idle, timers.current())
+        assertNull(alarm.armedAt)
+        assertTrue(signals.alerts.isEmpty())
+        assertEquals(Duration.ofMinutes(12), sessions().single().focused)
+    }
+
+    @Test
+    fun deletingTheTaskWhileTheBreakWaitsStopsTheTimer() = runTest {
+        focusEnded()
+        tasks.setDeleted(listOf(taskId), deleted = true)
+        assertEquals(FocusTimer.Idle, timers.current())
+        assertEquals(FocusTimer.Idle, signals.synced)
+    }
+
+    @Test
+    fun startingAnotherTaskEndsTheFirstAndKeepsItsTime() = runTest {
+        val other = tasks.addTask(NewTask("Plan trip", listId = timersList())).id
+        timers.start(taskId)
+        clock.now = minutes(5)
+        timers.start(other)
+        assertEquals(other, timers.current().taskId)
+        assertEquals(minutes(30), alarm.armedAt)
+        assertEquals(listOf(taskId to Duration.ofMinutes(5)), sessions().map { it.taskId to it.focused })
+    }
+
+    @Test
+    fun aTaskDeletedForGoodKeepsItsTimeInTheTotals() = runTest {
+        focusEnded()
+        db.tasks().deleteAll()
+        assertNull(sessions().single().taskId)
+    }
+
+    private data class Alert(val ended: FocusPhase, val taskId: String?, val title: String)
+
     private class FakeSignals : FocusSignals {
-        val alerts = mutableListOf<Pair<FocusPhase, TimerSignal>>()
-        var cleared = 0
+        val alerts = mutableListOf<Alert>()
+        var synced: FocusTimer? = null
         var progress: FocusTimer? = null
+        var progressTitle: String? = null
 
-        override fun alert(ended: FocusPhase, signal: TimerSignal) {
-            alerts += ended to signal
+        override fun alert(ended: FocusTimer, title: String, settings: Settings) {
+            alerts += Alert(ended.phase, ended.taskId, title)
         }
 
-        override fun clearAlert() {
-            cleared++
+        override fun syncAlert(timer: FocusTimer) {
+            synced = timer
         }
 
-        override fun showProgress(timer: FocusTimer) {
+        override fun showProgress(timer: FocusTimer, title: String) {
             progress = timer
+            progressTitle = title
         }
     }
 }

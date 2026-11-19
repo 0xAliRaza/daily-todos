@@ -63,6 +63,7 @@ import com.aliraza.dailytasks.core.model.Priority
 import com.aliraza.dailytasks.core.model.Subtask
 import com.aliraza.dailytasks.core.model.Task
 import com.aliraza.dailytasks.core.model.TaskList
+import com.aliraza.dailytasks.data.TaskFocusTotal
 import com.aliraza.dailytasks.ui.components.AppIcons
 import com.aliraza.dailytasks.ui.components.DateDialog
 import com.aliraza.dailytasks.ui.components.RoundCheck
@@ -71,6 +72,7 @@ import com.aliraza.dailytasks.ui.components.dueTone
 import com.aliraza.dailytasks.ui.components.priorityColor
 import com.aliraza.dailytasks.ui.components.timeLabel
 import com.aliraza.dailytasks.ui.components.toneColor
+import com.aliraza.dailytasks.ui.focus.focusTotal
 import com.aliraza.dailytasks.ui.theme.tokens
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -79,14 +81,18 @@ import java.time.LocalTime
 
 private const val SAVE_DELAY_MS = 400L
 
-/** Where the property rows' text starts: past their 20dp padding, 20dp icon and 18dp gap. */
-private val CaptionStart = 58.dp
 private const val DEFAULT_PICK_HOUR = 9
 
 /** Everything about one task, in a bottom sheet. Text edits save as you type, after a short pause. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskSheet(viewModel: TasksViewModel, taskId: String, onFocus: (String) -> Unit, onDismiss: () -> Unit) {
+fun TaskSheet(
+    viewModel: TasksViewModel,
+    taskId: String,
+    focused: TaskFocusTotal,
+    onFocus: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     val task by remember(taskId) { viewModel.observeTask(taskId) }.collectAsStateWithLifecycle(null)
     val subtasks by remember(taskId) { viewModel.observeSubtasks(taskId) }.collectAsStateWithLifecycle(emptyList())
     val lists by viewModel.lists.collectAsStateWithLifecycle()
@@ -103,13 +109,11 @@ fun TaskSheet(viewModel: TasksViewModel, taskId: String, onFocus: (String) -> Un
             Spacer(Modifier.height(200.dp))
             return@ModalBottomSheet
         }
-        val today = now.toLocalDate()
         Column(Modifier.verticalScroll(rememberScrollState()).navigationBarsPadding().imePadding()) {
             SheetHeader(
                 lists = lists,
                 task = current,
                 onList = { id -> viewModel.update(current.id) { it.copy(listId = id) } },
-                onFocus = { onFocus(current.id) },
                 onDelete = {
                     viewModel.delete(listOf(current.id))
                     onDismiss()
@@ -122,7 +126,7 @@ fun TaskSheet(viewModel: TasksViewModel, taskId: String, onFocus: (String) -> Un
             )
             Hairline()
             Properties(viewModel, current, now)
-            ReminderLine(viewModel, current, today)
+            FocusRow(focused, canStart = current.completedAt == null, onFocus)
             Hairline()
             Subtasks(viewModel, current.id, subtasks)
             Spacer(Modifier.height(12.dp))
@@ -137,13 +141,7 @@ private fun Hairline() {
 
 /** The list the task sits in (tap to move it), then Focus and Delete. */
 @Composable
-private fun SheetHeader(
-    lists: List<TaskList>,
-    task: Task,
-    onList: (String) -> Unit,
-    onFocus: () -> Unit,
-    onDelete: () -> Unit,
-) {
+private fun SheetHeader(lists: List<TaskList>, task: Task, onList: (String) -> Unit, onDelete: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var open by remember { mutableStateOf(false) }
     Row(
@@ -174,9 +172,6 @@ private fun SheetHeader(
                     })
                 }
             }
-        }
-        IconButton(onClick = onFocus) {
-            Icon(AppIcons.Timer, stringResource(R.string.action_focus), tint = scheme.onSurfaceVariant)
         }
         IconButton(onClick = onDelete) {
             Icon(AppIcons.Delete, stringResource(R.string.action_delete), tint = scheme.onSurfaceVariant)
@@ -347,6 +342,37 @@ private fun Option(label: Int, close: () -> Unit, onClick: () -> Unit) {
     })
 }
 
+/** The focus spent on the task so far; tapping it opens the task's timer. */
+@Composable
+private fun FocusRow(focused: TaskFocusTotal, canStart: Boolean, onStart: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val label = focusTotal(focused)
+    // A done task keeps its total; there is nothing left to start.
+    if (!canStart && focused.sessions == 0) return
+    Row(
+        Modifier.fillMaxWidth().clickable(enabled = canStart, onClick = onStart).heightIn(min = 48.dp)
+            .padding(start = 20.dp, end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(AppIcons.Timer, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(18.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = scheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        if (canStart) {
+            Icon(
+                AppIcons.Play,
+                stringResource(R.string.focus_start),
+                tint = MaterialTheme.tokens.accent,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+    }
+}
+
 /** One property of the task: an icon and its value. Tapping opens a menu of choices. */
 @Composable
 private fun MenuRow(
@@ -387,26 +413,6 @@ private fun TimeDialog(initial: LocalTime, onDismiss: () -> Unit, onPick: (Local
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
         text = { TimePicker(state) },
     )
-}
-
-/** When the next reminder fires, so a missing time or a switched-off setting is visible here. */
-@Composable
-private fun ReminderLine(viewModel: TasksViewModel, task: Task, today: LocalDate) {
-    val local = viewModel.nextReminder(task) ?: return
-    val scheme = MaterialTheme.colorScheme
-    // A caption under the rows, lined up with their text: it reads as a note, not as a row to tap.
-    Row(
-        Modifier.fillMaxWidth().padding(start = CaptionStart, end = 20.dp, top = 2.dp, bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(AppIcons.Bell, null, tint = scheme.outline, modifier = Modifier.size(13.dp))
-        Spacer(Modifier.width(5.dp))
-        Text(
-            stringResource(R.string.task_reminds, dayLabel(local.toLocalDate(), today), timeLabel(local.toLocalTime())),
-            style = MaterialTheme.typography.bodySmall,
-            color = scheme.onSurfaceVariant,
-        )
-    }
 }
 
 @Composable

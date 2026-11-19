@@ -1,5 +1,6 @@
 package com.aliraza.dailytasks.core.backup
 
+import com.aliraza.dailytasks.core.focus.FocusSession
 import com.aliraza.dailytasks.core.model.FiredBy
 import com.aliraza.dailytasks.core.model.HeadsUp
 import com.aliraza.dailytasks.core.model.Priority
@@ -10,6 +11,7 @@ import com.aliraza.dailytasks.core.model.Task
 import com.aliraza.dailytasks.core.model.TaskList
 import com.aliraza.dailytasks.core.model.ThemeMode
 import com.aliraza.dailytasks.core.model.TimerSignal
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -29,7 +31,8 @@ internal object ToFile {
         dndOverride = s.dndOverride,
         focusMinutes = s.focusMinutes,
         breakMinutes = s.breakMinutes,
-        breaksEnabled = s.breaksEnabled,
+        focusCustomMinutes = s.focusCustomMinutes,
+        breakCustomMinutes = s.breakCustomMinutes,
         timerSignal = s.timerSignal.name,
         theme = s.theme.name,
         lastBackupAt = s.lastBackupAt?.toString(),
@@ -57,6 +60,9 @@ internal object ToFile {
 
     fun reminder(r: ReminderLogEntry) =
         BackupReminder(r.taskId, r.dueAt.toString(), r.firedAt.toString(), r.firedBy.name)
+
+    fun session(s: FocusSession) =
+        BackupFocusSession(s.taskId, s.startedAt.toString(), s.endedAt.toString(), s.focused.toMillis())
 }
 
 /** File to domain. Every value is parsed strictly; a bad one throws [InvalidBackup] naming the field. */
@@ -74,7 +80,10 @@ internal object FromFile {
         dndOverride = s.dndOverride,
         focusMinutes = s.focusMinutes.also { check(it in Settings.FOCUS_MINUTES_RANGE, "settings.focusMinutes") },
         breakMinutes = s.breakMinutes.also { check(it in Settings.BREAK_MINUTES_RANGE, "settings.breakMinutes") },
-        breaksEnabled = s.breaksEnabled,
+        focusCustomMinutes = s.focusCustomMinutes
+            .also { check(it in Settings.FOCUS_MINUTES_RANGE, "settings.focusCustomMinutes") },
+        breakCustomMinutes = s.breakCustomMinutes
+            .also { check(it in Settings.BREAK_MINUTES_RANGE, "settings.breakCustomMinutes") },
         timerSignal = enumOf<TimerSignal>(s.timerSignal, "settings.timerSignal"),
         theme = enumOf<ThemeMode>(s.theme, "settings.theme"),
         lastBackupAt = s.lastBackupAt?.let { instant(it, "settings.lastBackupAt") },
@@ -110,6 +119,14 @@ internal object FromFile {
         firedAt = instant(r.firedAt, "reminderHistory.firedAt"),
         firedBy = enumOf<FiredBy>(r.firedBy, "reminderHistory.firedBy"),
     )
+
+    fun session(s: BackupFocusSession): FocusSession {
+        val startedAt = instant(s.startedAt, "focusSessions.startedAt")
+        val endedAt = instant(s.endedAt, "focusSessions.endedAt")
+        check(!endedAt.isBefore(startedAt), "focusSessions.endedAt")
+        check(s.focusedMs in 0..Duration.between(startedAt, endedAt).toMillis(), "focusSessions.focusedMs")
+        return FocusSession(s.taskId, startedAt, endedAt, Duration.ofMillis(s.focusedMs))
+    }
 
     private fun check(ok: Boolean, field: String) {
         if (!ok) throw InvalidBackup(field)

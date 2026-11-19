@@ -16,8 +16,9 @@ import com.aliraza.dailytasks.core.model.TaskList
         ReminderLogEntity::class,
         SettingsEntity::class,
         TimerStateEntity::class,
+        FocusSessionEntity::class,
     ],
-    version = 1,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -34,12 +35,16 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun timer(): TimerDao
 
+    abstract fun focusSessions(): FocusSessionDao
+
     companion object {
         const val FILE_NAME = "daily-tasks.db"
         const val DEFAULT_LIST_ID = "default"
 
-        fun build(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, FILE_NAME).seeded().build()
+        fun build(context: Context): AppDatabase = Room.databaseBuilder(context, AppDatabase::class.java, FILE_NAME)
+            .addMigrations(*Migrations.ALL)
+            .seeded()
+            .build()
 
         fun inMemory(context: Context): AppDatabase =
             Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).seeded().build()

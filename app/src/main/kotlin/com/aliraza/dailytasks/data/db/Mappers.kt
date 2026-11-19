@@ -1,5 +1,6 @@
 package com.aliraza.dailytasks.data.db
 
+import com.aliraza.dailytasks.core.focus.FocusSession
 import com.aliraza.dailytasks.core.model.HeadsUp
 import com.aliraza.dailytasks.core.model.Priority
 import com.aliraza.dailytasks.core.model.ReminderLogEntry
@@ -9,6 +10,7 @@ import com.aliraza.dailytasks.core.model.Task
 import com.aliraza.dailytasks.core.model.TaskList
 import com.aliraza.dailytasks.core.model.ThemeMode
 import com.aliraza.dailytasks.core.model.TimerSignal
+import java.time.Duration
 
 /** Conversions between table rows and the domain model in :core. */
 
@@ -64,6 +66,20 @@ fun ReminderLogEntry.toEntity() = ReminderLogEntity(
     firedBy = firedBy,
 )
 
+fun FocusSessionEntity.toDomain() = FocusSession(
+    taskId = taskId,
+    startedAt = startedAt,
+    endedAt = endedAt,
+    focused = Duration.ofMillis(focusedMs),
+)
+
+fun FocusSession.toEntity() = FocusSessionEntity(
+    taskId = taskId,
+    startedAt = startedAt,
+    endedAt = endedAt,
+    focusedMs = focused.toMillis(),
+)
+
 fun SubtaskEntity.toDomain() = Subtask(id = id, taskId = taskId, title = title, done = done, position = position)
 
 fun Subtask.toEntity() = SubtaskEntity(id = id, taskId = taskId, title = title, done = done, position = position)
@@ -78,7 +94,8 @@ fun SettingsEntity.toDomain() = Settings(
     dndOverride = dndOverride,
     focusMinutes = focusMinutes,
     breakMinutes = breakMinutes,
-    breaksEnabled = breaksEnabled,
+    focusCustomMinutes = focusCustomMinutes,
+    breakCustomMinutes = breakCustomMinutes,
     timerSignal = enumOrDefault(timerSignal, TimerSignal.BOTH),
     theme = enumOrDefault(theme, ThemeMode.SYSTEM),
     lastBackupAt = lastBackupAt,
@@ -94,7 +111,8 @@ fun Settings.toEntity() = SettingsEntity(
     dndOverride = dndOverride,
     focusMinutes = focusMinutes,
     breakMinutes = breakMinutes,
-    breaksEnabled = breaksEnabled,
+    focusCustomMinutes = focusCustomMinutes,
+    breakCustomMinutes = breakCustomMinutes,
     timerSignal = timerSignal.name,
     theme = theme.name,
     lastBackupAt = lastBackupAt,

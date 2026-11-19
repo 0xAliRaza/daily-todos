@@ -22,15 +22,18 @@ object NotificationChannels {
     /** Used when the Do Not Disturb override is on: alarm audio usage, which Do Not Disturb lets through. */
     const val REMINDERS_DND = "reminders_dnd"
 
-    /** Focus timer end alerts, one channel per signal setting. */
-    const val TIMER_SOUND = "timer_sound"
-    const val TIMER_VIBRATE = "timer_vibrate"
-    const val TIMER_BOTH = "timer_both"
+    /**
+     * A round's end. Silent itself: the app sounds and buzzes a set number of times (see [EndSignal]),
+     * which a channel can't do.
+     */
+    const val TIMER_END = "timer_end"
 
     /** The silent ongoing countdown while a round runs. */
     const val TIMER_RUNNING = "timer_running"
 
-    private val TIMER_VIBRATION = longArrayOf(0, 600, 400, 600, 400, 600)
+    /** Timer channels of earlier builds, removed on start. */
+    private val RETIRED = listOf("timer_sound", "timer_vibrate", "timer_both") +
+        listOf("focus", "break").flatMap { kind -> listOf("sound", "vibrate", "both").map { "timer_${kind}_$it" } }
 
     fun ensure(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -57,23 +60,20 @@ object NotificationChannels {
                     .build(),
             )
         }
+        RETIRED.forEach(manager::deleteNotificationChannel)
         manager.createNotificationChannels(listOf(reminders, remindersDnd) + timerChannels(context))
     }
 
     private fun timerChannels(context: Context): List<NotificationChannel> {
-        val alarmAudio = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-        val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        fun channel(id: String, name: Int, sound: Boolean, vibrate: Boolean) =
-            NotificationChannel(id, context.getString(name), NotificationManager.IMPORTANCE_HIGH).apply {
-                description = context.getString(R.string.channel_timer_description)
-                setSound(if (sound) alarmSound else null, if (sound) alarmAudio else null)
-                enableVibration(vibrate)
-                if (vibrate) vibrationPattern = TIMER_VIBRATION
-            }
+        val end = NotificationChannel(
+            TIMER_END,
+            context.getString(R.string.channel_timer_end),
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = context.getString(R.string.channel_timer_description)
+            setSound(null, null)
+            enableVibration(false)
+        }
         val running = NotificationChannel(
             TIMER_RUNNING,
             context.getString(R.string.channel_timer_running),
@@ -82,12 +82,7 @@ object NotificationChannels {
             setSound(null, null)
             enableVibration(false)
         }
-        return listOf(
-            channel(TIMER_SOUND, R.string.channel_timer_sound, sound = true, vibrate = false),
-            channel(TIMER_VIBRATE, R.string.channel_timer_vibrate, sound = false, vibrate = true),
-            channel(TIMER_BOTH, R.string.channel_timer_both, sound = true, vibrate = true),
-            running,
-        )
+        return listOf(end, running)
     }
 }
 

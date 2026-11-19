@@ -9,73 +9,104 @@ import java.time.Instant
 
 class FocusRoundsTest {
     private val start = Instant.parse("2026-11-18T10:00:00Z")
-    private val settings = Settings(focusMinutes = 25, breakMinutes = 5, breaksEnabled = true)
+    private val settings = Settings(focusMinutes = 25, breakMinutes = 5)
 
     private fun at(minutes: Long): Instant = start.plus(Duration.ofMinutes(minutes))
 
+    private fun focusing() = FocusRounds.start("task", settings, start)
+
+    private fun breakDue() = FocusRounds.settle(focusing(), at(25)).timer
+
     @Test
-    fun focusEndStartsTheBreakByItself() {
-        val timer = FocusRounds.start("t", settings, start)
-        val step = FocusRounds.settle(timer, settings, at(25), taskOpen = true)
-        assertEquals(FocusPhase.FOCUS, step.ended)
-        assertEquals(FocusPhase.BREAK, step.timer.phase)
-        assertEquals(at(30), step.timer.endsAt)
+    fun focusBelongsToItsTaskAndRemembersItsLength() {
+        val timer = focusing()
+        assertEquals("task", timer.taskId)
+        assertEquals(at(25), timer.endsAt)
+        assertEquals(Duration.ofMinutes(25), timer.roundLength)
     }
 
     @Test
-    fun breakEndWaitsForTheNextFocus() {
-        val onBreak = FocusRounds.settle(FocusRounds.start(null, settings, start), settings, at(25), true).timer
-        val step = FocusRounds.settle(onBreak, settings, at(30), taskOpen = true)
-        assertEquals(FocusPhase.BREAK, step.ended)
-        assertEquals(FocusPhase.WAITING, step.timer.phase)
+    fun focusEndWaitsForTheBreakToBeStarted() {
+        val step = FocusRounds.settle(focusing(), at(25))
+        assertEquals(FocusPhase.FOCUS, step.ended?.phase)
+        assertEquals("task", step.ended?.taskId)
+        assertEquals(FocusPhase.BREAK_DUE, step.timer.phase)
+        assertEquals("task", step.timer.taskId)
         assertNull(step.timer.endsAt)
-        val next = FocusRounds.next(step.timer, settings, at(31))
-        assertEquals(2, next.round)
-        assertEquals(at(56), next.endsAt)
+        assertEquals(FocusStep(step.timer), FocusRounds.settle(step.timer, at(90)))
+        val onBreak = FocusRounds.startBreak(step.timer, settings, at(27))
+        assertEquals(FocusPhase.BREAK, onBreak.phase)
+        assertEquals(at(32), onBreak.endsAt)
+        assertEquals(Duration.ofMinutes(5), onBreak.roundLength)
     }
 
     @Test
-    fun withBreaksOffFocusEndWaits() {
-        val noBreaks = settings.copy(breaksEnabled = false)
-        val step = FocusRounds.settle(FocusRounds.start(null, noBreaks, start), noBreaks, at(25), true)
-        assertEquals(FocusPhase.FOCUS, step.ended)
-        assertEquals(FocusPhase.WAITING, step.timer.phase)
+    fun breakEndLeavesTheTimerIdle() {
+        val onBreak = FocusRounds.startBreak(breakDue(), settings, at(25))
+        val step = FocusRounds.settle(onBreak, at(30))
+        assertEquals(FocusPhase.BREAK, step.ended?.phase)
+        assertEquals("task", step.ended?.taskId)
+        assertEquals(FocusTimer.Idle, step.timer)
     }
 
     @Test
-    fun catchUpCountsTheBreakFromThePlannedEnd() {
-        val timer = FocusRounds.start(null, settings, start)
-        assertEquals(at(30), FocusRounds.settle(timer, settings, at(27), true).timer.endsAt)
-        val late = FocusRounds.settle(timer, settings, at(40), true)
-        assertEquals(FocusPhase.WAITING, late.timer.phase)
-        assertEquals(FocusPhase.BREAK, late.ended)
+    fun skippingTheBreakLeavesTheTimerIdleWhetherItWaitsOrRuns() {
+        assertEquals(FocusTimer.Idle, FocusRounds.skipBreak(breakDue()))
+        assertEquals(FocusTimer.Idle, FocusRounds.skipBreak(FocusRounds.startBreak(breakDue(), settings, at(25))))
+        val running = focusing()
+        assertEquals(running, FocusRounds.skipBreak(running))
+    }
+
+    @Test
+    fun startingABreakOnlyWorksWhenOneIsDue() {
+        val running = focusing()
+        assertEquals(running, FocusRounds.startBreak(running, settings, at(5)))
     }
 
     @Test
     fun nothingHappensBeforeTheEnd() {
-        val timer = FocusRounds.start(null, settings, start)
-        assertEquals(FocusStep(timer), FocusRounds.settle(timer, settings, at(24), true))
-    }
-
-    @Test
-    fun completingTheTaskStopsTheTimerSilently() {
-        val step = FocusRounds.settle(FocusRounds.start("t", settings, start), settings, at(25), taskOpen = false)
-        assertEquals(FocusStep(FocusTimer.Idle), step)
+        val timer = focusing()
+        assertEquals(FocusStep(timer), FocusRounds.settle(timer, at(24)))
+        assertEquals(FocusStep(FocusTimer.Idle), FocusRounds.settle(FocusTimer.Idle, at(24)))
     }
 
     @Test
     fun pauseKeepsTheRemainderAndResumeContinuesIt() {
-        val paused = FocusRounds.pause(FocusRounds.start(null, settings, start), at(10))
+        val paused = FocusRounds.pause(focusing(), at(10))
         assertEquals(Duration.ofMinutes(15), paused.pausedRemaining)
-        assertEquals(FocusStep(paused), FocusRounds.settle(paused, settings, at(60), true))
+        assertEquals(FocusStep(paused), FocusRounds.settle(paused, at(60)))
         assertEquals(at(75), FocusRounds.resume(paused, at(60)).endsAt)
     }
 
     @Test
-    fun skipBreakStartsTheNextFocus() {
-        val onBreak = FocusRounds.settle(FocusRounds.start(null, settings, start), settings, at(25), true).timer
-        val next = FocusRounds.skipBreak(onBreak, settings, at(26))
-        assertEquals(FocusPhase.FOCUS, next.phase)
-        assertEquals(at(51), next.endsAt)
+    fun focusedTimeLeavesPausesOut() {
+        assertEquals(Duration.ofMinutes(10), FocusRounds.focused(focusing(), at(10)))
+        val paused = FocusRounds.pause(focusing(), at(10))
+        assertEquals(Duration.ofMinutes(10), FocusRounds.focused(paused, at(40)))
+        val resumed = FocusRounds.resume(paused, at(40))
+        assertEquals(Duration.ofMinutes(13), FocusRounds.focused(resumed, at(43)))
+        // Never more than the round, never anything outside focus.
+        assertEquals(Duration.ofMinutes(25), FocusRounds.focused(focusing(), at(90)))
+        assertEquals(Duration.ZERO, FocusRounds.focused(breakDue(), at(30)))
+    }
+
+    @Test
+    fun anAlertLastsWhileItsNextStepIsStillOpen() {
+        val due = breakDue()
+        assertEquals(true, FocusRounds.alertApplies(FocusPhase.FOCUS, "task", due))
+        assertEquals(false, FocusRounds.alertApplies(FocusPhase.FOCUS, "task", FocusRounds.skipBreak(due)))
+        assertEquals(
+            false,
+            FocusRounds.alertApplies(FocusPhase.FOCUS, "task", FocusRounds.startBreak(due, settings, at(26))),
+        )
+        assertEquals(false, FocusRounds.alertApplies(FocusPhase.FOCUS, "other", due))
+        assertEquals(true, FocusRounds.alertApplies(FocusPhase.BREAK, "task", FocusTimer.Idle))
+        assertEquals(false, FocusRounds.alertApplies(FocusPhase.BREAK, "task", focusing()))
+    }
+
+    @Test
+    fun focusEndSignalsThreeTimesAndBreakEndTwice() {
+        assertEquals(3, FocusRounds.pulses(FocusPhase.FOCUS))
+        assertEquals(2, FocusRounds.pulses(FocusPhase.BREAK))
     }
 }

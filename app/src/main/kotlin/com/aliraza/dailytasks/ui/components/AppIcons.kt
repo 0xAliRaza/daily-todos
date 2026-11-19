@@ -21,12 +21,6 @@ object AppIcons {
     val ChevronLeft = icon("ChevronLeft", "M15.41,7.41L14,6l-6,6 6,6 1.41,-1.41L10.83,12z")
     val ChevronRight = icon("ChevronRight", "M10,6L8.59,7.41 13.17,12l-4.58,4.59L10,18l6,-6z")
     val ChevronDown = icon("ChevronDown", "M16.59,8.59L12,13.17 7.41,8.59 6,10l6,6 6,-6z")
-    val Agenda = icon(
-        "Agenda",
-        "M19,13H5c-1.1,0 -2,0.9 -2,2v4c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2v-4C21,13.9 20.1,13 19,13z" +
-            "M19,19H5v-4h14V19zM19,3H5C3.9,3 3,3.9 3,5v4c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2V5" +
-            "C21,3.9 20.1,3 19,3zM19,9H5V5h14V9z",
-    )
     val Checklist = icon(
         "Checklist",
         "M22,7h-9v2h9V7zM22,15h-9v2h9V15zM5.54,11L2,7.46l1.41,-1.41l2.12,2.12l4.24,-4.24l1.41,1.41L5.54,11z" +
@@ -50,6 +44,15 @@ object AppIcons {
         "Today",
         "M19,3h-1V1h-2v2H8V1H6v2H5c-1.11,0 -1.99,0.9 -1.99,2L3,19c0,1.1 0.89,2 2,2h14c1.1,0 2,-0.9 2,-2V5c0," +
             "-1.1 -0.9,-2 -2,-2zm0,16H5V8h14v11zM7,10h5v5H7z",
+    )
+
+    /** A calendar with a turning arrow: move to another day. */
+    val Reschedule = icon(
+        "Reschedule",
+        "M21,12V6c0,-1.1 -0.9,-2 -2,-2h-1V2h-2v2H8V2H6v2H5C3.9,4 3,4.9 3,6v14c0,1.1 0.9,2 2,2h7v-2H5V10h14v2H21z" +
+            "M15.64,20c0.43,1.45 1.77,2.5 3.36,2.5c1.93,0 3.5,-1.57 3.5,-3.5s-1.57,-3.5 -3.5,-3.5c-0.95,0 -1.82," +
+            "0.38 -2.45,1H18V18h-4v-4h1.5v1.43C16.4,14.55 17.64,14 19,14c2.76,0 5,2.24 5,5s-2.24,5 -5,5" +
+            "c-2.42,0 -4.44,-1.72 -4.9,-4H15.64z",
     )
     val Upcoming = icon(
         "Upcoming",

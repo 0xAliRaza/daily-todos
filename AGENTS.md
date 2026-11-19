@@ -11,7 +11,7 @@ desktop or web version.
 
 Status on 2026-11-18: M0 to M2 done. The reminder engine (M3), the task screens (M4), reminder health
 (M5), the focus timer (M6), lists (M7) and settings with backup (M8) are built and wait for the A54 checks.
-On the phone the app is named DT. See the milestones in `PLAN.md`.
+See the milestones in `PLAN.md`.
 
 ## Start here
 
@@ -34,10 +34,12 @@ On the phone the app is named DT. See the milestones in `PLAN.md`.
 - Sub-tasks show under their task by default; the "1/3" chevron folds them.
 - Calendar: Day, 3 days, Week and Month views of dated tasks. Timed tasks sit at their time on an hour
   grid (tasks have no length); Month shows dots per day and the picked day's tasks below, and folds to
-  that day's week as the list scrolls. It is Upcoming's second view: one tab, switched from the top bar,
-  and the tab reopens the view used last while the app runs; it opens as the list when the app starts. Three tabs: Today, Upcoming, Lists.
-- Gestures: swipe a task right to reschedule (today, tomorrow, next week, a picked date, no date), left
-  to delete; both undo. Tap opens a task, long-press starts multi-select, the round box completes.
+  that day's week as the list scrolls.
+- Four tabs: Today, Upcoming, Calendar, Lists. Upcoming and Calendar are separate tabs.
+- Gestures: swipe a task right to open its focus timer, left to delete it (with undo). Tap opens a task,
+  long-press starts multi-select, the round box completes.
+- Rescheduling: the task sheet's date row, the Reschedule button in multi-select, and the overdue header
+  in Today. Each offers today, tomorrow, next week, a picked date or no date, with undo.
 - Lists show their open counts; a list's menu renames it or deletes it with its tasks (undo right after).
 - Undo on every action, multi-select, drag to reorder.
 - Sorting: inside a list, manual order with new tasks added at the bottom. In Today, overdue first (its
@@ -78,13 +80,39 @@ On the phone the app is named DT. See the milestones in `PLAN.md`.
 
 **Focus timer**
 
-- Focus and break rounds, started from a task (runs until the task is done) or on its own.
-- The start screen has quick adjusters for focus length and break length, and a switch to turn breaks off.
-- End signal: sound, vibrate, or both. Vibrate-only matters for office use. The signal behaves like an
-  alarm, not a single blip: it keeps going until dismissed, with a cap so it stops by itself.
-- The end of each round is scheduled like a reminder, so it fires even if the app is killed. The countdown
-  on screen is only a display.
-- Built right after tasks and reminders are solid.
+- The timer always belongs to one task. Swiping a task right opens that task's timer, a screen of its
+  own with back; leaving it never stops the timer. The task sheet has a Focus row ("Focused 1 h 20 min ·
+  4 sessions") with a play button that opens it too.
+- Only focus and break. No long break, no round numbers, no switch to turn breaks off. Nothing starts by
+  itself: each step waits for a tap.
+- Ready to focus: the task's title with its round check box, the dial, presets 15, 25 and 50 minutes and
+  a fourth chip with the last length stepped to that is not a preset (90 until then), with a stepper, a Sound / Vibrate / Both switch, the task's focused time, and one Start focus button. If
+  another task's timer runs, a note says starting here ends it.
+- Focusing: Pause or Resume, and Stop. On a break: Pause or Resume, and End break.
+- Break time, after focus ends: "25 min of focus done", break presets 5, 10 and 15 minutes and the same
+  kind of fourth chip (20 until then), with a stepper, Skip break and Start break. The end or skip of a break goes back to Ready.
+- Stopping focus early keeps the time spent, if it is 1 minute or more. Completing the task from the timer
+  ticks it off (with undo) and closes the screen. Completing or deleting the task anywhere stops its timer
+  quietly and keeps the time spent.
+- A now-focusing bar sits above the tab bar, and at the bottom of other screens, while a round runs or a
+  break waits: the task's title and the countdown, in the accent for focus and green for a break ("Break
+  time" while the break waits). Tapping it returns to the timer.
+- End signal: Sound and Both play the phone's default notification sound three times at a focus end and
+  twice at a break end; Both adds a short buzz to each sound. Vibrate-only gives long full-strength buzzes
+  in two groups: three and three at a focus end, two and two at a break end. Longer than a notification,
+  not an alarm. Vibrate-only matters for office use.
+- With the phone in vibrate mode the long buzz plays whatever is picked; in silent mode it stays quiet.
+  The Do Not Disturb override plays it as an alarm regardless.
+- Notifications name the task. While a round runs: "Focus · ends at 11:42" (or Break) with a live
+  countdown, Pause and Stop (or End break). At a focus end: Start break and Skip break. At a break end:
+  Start focus. The end alerts have no Stop. An alert whose next step no longer applies is removed.
+- Settings has a Focus group: Focus stats and the end signal choice. The Do Not Disturb override stays
+  with Reminders.
+- Focus stats: the all-time total, Today, This week and Sessions, a 7-day bar chart, the top 5
+  tasks (deleted ones grouped as "Deleted tasks"), and one comparison from bundled facts ("That's as long
+  as 72 journeys of sunlight to Earth"). Plain statistics, no points or streaks.
+- The end of each round is scheduled like a reminder, through the one scheduling path, so it fires even
+  if the app is killed. The countdown on screen is only a display.
 
 **Data**
 

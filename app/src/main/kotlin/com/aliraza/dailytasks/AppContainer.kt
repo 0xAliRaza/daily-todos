@@ -13,6 +13,7 @@ import com.aliraza.dailytasks.reminder.AndroidAlarmArmer
 import com.aliraza.dailytasks.reminder.AndroidFocusSignals
 import com.aliraza.dailytasks.reminder.AndroidReminderPoster
 import com.aliraza.dailytasks.reminder.BeforeUnlockReminders
+import com.aliraza.dailytasks.reminder.EndSignal
 import com.aliraza.dailytasks.reminder.FocusEngine
 import com.aliraza.dailytasks.reminder.ReminderActions
 import com.aliraza.dailytasks.reminder.ReminderScheduler
@@ -43,11 +44,14 @@ class AppContainer(context: Context) {
     val lists: ListRepository by lazy { ListRepository(database.lists(), clock, onScheduleChanged) }
     val tasks: TaskRepository by lazy { TaskRepository(database, clock, settings, onScheduleChanged) }
     val subtasks: SubtaskRepository by lazy { SubtaskRepository(database.subtasks()) }
-    val timers: TimerRepository by lazy { TimerRepository(database.timer(), settings, clock, onScheduleChanged) }
+    val timers: TimerRepository by lazy {
+        TimerRepository(database.timer(), database.focusSessions(), settings, clock, onScheduleChanged)
+    }
     val backup: BackupRepository by lazy { BackupRepository(database, settings, clock, onScheduleChanged) }
 
     val alarmArmer by lazy { AndroidAlarmArmer(appContext) }
     val reminderPoster by lazy { AndroidReminderPoster(appContext) }
+    val focusSignals by lazy { AndroidFocusSignals(appContext, EndSignal(appContext, appScope)) }
     private val mirror by lazy {
         ScheduleMirror(File(appContext.createDeviceProtectedStorageContext().filesDir, ScheduleMirror.FILE_NAME))
     }
@@ -61,7 +65,7 @@ class AppContainer(context: Context) {
             alarmArmer,
             mirror,
             clock,
-            timer = FocusEngine(timers, tasks, AndroidFocusSignals(appContext)),
+            timer = FocusEngine(timers, tasks, focusSignals),
         )
     }
     val beforeUnlock by lazy { BeforeUnlockReminders(mirror, reminderPoster, alarmArmer, clock) }

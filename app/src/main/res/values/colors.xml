@@ -2,6 +2,7 @@
 <resources>
     <!-- Mirrors the background token in ui/theme/ColorTokens.kt so the first frame matches. -->
     <color name="window_background">#FFFFFFFF</color>
-    <!-- The launcher icon: the ink-blue accent, full bleed. -->
-    <color name="launcher_background">#FF2563EB</color>
+    <!-- Notification tints: the ink-blue accent while focusing, green for a break. -->
+    <color name="notification_accent">#FF2563EB</color>
+    <color name="notification_rest">#FF058527</color>
 </resources>

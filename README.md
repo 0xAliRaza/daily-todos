@@ -11,14 +11,17 @@ after a restart, or when the phone was switched off across the reminder time.
 ## What it does
 
 - Lists (one built-in "Daily" list plus your own), sub-tasks, three optional priorities.
-- Today and Upcoming views across all lists, with a week strip and a Day, 3-day, Week and Month calendar;
+- Four tabs: Today, Upcoming (with a week strip), a Day, 3-day, Week and Month Calendar, and Lists;
   search; undo on every action.
-- Swipe a task right to reschedule it, left to delete it; reschedule every overdue task at once.
+- Swipe a task right to focus on it, left to delete it. Reschedule from the task, from a multi-select, or
+  every overdue task at once.
 - Pick the date, priority or list by hand while adding, or just type them.
 - One notification per task with Done and Snooze; overdue tasks remind again the next morning.
 - A Reminder health screen that checks every permission and battery setting for your phone's maker and
   keeps a history of when each reminder was due and when it actually fired.
-- A focus timer whose round ends are scheduled like reminders, with sound, vibrate-only or both.
+- A focus timer for each task, with focus and break rounds whose ends are scheduled like reminders and
+  signalled by sound, a long vibration or both. A bar shows the running round on every screen.
+- Focus stats: total focus time, today, this week, a 7-day chart and the tasks you focused on most.
 - Export and import of everything as one JSON file.
 
 ## What it does not do
@@ -33,7 +36,7 @@ importing other apps' files, and desktop or web versions.
    download `daily-tasks-<version>.apk`.
 2. Open the downloaded file. Android asks to allow installing from your browser or file manager the first
    time; allow it for that app, then tap Install.
-3. Open Daily Tasks (shown as DT), allow notifications, and check Settings → Reminder health once.
+3. Open Daily Tasks, allow notifications, and check Settings → Reminder health once.
 
 Each release lists the APK's SHA-256 checksum and the signing certificate, so you can check the file.
 Updates install over the old version and keep your tasks, as long as they come from these releases.

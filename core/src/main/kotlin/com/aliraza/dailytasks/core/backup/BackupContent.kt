@@ -1,5 +1,6 @@
 package com.aliraza.dailytasks.core.backup
 
+import com.aliraza.dailytasks.core.focus.FocusSession
 import com.aliraza.dailytasks.core.model.ReminderLogEntry
 import com.aliraza.dailytasks.core.model.Settings
 import com.aliraza.dailytasks.core.model.Subtask
@@ -16,4 +17,5 @@ data class BackupContent(
     val tasks: List<Task>,
     val subtasks: List<Subtask>,
     val reminderHistory: List<ReminderLogEntry>,
+    val focusSessions: List<FocusSession> = emptyList(),
 )

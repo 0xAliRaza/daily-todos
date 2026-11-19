@@ -1,5 +1,6 @@
 package com.aliraza.dailytasks.core.backup
 
+import com.aliraza.dailytasks.core.focus.FocusSession
 import com.aliraza.dailytasks.core.model.FiredBy
 import com.aliraza.dailytasks.core.model.HeadsUp
 import com.aliraza.dailytasks.core.model.Priority
@@ -17,6 +18,7 @@ import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -34,7 +36,8 @@ class BackupCodecTest {
             dndOverride = true,
             focusMinutes = 50,
             breakMinutes = 10,
-            breaksEnabled = false,
+            focusCustomMinutes = 40,
+            breakCustomMinutes = 7,
             timerSignal = TimerSignal.VIBRATE,
             theme = ThemeMode.DARK,
             lastBackupAt = Instant.parse("2026-11-01T08:00:00Z"),
@@ -73,6 +76,21 @@ class BackupCodecTest {
                 FiredBy.BEFORE_UNLOCK,
             ),
         ),
+        focusSessions = listOf(
+            FocusSession(
+                "t1",
+                Instant.parse("2026-11-19T09:00:00Z"),
+                Instant.parse("2026-11-19T09:30:00Z"),
+                Duration.ofMinutes(25),
+            ),
+            // Time on a task deleted since: no task, still counted.
+            FocusSession(
+                null,
+                Instant.parse("2026-11-18T09:00:00Z"),
+                Instant.parse("2026-11-18T09:12:30Z"),
+                Duration.ofSeconds(750),
+            ),
+        ),
     )
 
     private fun valid(): String = BackupCodec.encode(sample, exportedAt)
@@ -100,7 +118,7 @@ class BackupCodecTest {
     fun fileIsReadableJsonWithItsFormatAndVersion() {
         val root = json.parseToJsonElement(valid()).jsonObject
         assertEquals(JsonPrimitive("daily-tasks-backup"), root["format"])
-        assertEquals(JsonPrimitive(1), root["version"])
+        assertEquals(JsonPrimitive(2), root["version"])
         assertTrue(valid().contains("\"dueTime\": \"16:00\""))
         assertTrue(valid().contains("\"dueDate\": \"2026-11-19\""))
     }
@@ -113,9 +131,48 @@ class BackupCodecTest {
         assertRejected(RejectReason.NOT_A_BACKUP, edited { JsonObject(it + ("format" to JsonPrimitive("other"))) })
     }
 
+    /** A version 1 file, as 0.1 builds before focus sessions wrote it: a "breaks" switch, no sessions. */
+    private fun versionOne(): String = edited { root ->
+        val settings = root.getValue("settings").jsonObject
+        JsonObject(
+            root - "focusSessions" + mapOf(
+                "version" to JsonPrimitive(1),
+                "settings" to JsonObject(settings + ("breaksEnabled" to JsonPrimitive(false))),
+            ),
+        )
+    }
+
+    @Test
+    fun aVersionOneFileStillImports() {
+        assertEquals(
+            BackupReadResult.Accepted(sample.copy(focusSessions = emptyList())),
+            BackupCodec.decode(versionOne()),
+        )
+    }
+
+    /** A version 2 file written before the fourth timer chip: no custom lengths in its settings. */
+    @Test
+    fun aVersionTwoFileWithoutCustomLengthsImportsWithTheDefaults() {
+        val older = edited { root ->
+            val settings = root.getValue("settings").jsonObject
+            JsonObject(root + ("settings" to JsonObject(settings - "focusCustomMinutes" - "breakCustomMinutes")))
+        }
+        val expected = sample.settings.copy(
+            focusCustomMinutes = Settings.DEFAULT_FOCUS_CUSTOM_MINUTES,
+            breakCustomMinutes = Settings.DEFAULT_BREAK_CUSTOM_MINUTES,
+        )
+        assertEquals(BackupReadResult.Accepted(sample.copy(settings = expected)), BackupCodec.decode(older))
+    }
+
+    @Test
+    fun exportsTheCustomLengths() {
+        assertTrue(valid().contains("\"focusCustomMinutes\": 40"))
+        assertTrue(valid().contains("\"breakCustomMinutes\": 7"))
+    }
+
     @Test
     fun refusesOtherVersions() {
-        assertRejected(RejectReason.NEWER_VERSION, edited { JsonObject(it + ("version" to JsonPrimitive(2))) })
+        assertRejected(RejectReason.NEWER_VERSION, edited { JsonObject(it + ("version" to JsonPrimitive(3))) })
         assertRejected(RejectReason.INVALID, edited { JsonObject(it + ("version" to JsonPrimitive(0))) })
         assertRejected(RejectReason.MALFORMED, edited { JsonObject(it - "version") })
     }
@@ -124,6 +181,7 @@ class BackupCodecTest {
     fun refusesUnknownAndMissingFields() {
         assertRejected(RejectReason.MALFORMED, edited { JsonObject(it + ("extra" to JsonPrimitive(true))) })
         assertRejected(RejectReason.MALFORMED, edited { JsonObject(it - "tasks") })
+        assertRejected(RejectReason.MALFORMED, edited { JsonObject(it - "focusSessions") })
     }
 
     @Test
@@ -148,6 +206,10 @@ class BackupCodecTest {
             RejectReason.INVALID,
             file { f -> f.copy(subtasks = f.subtasks.map { it.copy(taskId = "gone") }) },
         )
+        assertRejected(
+            RejectReason.INVALID,
+            file { f -> f.copy(focusSessions = f.focusSessions.map { it.copy(taskId = "gone") }) },
+        )
     }
 
     @Test
@@ -165,8 +227,14 @@ class BackupCodecTest {
             { f -> f.copy(tasks = f.tasks.map { it.copy(createdAt = "yesterday") }) },
             { f -> f.copy(settings = f.settings.copy(headsUpMinutes = 15)) },
             { f -> f.copy(settings = f.settings.copy(focusMinutes = 0)) },
+            { f -> f.copy(settings = f.settings.copy(focusCustomMinutes = 181)) },
+            { f -> f.copy(settings = f.settings.copy(breakCustomMinutes = 0)) },
             { f -> f.copy(settings = f.settings.copy(theme = "NEON")) },
             { f -> f.copy(reminderHistory = f.reminderHistory.map { it.copy(firedBy = "MAGIC") }) },
+            { f -> f.copy(focusSessions = f.focusSessions.map { it.copy(focusedMs = -1) }) },
+            // More focus than the session lasted.
+            { f -> f.copy(focusSessions = f.focusSessions.map { it.copy(focusedMs = 86_400_000) }) },
+            { f -> f.copy(focusSessions = f.focusSessions.map { it.copy(endedAt = "2026-01-01T00:00:00Z") }) },
         )
         cases.forEach { assertRejected(RejectReason.INVALID, file(it)) }
     }

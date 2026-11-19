@@ -39,6 +39,7 @@ class BackupRoundTripTest {
         val tasks = TaskRepository(db, clock, settings) {}
         val subtasks = SubtaskRepository(db.subtasks())
         val backup = BackupRepository(db, settings, clock) {}
+        val timers = TimerRepository(db.timer(), db.focusSessions(), settings, clock) {}
     }
 
     private fun newPhone() = Phone(
@@ -72,6 +73,8 @@ class BackupRoundTripTest {
         val done = tasks.addTask(NewTask("Old chore"))
         tasks.setCompleted(listOf(done.id), completed = true)
         val gone = tasks.addTask(NewTask("Deleted one"))
+        timers.record(bank.id, Duration.ofMinutes(25), Instant.parse("2026-11-18T10:00:00Z"))
+        timers.record(gone.id, Duration.ofMinutes(10), Instant.parse("2026-11-18T10:30:00Z"))
         tasks.setDeleted(listOf(gone.id), deleted = true)
         db.reminderLog().insert(
             ReminderLogEntity(
@@ -95,6 +98,12 @@ class BackupRoundTripTest {
 
         assertEquals(original.backup.snapshot(), restored.backup.snapshot())
         assertEquals(export.at, restored.settings.current().lastBackupAt)
+        // Focus on the deleted task travels without it and still counts.
+        assertEquals(
+            listOf(Duration.ofMinutes(25), Duration.ofMinutes(10)),
+            restored.backup.snapshot().focusSessions.map { it.focused },
+        )
+        assertEquals(null, restored.backup.snapshot().focusSessions.last().taskId)
     }
 
     @Test

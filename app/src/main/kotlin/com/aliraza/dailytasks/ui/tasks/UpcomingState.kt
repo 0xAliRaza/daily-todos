@@ -2,7 +2,6 @@ package com.aliraza.dailytasks.ui.tasks
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -17,17 +18,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -45,8 +46,8 @@ import com.aliraza.dailytasks.ui.theme.tokens
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
-import kotlin.math.abs
 
 private const val DAYS_SHOWN = 7L
 private val MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
@@ -63,13 +64,19 @@ class UpcomingState(private val today: LocalDate) {
     val thisWeek: LocalDate get() = mondayOf(today)
     val isHome: Boolean get() = weekStart == thisWeek && selected == today.plusDays(1)
 
+    /** The week shown, counted in weeks from this one: the strip's page. */
+    val week: Int get() = ChronoUnit.WEEKS.between(thisWeek, weekStart).toInt()
+
+    /** Moves the strip a week on or back, like its arrows; see [showWeek]. */
+    fun page(forward: Boolean): LocalDate? = showWeek(week + if (forward) 1 else -1)
+
     /**
-     * Moves the strip a week on or back (never before this week) and picks that week's first day still
-     * ahead. Returns the picked day, or null when it couldn't move.
+     * Shows the week [index] weeks from this one (never before it) and picks its first day still ahead.
+     * Returns the picked day, or null when that week is already shown or out of reach.
      */
-    fun page(forward: Boolean): LocalDate? {
-        if (!forward && !weekStart.isAfter(thisWeek)) return null
-        weekStart = weekStart.plusWeeks(if (forward) 1 else -1)
+    fun showWeek(index: Int): LocalDate? {
+        if (index !in 0 until WEEKS || index == week) return null
+        weekStart = thisWeek.plusWeeks(index.toLong())
         selected = maxOf(weekStart, today.plusDays(1))
         return selected
     }
@@ -83,6 +90,11 @@ class UpcomingState(private val today: LocalDate) {
     fun home() {
         weekStart = thisWeek
         selected = today.plusDays(1)
+    }
+
+    companion object {
+        /** How far ahead the strip pages: ten years of weeks. */
+        const val WEEKS = 520
     }
 
     /**
@@ -116,13 +128,11 @@ fun dayAt(days: List<LocalDate>, taskCount: (LocalDate) -> Int, index: Int): Loc
     return days.lastOrNull()
 }
 
-/** How far the day row must be dragged sideways to turn the week. */
-private val SWIPE_DISTANCE = 48.dp
-
 /**
  * The week over the Upcoming list: the month with week arrows (and Today to come back), then Monday to
  * Sunday with a dot under days that have tasks. Tapping a day picks it; past days are greyed and inert.
- * Swiping the days sideways turns the week, like the arrows.
+ * The days are pages: they follow the finger sideways and settle on the next or previous week, and the
+ * arrows (or the list scrolling into another week) turn them the same way.
  */
 @Composable
 fun WeekStrip(state: UpcomingState, today: LocalDate, hasTasks: (LocalDate) -> Boolean, actions: WeekStripActions) {
@@ -142,34 +152,48 @@ fun WeekStrip(state: UpcomingState, today: LocalDate, hasTasks: (LocalDate) -> B
                 Icon(AppIcons.ChevronRight, stringResource(R.string.week_next))
             }
         }
-        Row(Modifier.fillMaxWidth().weekSwipe(actions.onPage).padding(bottom = 4.dp)) {
+        WeekPager(state, today, hasTasks, actions)
+    }
+}
+
+/**
+ * The days of each week, one page per week. Being a pager, it holds back a day's press until a touch is
+ * clearly a tap, so a swipe never lights up the day it started on.
+ */
+@Composable
+private fun WeekPager(
+    state: UpcomingState,
+    today: LocalDate,
+    hasTasks: (LocalDate) -> Boolean,
+    actions: WeekStripActions,
+) {
+    val pager = rememberPagerState(initialPage = state.week) { UpcomingState.WEEKS }
+    val onWeek by rememberUpdatedState(actions.onWeek)
+    // The arrows, Today and the list following its days change the week; the pager slides to it.
+    LaunchedEffect(state.week) { if (pager.currentPage != state.week) pager.animateScrollToPage(state.week) }
+    // A swipe that settles on another week shows it.
+    LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { onWeek(it) } }
+    HorizontalPager(pager, Modifier.fillMaxWidth().padding(bottom = 4.dp), key = { it }) { page ->
+        val start = state.thisWeek.plusWeeks(page.toLong())
+        Row(Modifier.fillMaxWidth()) {
             for (offset in 0 until DAYS_SHOWN) {
-                val day = state.weekStart.plusDays(offset)
+                val day = start.plusDays(offset)
                 DayCell(day, today, day == state.selected, hasTasks(day), Modifier.weight(1f)) { actions.onPick(day) }
             }
         }
     }
 }
 
-/** What the strip's controls do: back to this week, turn the week (true is forward), and pick a day. */
-class WeekStripActions(val onHome: () -> Unit, val onPage: (forward: Boolean) -> Unit, val onPick: (LocalDate) -> Unit)
-
-/** Calls [onPage] once per sideways drag that goes far enough: a drag to the left turns forward. */
-@Composable
-private fun Modifier.weekSwipe(onPage: (Boolean) -> Unit): Modifier {
-    val page by rememberUpdatedState(onPage)
-    val distance = with(LocalDensity.current) { SWIPE_DISTANCE.toPx() }
-    return pointerInput(distance) {
-        var dragged = 0f
-        detectHorizontalDragGestures(
-            onDragStart = { dragged = 0f },
-            onDragEnd = { if (abs(dragged) >= distance) page(dragged < 0) },
-        ) { change, amount ->
-            change.consume()
-            dragged += amount
-        }
-    }
-}
+/**
+ * What the strip's controls do: back to this week, turn the week with the arrows (true is forward), show
+ * the week a swipe settled on (counted from this week), and pick a day.
+ */
+class WeekStripActions(
+    val onHome: () -> Unit,
+    val onPage: (forward: Boolean) -> Unit,
+    val onWeek: (index: Int) -> Unit,
+    val onPick: (LocalDate) -> Unit,
+)
 
 @Composable
 private fun DayCell(

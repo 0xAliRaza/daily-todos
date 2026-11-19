@@ -32,7 +32,8 @@ data class Settings(
     val dndOverride: Boolean = false,
     val focusMinutes: Int = DEFAULT_FOCUS_MINUTES,
     val breakMinutes: Int = DEFAULT_BREAK_MINUTES,
-    val breaksEnabled: Boolean = true,
+    val focusCustomMinutes: Int = DEFAULT_FOCUS_CUSTOM_MINUTES,
+    val breakCustomMinutes: Int = DEFAULT_BREAK_CUSTOM_MINUTES,
     val timerSignal: TimerSignal = TimerSignal.BOTH,
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val lastBackupAt: Instant? = null,
@@ -42,6 +43,8 @@ data class Settings(
         val DEFAULT_OVERDUE_TIME: LocalTime = LocalTime.of(9, 0)
         const val DEFAULT_FOCUS_MINUTES = 25
         const val DEFAULT_BREAK_MINUTES = 5
+        const val DEFAULT_FOCUS_CUSTOM_MINUTES = 90
+        const val DEFAULT_BREAK_CUSTOM_MINUTES = 20
         val FOCUS_MINUTES_RANGE = 1..180
         val BREAK_MINUTES_RANGE = 1..60
     }

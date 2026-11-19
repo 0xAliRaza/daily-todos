@@ -37,8 +37,8 @@ import com.aliraza.dailytasks.ui.theme.tokens
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-/** What letting go of a swiped row asks for: right reschedules, left deletes. */
-enum class SwipeAction { RESCHEDULE, DELETE }
+/** What letting go of a swiped row asks for: right opens its focus timer, left deletes. */
+enum class SwipeAction { FOCUS, DELETE }
 
 /** Past this share of the row's width, letting go acts; short of it, the row springs back. */
 internal const val SWIPE_THRESHOLD = 0.3f
@@ -46,7 +46,7 @@ internal const val SWIPE_THRESHOLD = 0.3f
 /** The action a swipe of [offset] pixels on a row [width] wide has reached, if any. */
 internal fun swipeAction(offset: Float, width: Float): SwipeAction? = when {
     width <= 0f -> null
-    offset >= width * SWIPE_THRESHOLD -> SwipeAction.RESCHEDULE
+    offset >= width * SWIPE_THRESHOLD -> SwipeAction.FOCUS
     offset <= -width * SWIPE_THRESHOLD -> SwipeAction.DELETE
     else -> null
 }
@@ -55,14 +55,14 @@ internal fun swipeAction(offset: Float, width: Float): SwipeAction? = when {
 private const val ARMED_SCALE = 1.2f
 
 /**
- * A row that swipes: right to reschedule, left to delete. A tick of feedback marks the point where
- * letting go acts. Screen readers get both as actions on the row. [canReschedule] is off for done tasks.
+ * A row that swipes: right to focus on it, left to delete. A tick of feedback marks the point where
+ * letting go acts. Screen readers get both as actions on the row. [canFocus] is off for done tasks.
  */
 @Composable
 fun SwipeRow(
     enabled: Boolean,
-    canReschedule: Boolean,
-    onReschedule: () -> Unit,
+    canFocus: Boolean,
+    onFocus: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
@@ -74,18 +74,18 @@ fun SwipeRow(
     val haptics = LocalHapticFeedback.current
     val drag = rememberDraggableState { delta ->
         val limit = width.toFloat()
-        val next = (offset.value + delta).coerceIn(-limit, if (canReschedule) limit else 0f)
+        val next = (offset.value + delta).coerceIn(-limit, if (canFocus) limit else 0f)
         scope.launch { offset.snapTo(next) }
         val reached = swipeAction(next, limit)
         if (reached != armed && reached != null) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
         armed = reached
     }
-    val reschedule = stringResource(R.string.action_reschedule)
+    val focus = stringResource(R.string.action_focus)
     val delete = stringResource(R.string.action_delete)
     Box(
         modifier.fillMaxWidth().onSizeChanged { width = it.width }.clipToBounds().semantics {
             customActions = listOfNotNull(
-                CustomAccessibilityAction(reschedule) { onReschedule().let { true } }.takeIf { canReschedule },
+                CustomAccessibilityAction(focus) { onFocus().let { true } }.takeIf { canFocus },
                 CustomAccessibilityAction(delete) { onDelete().let { true } },
             )
         },
@@ -105,9 +105,10 @@ fun SwipeRow(
                                 onDelete()
                             }
 
-                            SwipeAction.RESCHEDULE -> {
+                            // The row springs back; nothing about the task changes.
+                            SwipeAction.FOCUS -> {
+                                onFocus()
                                 offset.animateTo(0f)
-                                onReschedule()
                             }
 
                             null -> offset.animateTo(0f)
@@ -119,7 +120,7 @@ fun SwipeRow(
     }
 }
 
-/** The accent with a calendar behind a right swipe, red with a bin behind a left one. */
+/** The accent with a timer behind a right swipe, red with a bin behind a left one. */
 @Composable
 private fun SwipeBackground(offset: Float, armed: SwipeAction?, modifier: Modifier) {
     if (offset == 0f) return
@@ -130,7 +131,7 @@ private fun SwipeBackground(offset: Float, armed: SwipeAction?, modifier: Modifi
         contentAlignment = if (right) Alignment.CenterStart else Alignment.CenterEnd,
     ) {
         Icon(
-            if (right) AppIcons.Today else AppIcons.Delete,
+            if (right) AppIcons.Timer else AppIcons.Delete,
             null,
             tint = if (right) tokens.onAccent else tokens.onError,
             modifier = Modifier.size(22.dp).scale(if (armed != null) ARMED_SCALE else 1f),

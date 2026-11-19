@@ -10,6 +10,7 @@ object Limits {
     const val MAX_TASKS = 50_000
     const val MAX_SUBTASKS = 200_000
     const val MAX_HISTORY = 1_000
+    const val MAX_FOCUS_SESSIONS = 200_000
     const val MAX_ID_LENGTH = 64
     const val MAX_NAME_LENGTH = 200
     const val MAX_TITLE_LENGTH = 2_000

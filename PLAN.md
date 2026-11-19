@@ -68,10 +68,22 @@ write a migration test from the first schema change.
   The newest 200 rows are kept. No titles.
 - `settings` (one row, written on the first change; a missing row means all defaults): default reminder time (10:00), "undated tasks get tomorrow" (on), "date-only tasks
   get a reminder" (on), early heads-up minutes (0, 10, 30 or 60; default 0), overdue reminders (on), overdue
-  reminder time (09:00), Do Not Disturb override (off), focus minutes (25), break minutes (5), breaks
-  enabled (on), timer signal (sound, vibrate, both), theme (system, light, dark), last backup time.
-- `timer_state` (one row): phase (focus, break, idle), `ends_at`, `task_id` (nullable), paused remainder,
-  round number. Persisted so the timer survives the process being killed.
+  reminder time (09:00), Do Not Disturb override (off), focus minutes (25), break minutes (5), the custom
+  focus and break minutes of the timer's fourth chip (90, 20), timer signal (sound, vibrate, both), theme
+  (system, light, dark), last backup time.
+- `timer_state` (one row): phase (idle, focus, break due, break), `ends_at`, `task_id` (set whenever the
+  timer is not idle), `paused_remaining_ms`, `round_ms` (the length of the current round). Persisted so the
+  timer survives the process being killed.
+- `focus_sessions`: `id` (auto), `task_id` (nullable; set to null when the task is purged), `started_at`,
+  `ended_at`, `focused_ms`. Indexed on `task_id` and `ended_at`. A row is written when focus ends on its own
+  (full length) or is stopped early, by Stop, completing or deleting the task, or starting another task's
+  timer (the time spent, if 1 minute or more).
+
+Schema version 3 (2026-11-19). Migration 2 → 3 adds `focus_custom_minutes` (default 90) and
+`break_custom_minutes` (default 20) to `settings`. Migration 1 → 2 adds `focus_sessions`, rebuilds `settings` without
+`breaks_enabled`, and rebuilds `timer_state` with `round_ms` in place of the round number. A timer running
+during the upgrade is dropped; SQLite before Android 12 cannot drop a column, and a lost countdown costs one
+tap.
 
 Rules that follow from the model:
 
@@ -146,8 +158,8 @@ restart themselves overnight would otherwise miss every morning reminder. So:
 - One notification per task. Never call `setGroup` and never post a summary.
 - Tapping opens the task. Actions: Done, 10 min, 1 hour (the two snooze lengths are a planner default).
 - Channels: `reminders` (high importance), `reminders_dnd` (used when the Do Not Disturb override is on),
-  `timer_sound`, `timer_vibrate`, `timer_both`, `timer_running` (low, silent). A channel's sound and
-  vibration cannot be changed by the app after it is created, which is why each timer signal has its own.
+  `timer_end` (silent; the app plays the end signal itself, section 6) and `timer_running` (low, silent).
+  Earlier per-signal timer channels are deleted on start.
 - Do Not Disturb override **(verify)**: first try a channel whose audio usage is "alarm" with the alarm
   notification category, which community reports say passes Do Not Disturb when alarms are allowed. If that
   fails on the phone, fall back to asking for notification-policy access and `setBypassDnd(true)`.
@@ -165,26 +177,56 @@ the app is opened again; catch-up then posts what was missed.
 
 1. No foreground service. The end of each round is an entry in `ReminderScheduler`, so it fires even if the
    app is killed.
-2. While a round runs, an ongoing notification on `timer_running` shows a system-drawn countdown
-   (`setUsesChronometer`, `setChronometerCountDown`, `setWhen(endsAt)`) with Pause and Stop. Nothing has to
-   stay alive to keep it counting.
-3. Start screen: focus length and break length with quick plus and minus steps and a few presets, and a
-   switch for breaks. The last values are remembered.
-4. Started from a task, it keeps offering rounds until the task is completed; completing the task stops it.
-   It can also run with no task.
-5. Planner default for round changes: when focus ends, the alert fires and the break starts by itself; when
-   the break ends, the alert offers "Start next focus" and waits. An unattended phone therefore stops after
-   one break.
-6. End signal follows the setting: sound, vibrate, or both. Verify vibrate-only in silent and vibrate
-   ringer modes, and under Do Not Disturb with the override on.
-7. The end signal is alarm-like: it repeats until the user dismisses it or taps an action, and stops by
-   itself after 60 seconds (planner default). First try the notification "insistent" flag, with the
-   stop scheduled through `ReminderScheduler` as a silent replacement of the notification **(verify that
-   insistent repeats vibration as well as sound on the A54)**. If it does not, fall back to a short
-   foreground service started from the alarm receiver that plays on the alarm stream and vibrates; it
-   must stop itself at the cap. Task reminders stay ordinary single-alert notifications.
-   As built (2026-11-18): the cap is the notification's own timeout (`setTimeoutAfter`), which removes the
-   alert and with it the repeating sound, so no scheduler entry is needed for the stop.
+2. The timer always belongs to one task (decided 2026-11-19; the separate Focus tab is gone). Swiping a
+   task right opens that task's timer as a pushed screen with back; leaving it never stops the timer. The
+   task sheet's Focus row ("Focused 1 h 20 min · 4 sessions") has a play button that opens it too. One
+   timer runs at a time: starting another task's timer ends the running one, and the Ready screen says so.
+3. Phases (`FocusTimer`, `FocusRounds` in `:core`): idle, focus, break due, break. Only focus and break:
+   no long break, no round numbers, no switch to turn breaks off. Nothing starts by itself, so an
+   unattended phone stops after one round.
+4. The timer screen has three moods. Ready to focus: the task's title with its round check box, the dial,
+   presets 15, 25 and 50 minutes plus a fourth chip with the last length stepped to that is not a preset
+   (`FocusPresets`; 90 until then), with − and + either side of the dial, a Sound / Vibrate / Both switch,
+   the task's focus so far under its title, and one Start focus button. The dial reads like a kitchen
+   timer (`FocusDial`): a solid arc of the time left on an hour's face (or the round's length, if longer),
+   so starting a round does not move it, with the end time ("until 3:42 PM") under the countdown.
+   Focusing or on a break: Pause or Resume, and Stop (End break on a break). Break time, after focus
+   ends: "25 min of focus done", break presets 5, 10 and 15 minutes plus the same kind of fourth chip
+   (20 until then), with − and + by the green dial, Skip break and Start break. The end or skip of a
+   break goes back to Ready. The last lengths, both fourth chips and the signal are remembered in settings.
+5. Focus time is kept in `focus_sessions` (section 4). A round that ends on its own records its full
+   length. Stopping early, completing or deleting the task, or starting another task's timer records the
+   time spent, if it is 1 minute or more. Completing the task from the timer ticks it off (with undo) and
+   closes the screen; completing or deleting it anywhere stops its timer quietly.
+6. A now-focusing bar (`NowFocusingBar`) sits above the tab bar, and at the bottom of other screens, while
+   a round runs or a break waits: the task's title and the countdown, the accent for focus, green for a
+   break, "Break time" while the break waits. Tapping it opens the timer.
+7. While a round runs, an ongoing notification on `timer_running` names the task and shows "Focus · ends
+   at 11:42" (or Break) with a system-drawn countdown (`setUsesChronometer`, `setChronometerCountDown`,
+   `setWhen(endsAt)`), and Pause and Stop (End break on a break). Nothing has to stay alive to keep it
+   counting.
+8. End alerts on `timer_end` name the task. A focus end offers Start break and Skip break; a break end
+   offers Start focus. They have no Stop. An alert whose next step no longer applies (after a skip, say)
+   is removed.
+9. The end signal is played by the app (`EndSignal`), because a channel can't repeat a sound a set number
+   of times; the `timer_end` channel itself is silent. Sound and Both play the phone's default
+   notification sound three times at a focus end and twice at a break end; Both adds a 400 ms buzz to each
+   sound. Vibrate-only plays full-strength 900 ms buzzes with 450 ms gaps in two groups split by a 1.2 s
+   pause (`EndBuzz`): 3 + 3 at a focus end (about 8.4 s) and 2 + 2 at a break end (about 5.7 s). Longer
+   than a notification, not an alarm.
+10. Ringer mode decides what plays: in vibrate mode the long buzz plays whatever is picked; in silent mode
+    it stays quiet. The Do Not Disturb override plays it on the alarm stream regardless. Verify all three
+    signal choices in each ringer mode, and under Do Not Disturb with the override on. Task reminders stay
+    ordinary single-alert notifications.
+11. Focus stats (Settings → Focus → Focus stats): the all-time total, tiles for Today, This week (from
+    Monday) and Sessions, a 7-day bar chart, the top 5 tasks (sessions of deleted tasks grouped as
+    "Deleted tasks"), and one comparison card ("That's as long as 72 journeys of sunlight to Earth").
+    Plain statistics; points and streaks stay a non-goal.
+12. The comparison is picked from bundled facts (`FunFacts`) whose count for the total lands in 1 to 999,
+    and the pick rotates daily. Offline. The facts and their sources: a laser to the Moon and back, 2.5 s
+    (NASA lunar laser ranging); sunlight to Earth, 8 min 20 s (Smithsonian); one ISS orbit, about 92 min
+    (NASA JSC); an adult mayfly's life, about 1 day (New World Encyclopedia); Apollo 11 from launch to
+    landing, 102 h 45 min (NASA KSC); one orbit of the Moon, 27.3 days (NASA StarChild).
 
 ## 7. Quick-add parser (`:core`)
 
@@ -237,20 +279,27 @@ Decided while building M1 (planner defaults, changeable on request):
 ## 8. Screens
 
 1. Today: Overdue, then today's timed tasks by time, then the rest in manual order. Tasks from every list.
-2. Upcoming: a week strip at the top, tasks grouped by day. Tasks from every list.
+2. Upcoming: a week strip at the top, tasks grouped by day. Tasks from every list. Calendar (Day, 3 days,
+   Week, Month) is its own tab next to it; the four tabs are Today, Upcoming, Calendar and Lists.
 3. Lists: "Daily" first, then the user's lists; create, rename, reorder, delete. A row outside its own list
    shows the list name. Adding from inside a list files the task there. Deleting a list asks first and
    deletes its tasks, with undo (planner default).
 4. Add: a bottom sheet with the one-line field, live highlighting, and chips for what was recognised.
-5. Task sheet: title, notes, date, time, priority, sub-task checkboxes, "Start focus".
-6. Focus timer.
+5. Task sheet: title, notes, date (its row reschedules), time, priority, sub-task checkboxes, and a Focus
+   row with the task's focused time and sessions and a play button that opens its timer. (The "Next
+   reminder" note was removed on 2026-11-19.)
+6. Focus timer: a pushed screen per task (section 6), with the now-focusing bar on the other screens.
 7. Search.
-8. Settings, including Reminder health, Export / Import, and a direct "Battery optimisation" row that
-   opens the phone's battery setting for this app (the same action as the fix button on the health screen).
+8. Settings, including Reminder health, Export / Import, a direct "Battery optimisation" row that
+   opens the phone's battery setting for this app (the same action as the fix button on the health screen),
+   and a Focus group with Focus stats and the end signal choice. The Do Not Disturb override stays under
+   Reminders.
 
-Behaviour: swipe to complete; undo snackbar after complete, delete and bulk actions (soft delete, purged
-later); long-press for multi-select with bulk complete, re-date, priority and delete; drag to reorder inside
-a section; new tasks go to the bottom.
+Behaviour: swipe right opens the task's focus timer, swipe left deletes; undo snackbar after complete,
+delete and bulk actions (soft delete, purged later); long-press for multi-select with bulk reschedule,
+complete and delete; drag to reorder inside a section; new tasks go to the bottom.
+Rescheduling lives in the task sheet's date row, the multi-select Reschedule button and Today's overdue
+header.
 
 Design: tokens in one file; one ink-blue accent on plain neutrals, red kept for overdue, P1 and deleting, signal colours for priority; light and dark; no wallpaper-based dynamic
 colour; system font; edge-to-edge; start/end layout only (right-to-left safe); works at 200% font size;
@@ -315,11 +364,19 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
   2026-11-18, later: red-on-white redesign; the add bar opens from a round + button; a Calendar tab with Day,
   3 days, Week and Month (the month folds to the picked week as its day list scrolls); Upcoming links to it
   and has a Today button. Date and time words anywhere in the line make one moment and toggle together.
+  2026-11-19: four tabs, Today, Upcoming, Calendar and Lists, with Calendar its own tab again. Swipe right
+  opens the focus timer; rescheduling moved to the sheet's date row, multi-select and the overdue header.
+  The sheet's "Next reminder" note is gone.
 - [ ] **M5 Reminder health** and the first-run permission flow. (2026-11-18: the health screen with checks, maker
   steps, a test reminder and the history is built; the first-run flow is still to do.)
-- [ ] **M6 Focus timer.** (2026-11-18: built through the scheduler. On an emulator, with the app killed, a
-  1-minute round alerted on time, the break started by itself and its end waited for a tap. The A54 checks of
-  the three signal modes are still to do.)
+- [ ] **M6 Focus timer.** Section 6. (2026-11-18: built through the scheduler; on an emulator, with the app
+  killed, a 1-minute round alerted on time. 2026-11-19: rebuilt around one task per timer, with the
+  three-mood timer screen, the now-focusing bar, focus sessions in schema version 2 and Focus stats.)
+  Done when, on the A54: a round started from a swipe ends on time with the app killed; the focus-end
+  alert offers Start break and Skip break and the break-end alert Start focus, with nothing starting by
+  itself; Stop and completing the task keep the time spent; the bar and the stats show it; and the end
+  signal behaves as section 6 says in each signal choice and ringer mode, and under Do Not Disturb with
+  the override on.
 - [ ] **M7 Lists.** The lists screen and `#list` in quick add. Until then every task lives in "Daily".
   (2026-11-18: create, rename and open lists are built; deleting a list is not.)
 - [ ] **M8 Export, import, settings.** (2026-11-18: the backup format, hostile-file checks, export,
@@ -327,7 +384,9 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
   through "open document", so no storage permission is needed. Treat the imported file as hostile: size
   cap, strict schema and version check, length and count caps, and one transaction that replaces
   everything after a confirmation. Re-run the scheduler after import. `allowBackup="false"` and data
-  extraction rules that exclude everything.
+  extraction rules that exclude everything. 2026-11-19: backup format version 2 adds focus sessions and
+  drops the "breaks" setting; version 1 files are upgraded on import (`BackupUpgrade`). See
+  `docs/backup-format.md`.
 - [ ] **M9 Release preparation.** Code shrinking, signing with a keystore kept outside the repo, dependency
   verification metadata, icon, screenshots with made-up tasks, final README. Publishing anything needs the
   owner's explicit yes.
@@ -373,16 +432,17 @@ Logic milestones can be committed when `verify.sh` is green. Anything the owner 
 Found while testing: `notifiedFor` is an instant, so switching the zone back can remind a task again for
 the same wall-clock time. It errs towards an extra reminder, never a missed one; revisit with M4.
 
-The focus timer adds its own check in M6: the end signal keeps going until dismissed and stops by itself at
-the cap, in each of the three signal modes.
+The focus timer adds its own check in M6: the end signal sounds three times at a focus end and twice at a
+break end (or buzzes 3 + 3 and 2 + 2 when vibrate-only), then stops, in each of the three signal modes.
 
 ## 11. Open decisions for the owner
 
 1. **Alarm icon.** Settled 2026-11-18: no icon shows on the A54, so it stays as built.
 2. **Planner defaults**, changeable on request: snooze lengths (10 min, 1 hour); named times of day
-   (section 7); the timer waiting for a tap after each break (section 6); overdue reminders repeating
-   every day at 09:00 until the task is done (section 4); the timer's end signal stopping by itself after
-   60 seconds (section 6).
+   (section 7); the timer waiting for a tap after each focus and each break (section 6); overdue
+   reminders repeating every day at 09:00 until the task is done (section 4); the timer's end signal
+   sounding three times at a focus end and twice at a break end (section 6); the timer presets (15, 25,
+   50 and 5, 10, 15 minutes) and the 1-minute minimum for a kept session (section 6).
 
 ## 12. Sources
 

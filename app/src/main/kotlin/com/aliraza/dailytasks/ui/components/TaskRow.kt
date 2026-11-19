@@ -121,6 +121,8 @@ fun RoundCheck(
     // A ticked box without a priority fills with the accent, so finishing a task feels like something.
     val filled = if (priority == Priority.NONE) MaterialTheme.tokens.accent else ring
     val fill by animateColorAsState(if (checked) filled else Color.Transparent, label = "check")
+    // Ticked, the edge takes the fill's colour, so no grey ring is left around it.
+    val edge by animateColorAsState(if (checked) filled else ring, label = "checkEdge")
     val weight = if (priority == Priority.NONE) 1.5.dp else 2.dp
     val label = checkLabel(checked, priority)
     Box(
@@ -136,7 +138,7 @@ fun RoundCheck(
                 .size(size.dp)
                 .clip(shape)
                 .background(fill)
-                .border(weight, ring, shape),
+                .border(weight, edge, shape),
             contentAlignment = Alignment.Center,
         ) {
             CheckMark(checked)
@@ -384,20 +386,30 @@ private fun SubtaskToggle(done: Int, total: Int, open: Boolean, onToggle: () -> 
     }
 }
 
-/** A bold group title with a hairline under it, the way lists are split into days and sections. */
+/** A header's one action, an icon button beside the count: [label] names it for screen readers. */
+class HeaderAction(val icon: ImageVector, val label: String, val onClick: () -> Unit)
+
+/**
+ * A bold group title with a hairline under it, the way lists are split into days and sections. The count
+ * keeps the right edge on every header; an [action] sits just before it.
+ */
 @Composable
 fun SectionHeader(
     text: String,
     modifier: Modifier = Modifier,
     accent: Boolean = false,
     trailing: String? = null,
-    action: Pair<String, () -> Unit>? = null,
+    action: HeaderAction? = null,
 ) {
+    // A header with a button is just as tall as one without: the button's height comes out of the padding,
+    // which leaves the title where it is on every header.
+    val top = if (action == null) 20.dp else 20.dp - (HEADER_BUTTON - HEADER_TEXT) / 2
+    val bottom = if (action == null) 8.dp else 8.dp - (HEADER_BUTTON - HEADER_TEXT) / 2
     Row(
         modifier = modifier
             .fillMaxWidth()
             .rowDivider(MaterialTheme.tokens.divider, start = 16.dp)
-            .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
+            .padding(start = 16.dp, end = 16.dp, top = top, bottom = bottom),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -405,20 +417,29 @@ fun SectionHeader(
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = if (accent) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        action?.let { HeaderButton(it) }
         trailing?.let {
             Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        action?.let { (label, onClick) ->
-            Text(
-                label,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.clip(CircleShape).clickable(role = Role.Button, onClick = onClick)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            )
-        }
+    }
+}
+
+private val HEADER_TEXT = 20.dp
+private val HEADER_BUTTON = 36.dp
+
+@Composable
+private fun HeaderButton(action: HeaderAction) {
+    Box(
+        Modifier.padding(end = 4.dp).size(HEADER_BUTTON).clip(CircleShape)
+            .clickable(role = Role.Button, onClickLabel = action.label, onClick = action.onClick)
+            .semantics { contentDescription = action.label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(action.icon, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
     }
 }
 

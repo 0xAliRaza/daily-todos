@@ -3,6 +3,7 @@ package com.aliraza.dailytasks.ui
 import androidx.compose.runtime.saveable.SaverScope
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class NavigationTest {
@@ -10,51 +11,45 @@ class NavigationTest {
     private fun fresh() = Navigation(listOf(Route.TODAY))
 
     @Test
-    fun theUpcomingTabStartsAsTheListThenReopensTheViewUsedLast() {
-        val nav = fresh()
-        nav.tab(Route.UPCOMING)
-        assertEquals(Route.UPCOMING, nav.route)
-        assertEquals(Route.CALENDAR, nav.switchUpcomingView())
-        nav.tab(Route.LISTS)
-        nav.tab(Route.UPCOMING)
-        assertEquals(Route.CALENDAR, nav.route)
-        assertEquals(Route.UPCOMING, nav.switchUpcomingView())
-        nav.tab(Route.TODAY)
-        nav.tab(Route.UPCOMING)
-        assertEquals(Route.UPCOMING, nav.route)
+    fun fourTabsWithUpcomingAndCalendarApart() {
+        assertEquals(listOf(Route.TODAY, Route.UPCOMING, Route.CALENDAR, Route.LISTS), Route.tabs)
     }
 
     @Test
-    fun switchingViewsReplacesRatherThanStacks() {
+    fun aTabStartsAFreshStack() {
         val nav = fresh()
-        nav.tab(Route.UPCOMING)
-        nav.switchUpcomingView()
+        nav.open(Route.SETTINGS)
+        nav.tab(Route.CALENDAR)
+        assertEquals(listOf(Route.CALENDAR), nav.stack)
         assertFalse(nav.canGoBack)
     }
 
     @Test
-    fun theTimerFromANotificationSitsOnTopOnce() {
+    fun aTaskTimerOpensOnTopAndOnlyOnce() {
         val nav = fresh()
-        nav.open(Route.FOCUS)
+        nav.openFocus("t1")
         nav.open(Route.SETTINGS)
-        nav.openFocus()
-        assertEquals(listOf(Route.TODAY, Route.SETTINGS, Route.FOCUS), nav.stack)
+        nav.openFocus("t1")
+        assertEquals(listOf(Route.TODAY, Route.SETTINGS, Route.focus("t1")), nav.stack)
         nav.back()
-        nav.back()
-        nav.back()
-        assertEquals(listOf(Route.TODAY), nav.stack)
+        assertEquals(Route.SETTINGS, nav.route)
     }
 
     @Test
-    fun rotatingKeepsTheCalendarAndTheViewUsedLast() {
+    fun routesNameTheirTaskOrList() {
+        assertEquals("t1", Route.focus("t1").focusTaskId())
+        assertEquals("l1", Route.list("l1").listId())
+        assertNull(Route.TODAY.focusTaskId())
+        assertNull(Route.focus("t1").listId())
+    }
+
+    @Test
+    fun rotatingKeepsTheStack() {
         val nav = fresh()
         nav.tab(Route.UPCOMING)
-        nav.switchUpcomingView()
+        nav.openFocus("t1")
         val saved = with(Navigation.Saver) { SaverScope { true }.save(nav) }
         val restored = Navigation.Saver.restore(saved!!)!!
-        assertEquals(Route.CALENDAR, restored.route)
-        restored.tab(Route.LISTS)
-        restored.tab(Route.UPCOMING)
-        assertEquals(Route.CALENDAR, restored.route)
+        assertEquals(nav.stack, restored.stack)
     }
 }

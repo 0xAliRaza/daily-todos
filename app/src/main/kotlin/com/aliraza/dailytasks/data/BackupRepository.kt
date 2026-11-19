@@ -56,23 +56,33 @@ class BackupRepository(
             db.tasks().deleteAll()
             db.lists().deleteAll()
             db.reminderLog().deleteAll()
+            db.focusSessions().deleteAll()
             db.lists().insertAll(content.lists.map { it.toEntity() })
             db.tasks().insertAll(content.tasks.map { it.toEntity() })
             db.subtasks().insertAll(content.subtasks.map { it.toEntity() })
             db.reminderLog().insertAll(content.reminderHistory.map { it.toEntity() })
+            db.focusSessions().insertAll(content.focusSessions.map { it.toEntity() })
             db.settings().upsert(content.settings.toEntity())
         }
         onScheduleChanged()
     }
 
     /** Everything a backup holds, as it is now. */
-    suspend fun snapshot(): BackupContent = BackupContent(
-        settings = settings.current(),
-        lists = db.lists().all().map { it.toDomain() },
-        tasks = db.tasks().allKept().map { it.toDomain() },
-        subtasks = db.subtasks().allKept().map { it.toDomain() },
-        reminderHistory = db.reminderLog().all().map { it.toDomain() },
-    )
+    suspend fun snapshot(): BackupContent {
+        val tasks = db.tasks().allKept().map { it.toDomain() }
+        val taskIds = tasks.map { it.id }.toSet()
+        return BackupContent(
+            settings = settings.current(),
+            lists = db.lists().all().map { it.toDomain() },
+            tasks = tasks,
+            subtasks = db.subtasks().allKept().map { it.toDomain() },
+            reminderHistory = db.reminderLog().all().map { it.toDomain() },
+            // Time on a task that is deleted, and so not in the file, still counts: it travels taskless.
+            focusSessions = db.focusSessions().all().map { row ->
+                row.toDomain().let { if (it.taskId in taskIds) it else it.copy(taskId = null) }
+            },
+        )
+    }
 
     /** At most [Limits.MAX_FILE_BYTES]; null when the stream holds more. */
     private fun readCapped(input: InputStream): ByteArray? {

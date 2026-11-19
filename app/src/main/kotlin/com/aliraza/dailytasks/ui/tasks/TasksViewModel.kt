@@ -12,7 +12,6 @@ import com.aliraza.dailytasks.core.model.TaskList
 import com.aliraza.dailytasks.core.parse.ParseResult
 import com.aliraza.dailytasks.core.parse.QuickAddInput
 import com.aliraza.dailytasks.core.parse.QuickAddParser
-import com.aliraza.dailytasks.core.reminder.ReminderRules
 import com.aliraza.dailytasks.core.sort.TaskOrdering
 import com.aliraza.dailytasks.core.sort.TodaySections
 import com.aliraza.dailytasks.data.ListRepository
@@ -262,10 +261,6 @@ class TasksViewModel(
     fun deleteSubtask(id: String) {
         viewModelScope.launch { subtasks.delete(id) }
     }
-
-    /** When the task will next remind, by the same rules the reminder engine uses. */
-    fun nextReminder(task: Task): LocalDateTime? =
-        ReminderRules.next(task, settings.value, clock.instant(), clock.zone)?.atZone(clock.zone)?.toLocalDateTime()
 
     // Lists
 

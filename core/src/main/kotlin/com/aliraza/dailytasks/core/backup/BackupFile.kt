@@ -1,9 +1,10 @@
 package com.aliraza.dailytasks.core.backup
 
+import com.aliraza.dailytasks.core.model.Settings
 import kotlinx.serialization.Serializable
 
 /*
- * The backup file, version 1: one JSON document. Dates are ISO dates (2026-12-25), times are HH:mm wall
+ * The backup file, version 2: one JSON document. Dates are ISO dates (2026-12-25), times are HH:mm wall
  * clock values, instants are ISO-8601 UTC timestamps (2026-11-18T09:30:00Z). The format is documented
  * in docs/backup-format.md; any change to these classes needs a new version and an upgrade path.
  */
@@ -18,6 +19,7 @@ data class BackupFile(
     val tasks: List<BackupTask>,
     val subtasks: List<BackupSubtask>,
     val reminderHistory: List<BackupReminder>,
+    val focusSessions: List<BackupFocusSession>,
 )
 
 @Serializable
@@ -31,7 +33,8 @@ data class BackupSettings(
     val dndOverride: Boolean,
     val focusMinutes: Int,
     val breakMinutes: Int,
-    val breaksEnabled: Boolean,
+    val focusCustomMinutes: Int = Settings.DEFAULT_FOCUS_CUSTOM_MINUTES,
+    val breakCustomMinutes: Int = Settings.DEFAULT_BREAK_CUSTOM_MINUTES,
     val timerSignal: String,
     val theme: String,
     val lastBackupAt: String?,
@@ -62,3 +65,7 @@ data class BackupSubtask(val id: String, val taskId: String, val title: String, 
 
 @Serializable
 data class BackupReminder(val taskId: String, val dueAt: String, val firedAt: String, val firedBy: String)
+
+/** One stretch of focus. [taskId] is null for time spent on a task that has since been deleted. */
+@Serializable
+data class BackupFocusSession(val taskId: String?, val startedAt: String, val endedAt: String, val focusedMs: Long)

@@ -24,7 +24,10 @@ sealed interface BackupReadResult {
  */
 object BackupCodec {
     const val FORMAT = "daily-tasks-backup"
-    const val VERSION = 1
+    const val VERSION = 2
+
+    /** The oldest version still read; [BackupUpgrade] brings it up to [VERSION]. */
+    const val OLDEST_VERSION = 1
 
     private val writer = Json {
         prettyPrint = true
@@ -43,6 +46,7 @@ object BackupCodec {
             tasks = content.tasks.map(ToFile::task),
             subtasks = content.subtasks.map(ToFile::subtask),
             reminderHistory = content.reminderHistory.map(ToFile::reminder),
+            focusSessions = content.focusSessions.map(ToFile::session),
         ),
     )
 
@@ -61,8 +65,14 @@ object BackupCodec {
         // The app caps the bytes it reads; this guards callers that hand over text directly.
         if (text.length > Limits.MAX_FILE_BYTES) return Parsed.Failed(reject(RejectReason.TOO_LARGE, "file"))
         return try {
-            checkHeader(reader.parseToJsonElement(text) as? JsonObject)?.let(Parsed::Failed)
-                ?: Parsed.Decoded(reader.decodeFromString(BackupFile.serializer(), text))
+            when (val root = reader.parseToJsonElement(text) as? JsonObject) {
+                null -> Parsed.Failed(reject(RejectReason.NOT_A_BACKUP, "format"))
+
+                else -> checkHeader(root)?.let(Parsed::Failed)
+                    ?: Parsed.Decoded(
+                        reader.decodeFromJsonElement(BackupFile.serializer(), BackupUpgrade.toCurrent(root)),
+                    )
+            }
         } catch (e: SerializationException) {
             Parsed.Failed(reject(RejectReason.MALFORMED, e.message.orEmpty()))
         } catch (e: IllegalArgumentException) {
@@ -78,6 +88,7 @@ object BackupCodec {
                 tasks = file.tasks.map(FromFile::task),
                 subtasks = file.subtasks.map(FromFile::subtask),
                 reminderHistory = file.reminderHistory.map(FromFile::reminder),
+                focusSessions = file.focusSessions.map(FromFile::session),
             ),
         )
     } catch (e: InvalidBackup) {
@@ -85,14 +96,14 @@ object BackupCodec {
     }
 
     /** Returns a rejection when this is not our file or comes from a newer app version. */
-    private fun checkHeader(root: JsonObject?): BackupReadResult.Rejected? {
-        val format = root?.get("format")?.jsonPrimitive?.contentOrNull
-        val version = root?.get("version")?.jsonPrimitive?.intOrNull
+    private fun checkHeader(root: JsonObject): BackupReadResult.Rejected? {
+        val format = root["format"]?.jsonPrimitive?.contentOrNull
+        val version = root["version"]?.jsonPrimitive?.intOrNull
         return when {
             format != FORMAT -> reject(RejectReason.NOT_A_BACKUP, "format")
             version == null -> reject(RejectReason.MALFORMED, "version")
             version > VERSION -> reject(RejectReason.NEWER_VERSION, "version $version")
-            version != VERSION -> reject(RejectReason.INVALID, "version $version")
+            version < OLDEST_VERSION -> reject(RejectReason.INVALID, "version $version")
             else -> null
         }
     }

@@ -77,17 +77,17 @@ class MainActivity : ComponentActivity() {
         opened = Opened.from(intent)
     }
 
-    /** A task to show, or the focus screen. */
+    /** A task to show, or a task's focus timer. */
     sealed interface Opened {
         data class Task(val id: String) : Opened
 
-        data object Focus : Opened
+        data class Focus(val taskId: String) : Opened
 
         companion object {
-            fun from(intent: Intent?): Opened? = when {
-                intent == null -> null
-                intent.getBooleanExtra(EXTRA_OPEN_FOCUS, false) -> Focus
-                else -> intent.getStringExtra(EXTRA_TASK_ID)?.let(::Task)
+            fun from(intent: Intent?): Opened? {
+                if (intent == null) return null
+                return intent.getStringExtra(EXTRA_OPEN_FOCUS)?.let(::Focus)
+                    ?: intent.getStringExtra(EXTRA_TASK_ID)?.let(::Task)
             }
         }
     }
@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
         /** Set when the activity is opened from a reminder. */
         const val EXTRA_TASK_ID = "task_id"
 
-        /** Set when the activity is opened from the focus timer's notification. */
+        /** Set when the activity is opened from the focus timer's notification: the timer's task. */
         const val EXTRA_OPEN_FOCUS = "open_focus"
     }
 }

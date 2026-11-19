@@ -179,7 +179,8 @@ fun AppRoot(
         },
     ) { padding ->
         val screens = Screens(tasks, settings, focus, ctx, upcoming, calendar, nav)
-        Pages(pages, screens, topBar, padding, typing = quickAdd.focused, addBarOpen = quickAdd.open)
+        val onTab = nav::tab.takeIf { !selection.active && !quickAdd.open }
+        Pages(pages, screens, topBar, padding, typing = quickAdd.focused, addBarOpen = quickAdd.open, onTab = onTab)
     }
     rescheduling?.let { ids -> RescheduleHost(tasks, ids) { rescheduling = null } }
     sheetTask?.let { id ->
@@ -258,6 +259,7 @@ private fun Pages(
     padding: PaddingValues,
     typing: Boolean,
     addBarOpen: Boolean,
+    onTab: ((String) -> Unit)?,
 ) {
     transition.AnimatedContent(transitionSpec = { pageTransform() }, contentKey = { it.last() }) { stack ->
         val shown = stack.last()
@@ -267,7 +269,7 @@ private fun Pages(
             contentWindowInsets = WindowInsets(0),
         ) { inner ->
             val page = PaddingValues(top = inner.calculateTopPadding(), bottom = padding.calculateBottomPadding())
-            KeyboardGuardBox(alsoWhen = typing) {
+            KeyboardGuardBox(alsoWhen = typing, Modifier.tabSwipe(shown, onTab)) {
                 RouteContent(shown, screens, if (clearsAddButton(shown, addBarOpen)) page.clearOfAddButton() else page)
             }
         }

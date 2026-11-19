@@ -31,11 +31,14 @@ class ThemeContrastTest {
         "overdue on surface" to (t.overdue to t.surface),
         "accentText on accentContainer" to (t.accentText to t.accentContainer),
         "onSurfaceVariant on accentContainer" to (t.onSurfaceVariant to t.accentContainer),
+        "rest on background" to (t.rest to t.background),
+        "rest on surface" to (t.rest to t.surface),
+        "warning on background" to (t.warning to t.background),
+        "warning on surface" to (t.warning to t.surface),
     )
 
     private fun graphicPairs(t: ColorTokens) = mapOf(
         "accent on background" to (t.accent to t.background),
-        "rest on background" to (t.rest to t.background),
         "accent on surface" to (t.accent to t.surface),
         "outline on background" to (t.outline to t.background),
         "outline on surface" to (t.outline to t.surface),

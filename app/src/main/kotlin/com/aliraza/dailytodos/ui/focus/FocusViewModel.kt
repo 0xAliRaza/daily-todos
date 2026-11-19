@@ -1,7 +1,10 @@
 package com.aliraza.dailytodos.ui.focus
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aliraza.dailytodos.R
 import com.aliraza.dailytodos.core.focus.FocusPresets
 import com.aliraza.dailytodos.core.focus.FocusStats
 import com.aliraza.dailytodos.core.focus.FocusTimer
@@ -12,8 +15,11 @@ import com.aliraza.dailytodos.data.SettingsRepository
 import com.aliraza.dailytodos.data.TaskFocusTotal
 import com.aliraza.dailytodos.data.TaskRepository
 import com.aliraza.dailytodos.data.TimerRepository
+import com.aliraza.dailytodos.ui.components.AppIcons
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -108,6 +114,17 @@ class FocusViewModel(
 
     fun setSignal(signal: TimerSignal) = launch { settingsRepo.update { it.copy(timerSignal = signal) } }
 
+    private val noticeEvents = MutableSharedFlow<FocusNotice>(extraBufferCapacity = 1)
+
+    /** A short word on what a tap just did, for the app's snackbar. */
+    val notices: SharedFlow<FocusNotice> = noticeEvents
+
+    /** Flips keep-screen-on from the timer and says what it now does. */
+    fun setKeepScreenOn(on: Boolean) = launch {
+        settingsRepo.update { it.copy(keepScreenOn = on) }
+        noticeEvents.emit(keepScreenOnNotice(on))
+    }
+
     private fun launch(block: suspend () -> Unit) {
         viewModelScope.launch { block() }
     }
@@ -115,4 +132,14 @@ class FocusViewModel(
     private companion object {
         const val STOP_MS = 5_000L
     }
+}
+
+/** A word from the timer for the snackbar: a [title] and a [detail] line (string resources) by an [icon]. */
+data class FocusNotice(@param:StringRes val title: Int, @param:StringRes val detail: Int, val icon: ImageVector)
+
+/** What the timer's caffeinated toggle says once flipped [on] or off. */
+internal fun keepScreenOnNotice(on: Boolean): FocusNotice = if (on) {
+    FocusNotice(R.string.caffeinated_on_title, R.string.caffeinated_on_detail, AppIcons.CupFilled)
+} else {
+    FocusNotice(R.string.caffeinated_off_title, R.string.caffeinated_off_detail, AppIcons.Cup)
 }

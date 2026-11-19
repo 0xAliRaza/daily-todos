@@ -1,6 +1,5 @@
 package com.aliraza.dailytodos.ui.tasks
 
-import com.aliraza.dailytodos.R
 import com.aliraza.dailytodos.core.model.Task
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -33,17 +32,5 @@ class RescheduleTest {
         val moved = task.movedTo(null)
         assertEquals(null, moved.dueDate)
         assertEquals(null, moved.dueTime)
-    }
-
-    @Test
-    fun theQuickDaysAreTodayTomorrowAndNextMonday() {
-        assertEquals(
-            listOf(
-                QuickDate(R.string.day_today, wednesday),
-                QuickDate(R.string.day_tomorrow, LocalDate.of(2026, 11, 19)),
-                QuickDate(R.string.date_next_week, LocalDate.of(2026, 11, 23)),
-            ),
-            quickDates(wednesday),
-        )
     }
 }

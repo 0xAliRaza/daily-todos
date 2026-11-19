@@ -2,6 +2,8 @@ package com.aliraza.dailytodos.ui.components
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
@@ -113,6 +115,48 @@ object AppIcons {
         "M11,7h2v2h-2zm0,4h2v6h-2zm1,-9C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zm0,18" +
             "c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8z",
     )
+
+    /** An exclamation mark in a ring: something to look at. */
+    val Alert = icon(
+        "Alert",
+        "M11,15h2v2h-2zm0,-8h2v6h-2zm0.99,-5C6.47,2 2,6.48 2,12s4.47,10 9.99,10C17.52,22 22,17.52 22,12S17.52,2 " +
+            "11.99,2zM12,20c-4.42,0 -8,-3.58 -8,-8s3.58,-8 8,-8 8,3.58 8,8 -3.58,8 -8,8z",
+    )
+    val ArrowUp = icon("ArrowUp", "M4,12l1.41,1.41L11,7.83V20h2V7.83l5.58,5.59L20,12l-8,-8 -8,8z")
+
+    /** A keyboard: type the time instead of turning the clock. */
+    val Keyboard = icon(
+        "Keyboard",
+        "M20,5H4C2.9,5 2.01,5.9 2.01,7L2,17c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V7C22,5.9 21.1,5 20,5z" +
+            "M11,8h2v2h-2V8zM11,11h2v2h-2V11zM8,8h2v2H8V8zM8,11h2v2H8V11zM7,13H5v-2h2V13zM7,10H5V8h2V10z" +
+            "M16,17H8v-2h8V17zM16,13h-2v-2h2V13zM16,10h-2V8h2V10zM19,13h-2v-2h2V13zM19,10h-2V8h2V10z",
+    )
+
+    /** A steaming mug: keep the screen awake. [CupFilled], with the mug filled in, while it is on. */
+    val Cup = mug("Cup", filled = false)
+    val CupFilled = mug("CupFilled", filled = true)
+
+    /** Three wisps of steam rising over a mug with a handle, drawn in rounded 2-unit strokes. */
+    private fun mug(name: String, filled: Boolean): ImageVector {
+        val ink = SolidColor(Color.Black)
+        val stroke = { builder: ImageVector.Builder, path: String ->
+            builder.addPath(
+                pathData = addPathNodes(path),
+                stroke = ink,
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+        }
+        val builder = ImageVector.Builder(name, 24.dp, 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+        val body = "M4,11h12v4.5a4.5,4.5 0 0 1 -4.5,4.5h-3a4.5,4.5 0 0 1 -4.5,-4.5z"
+        if (filled) builder.addPath(pathData = addPathNodes(body), fill = ink)
+        stroke(builder, body)
+        stroke(builder, "M16,12.5h1.5a2.5,2.5 0 0 1 0,5H16")
+        val wisp = "c-0.9,-0.9 0.9,-1.6 0,-2.5c-0.9,-0.9 0.9,-1.6 0,-2.5"
+        stroke(builder, "M7,8${wisp}M10,8${wisp}M13,8$wisp")
+        return builder.build()
+    }
 
     private fun icon(name: String, path: String): ImageVector = ImageVector.Builder(
         name = name,

@@ -217,7 +217,7 @@ class FocusEngineTest {
             synced = timer
         }
 
-        override fun showProgress(timer: FocusTimer, title: String) {
+        override fun showProgress(timer: FocusTimer, title: String, settings: Settings) {
             progress = timer
             progressTitle = title
         }

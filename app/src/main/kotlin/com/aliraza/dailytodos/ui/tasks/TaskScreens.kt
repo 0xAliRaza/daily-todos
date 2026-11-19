@@ -355,7 +355,7 @@ fun TodayContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVal
         EmptyState(
             stringResource(R.string.today_empty_title),
             stringResource(R.string.today_empty_body),
-            Modifier.padding(padding),
+            padding,
         )
         return
     }
@@ -372,6 +372,7 @@ fun TodayContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVal
                 EmptyState(
                     stringResource(R.string.today_done_title),
                     stringResource(R.string.today_done_body),
+                    PaddingValues(0.dp),
                     Modifier.fillParentMaxHeight(ALL_DONE_HEIGHT),
                 )
             }
@@ -509,22 +510,22 @@ private fun ListRow(list: TaskList, open: Int, modifier: Modifier, onClick: () -
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .rowDivider(MaterialTheme.tokens.divider)
+            .rowDivider(MaterialTheme.tokens.divider, start = ListTextStart)
             .clickable(onClick = onClick)
             .heightIn(min = 52.dp)
-            .padding(start = 18.dp, end = 12.dp),
+            .padding(start = ListTextStart, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(AppIcons.Lists, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(14.dp))
-        Text(list.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        if (list.isDefault) {
-            Text(
-                stringResource(R.string.list_default_tag),
-                style = MaterialTheme.typography.labelSmall,
-                color = scheme.onSurfaceVariant,
-                modifier = Modifier.padding(end = 10.dp),
-            )
+        Column(Modifier.weight(1f)) {
+            Text(list.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // The one list that can't be deleted says what it is for, in words rather than a symbol.
+            if (list.isDefault) {
+                Text(
+                    stringResource(R.string.list_default_mark),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
         }
         if (open > 0) {
             Text(open.toString(), style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
@@ -533,12 +534,15 @@ private fun ListRow(list: TaskList, open: Int, modifier: Modifier, onClick: () -
     }
 }
 
+/** Where list names start, in line with the page title; the hairlines under them start there too. */
+private val ListTextStart = 16.dp
+
 @Composable
 private fun NewListField(onCreate: (String) -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
     val scheme = MaterialTheme.colorScheme
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 18.dp, end = 12.dp),
+        Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = ListTextStart, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(AppIcons.Add, null, tint = scheme.primary, modifier = Modifier.size(20.dp))
@@ -581,7 +585,7 @@ fun ListContent(viewModel: TasksViewModel, listId: String, ctx: RowContext, padd
         EmptyState(
             stringResource(R.string.list_empty_title),
             stringResource(R.string.list_empty_body),
-            Modifier.padding(padding),
+            padding,
             icon = AppIcons.Checklist,
         )
         return
@@ -601,13 +605,16 @@ fun ListContent(viewModel: TasksViewModel, listId: String, ctx: RowContext, padd
             } else {
                 Modifier.animateItem()
             }
+            // The handles show only while picking tasks, so the list reads as calm as the others.
             TaskItem(task, ctx, ctx.meta(task, showDate = true, showList = false), rowModifier) {
-                Icon(
-                    AppIcons.DragHandle,
-                    stringResource(R.string.action_drag),
-                    tint = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.size(40.dp).padding(8.dp).dragHandle(reorder, task.id, viewModel::reorder),
-                )
+                if (ctx.selection.active) {
+                    Icon(
+                        AppIcons.DragHandle,
+                        stringResource(R.string.action_drag),
+                        tint = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(40.dp).padding(8.dp).dragHandle(reorder, task.id, viewModel::reorder),
+                    )
+                }
             }
         }
         completedSection(done, ctx, showDone, inList = true) { showDone = !showDone }
@@ -672,15 +679,18 @@ fun SearchContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVa
     Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
         SearchField(query, viewModel.query::tryEmit, Modifier.focusRequester(focus))
         when {
+            // The field above already took the top padding; below, the room includes an open keyboard.
             query.isBlank() -> EmptyState(
                 stringResource(R.string.search_hint_title),
                 stringResource(R.string.search_hint_body),
+                PaddingValues(bottom = padding.calculateBottomPadding()),
                 icon = AppIcons.Search,
             )
 
             results.isEmpty() -> EmptyState(
                 stringResource(R.string.search_none_title),
                 stringResource(R.string.search_none_body, query),
+                PaddingValues(bottom = padding.calculateBottomPadding()),
                 icon = AppIcons.Search,
             )
 

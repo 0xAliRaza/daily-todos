@@ -1,5 +1,8 @@
 package com.aliraza.dailytodos.ui.calendar
 
+import com.aliraza.dailytodos.core.time.DAYS_IN_WEEK
+import com.aliraza.dailytodos.core.time.endOfWeek
+import com.aliraza.dailytodos.core.time.startOfWeek
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -8,25 +11,20 @@ import java.time.temporal.TemporalAdjusters
 /** The calendar's views. [span] is how many days one step moves; a month moves by a month. */
 enum class CalendarMode(val span: Long) { DAY(1), THREE_DAYS(3), WEEK(7), MONTH(0) }
 
-private const val WEEK = 7L
-
-private fun LocalDate.weekStart(): LocalDate = with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-
 /**
- * The days a view shows around [anchor]. A week runs Monday to Sunday. A month shows whole weeks, from
- * the Monday on or before the 1st to the Sunday on or after the last day, so it has four to six rows.
+ * The days a view shows around [anchor], for weeks that start on [firstDay]. A month shows whole weeks,
+ * from the start of the week holding the 1st to the end of the week holding the last day, so it has four
+ * to six rows.
  */
-fun visibleDays(mode: CalendarMode, anchor: LocalDate): List<LocalDate> {
+fun visibleDays(mode: CalendarMode, anchor: LocalDate, firstDay: DayOfWeek): List<LocalDate> {
     val (first, count) = when (mode) {
         CalendarMode.DAY, CalendarMode.THREE_DAYS -> anchor to mode.span
 
-        CalendarMode.WEEK -> anchor.weekStart() to WEEK
+        CalendarMode.WEEK -> anchor.startOfWeek(firstDay) to DAYS_IN_WEEK
 
         CalendarMode.MONTH -> {
-            val start = anchor.withDayOfMonth(1).weekStart()
-            val end = anchor.with(
-                TemporalAdjusters.lastDayOfMonth(),
-            ).with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+            val start = anchor.withDayOfMonth(1).startOfWeek(firstDay)
+            val end = anchor.with(TemporalAdjusters.lastDayOfMonth()).endOfWeek(firstDay)
             start to ChronoUnit.DAYS.between(start, end) + 1
         }
     }

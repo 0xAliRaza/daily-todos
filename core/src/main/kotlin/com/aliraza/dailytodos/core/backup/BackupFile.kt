@@ -1,6 +1,8 @@
 package com.aliraza.dailytodos.core.backup
 
+import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.Settings
+import com.aliraza.dailytodos.core.model.WeekStart
 import kotlinx.serialization.Serializable
 
 /*
@@ -37,6 +39,10 @@ data class BackupSettings(
     val breakCustomMinutes: Int = Settings.DEFAULT_BREAK_CUSTOM_MINUTES,
     val timerSignal: String,
     val theme: String,
+    val clockFormat: String = ClockFormat.H12.name,
+    val weekStart: String = WeekStart.PHONE.name,
+    val haptics: Boolean = true,
+    val keepScreenOn: Boolean = false,
     val lastBackupAt: String?,
 )
 

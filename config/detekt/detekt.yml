@@ -35,3 +35,29 @@ style:
     max: 4
   UnusedPrivateFunction:
     ignoreAnnotated: ['Preview']
+  # One segmented control: PillChoice. Material's segmented buttons look and behave differently.
+  ForbiddenImport:
+    active: true
+    forbiddenImports:
+      - value: 'androidx.compose.material3.SegmentedButton*'
+        reason: 'Use PillChoice, the app''s one segmented control.'
+      - value: 'androidx.compose.material3.SingleChoiceSegmentedButtonRow'
+        reason: 'Use PillChoice, the app''s one segmented control.'
+      - value: 'androidx.compose.material3.MultiChoiceSegmentedButtonRow'
+        reason: 'Use PillChoice, the app''s one segmented control.'
+  # One time picker: TimeDialog, with the clock or typed input and an optional "Remove time".
+  ForbiddenImport/time:
+    active: true
+    excludes: ['**/ui/components/TimeDialog.kt', '**/test/**']
+    forbiddenImports:
+      - value: 'androidx.compose.material3.TimePicker'
+        reason: 'Use TimeDialog, the app''s one time picker.'
+      - value: 'androidx.compose.material3.TimeInput'
+        reason: 'Use TimeDialog, the app''s one time picker.'
+  # One haptics mechanism: rememberTick in Haptics.kt, which stays quiet when haptics are off.
+  ForbiddenImport/haptics:
+    active: true
+    excludes: ['**/ui/components/Haptics.kt', '**/test/**']
+    forbiddenImports:
+      - value: 'androidx.compose.ui.platform.LocalHapticFeedback'
+        reason: 'Use rememberTick from Haptics.kt, which follows the haptics setting.'

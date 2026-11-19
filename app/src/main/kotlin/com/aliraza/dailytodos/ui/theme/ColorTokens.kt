@@ -32,8 +32,10 @@ data class ColorTokens(
     val priority3: Color,
     /** Overdue due dates. Today uses [accentText]; later dates use [onSurfaceVariant]. */
     val overdue: Color,
-    /** The focus timer's ring during a break. A graphic, so 3:1. */
+    /** The focus timer's ring during a break, and good news such as "All set". Text, so 4.5:1. */
     val rest: Color,
+    /** Something to look at that isn't urgent: a late reminder, a setting to fix. Text, so 4.5:1. */
+    val warning: Color,
 )
 
 val LightTokens = ColorTokens(
@@ -56,6 +58,7 @@ val LightTokens = ColorTokens(
     priority3 = Color(0xFF246FE0),
     overdue = Color(0xFFC3392F),
     rest = Color(0xFF058527),
+    warning = Color(0xFFB45309),
 )
 
 val DarkTokens = ColorTokens(
@@ -78,4 +81,5 @@ val DarkTokens = ColorTokens(
     priority3 = Color(0xFF5C9DFF),
     overdue = Color(0xFFFF7A6E),
     rest = Color(0xFF3CC264),
+    warning = Color(0xFFF5B23D),
 )

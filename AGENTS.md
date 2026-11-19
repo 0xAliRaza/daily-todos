@@ -29,19 +29,21 @@ See the milestones in `PLAN.md`.
 - Sub-tasks: one level of checkboxes inside a task.
 - Three priorities, optional. No labels.
 - Views: Today and Upcoming show dated tasks from every list; then each list on its own. Search.
-  Upcoming lists the days ahead under a week strip (month, week arrows, Mon to Sun with dots for days
+  Upcoming lists the days ahead under a week strip (month, week arrows, the seven days from the week start with dots for days
   with tasks); tapping a day jumps the list to it.
 - Sub-tasks show under their task by default; the "1/3" chevron folds them.
 - Calendar: Day, 3 days, Week and Month views of dated tasks. Timed tasks sit at their time on an hour
-  grid (tasks have no length); Month shows dots per day and the picked day's tasks below, and folds to
-  that day's week as the list scrolls.
+  grid (tasks have no length); Month shows dots per day (grey for done tasks) and the picked day's tasks
+  below, then what was done that day with the time focused on each, and folds to that day's week as the
+  list scrolls. Past days are greyed.
 - Four tabs: Today, Upcoming, Calendar, Lists. Upcoming and Calendar are separate tabs.
 - Gestures: swipe a task right to open its focus timer, left to delete it (with undo). Tap opens a task,
   long-press starts multi-select, the round box completes.
 - Rescheduling: the task sheet's date row, the Reschedule button in multi-select, and the overdue header
-  in Today. Each offers today, tomorrow, next week, a picked date or no date, with undo.
+  in Today. Each offers today, tomorrow, next week, a picked date or no date, with undo. The add bar's
+  Date chip and the task sheet use the same date sheet.
 - Lists show their open counts; a list's menu renames it or deletes it with its tasks (undo right after).
-- Undo on every action, multi-select, drag to reorder.
+- Undo on every action, multi-select, drag to reorder. Drag handles show only in multi-select.
 - Sorting: inside a list, manual order with new tasks added at the bottom. In Today, overdue first (its
   header reschedules them all at once), then timed tasks by time, then the rest in manual order.
 
@@ -106,8 +108,11 @@ See the milestones in `PLAN.md`.
 - Notifications name the task. While a round runs: "Focus · ends at 11:42" (or Break) with a live
   countdown, Pause and Stop (or End break). At a focus end: Start break and Skip break. At a break end:
   Start focus. The end alerts have no Stop. An alert whose next step no longer applies is removed.
-- Settings has a Focus group: Focus stats and the end signal choice. The Do Not Disturb override stays
-  with Reminders.
+- Caffeinated (keep screen on): one setting, off by default, switched in the Focus group or by the steaming mug on the timer
+  screen. While on, the screen stays awake on any of the app's screens as long as focus or a break counts
+  down; paused, waiting or idle, the phone sleeps as usual. Only while the app is in front; no wake lock.
+- Settings has a Focus group: Focus stats, the end signal choice and Caffeinated. The Do Not Disturb
+  override stays with Reminders.
 - Focus stats: the all-time total, Today, This week and Sessions, a 7-day bar chart, the top 5
   tasks (deleted ones grouped as "Deleted tasks"), and one comparison from bundled facts ("That's as long
   as 72 journeys of sunlight to Earth"). Plain statistics, no points or streaks.
@@ -119,6 +124,14 @@ See the milestones in `PLAN.md`.
 - Private SQLite database on the device.
 - Export and Import in settings, on demand, as one JSON file. Import accepts only our own backups.
 - Settings shows when the last backup was made. No backup nagging, no automatic backups.
+
+**Settings**
+
+- Groups: Reminders, Reliability (Reminder health with its status, Battery optimisation), Focus, General
+  and Your data. Every choice is the same pill control; on/off settings are switches.
+- Focus: Focus stats, the end signal, and Caffeinated (off by default).
+- General: theme; time format, 12-hour by default; week starts on, following the phone by default, or
+  Monday or Sunday; haptic feedback, on by default, for completing a task and the timer's controls.
 - Android's cloud backup of app data is switched off.
 
 **Design**
@@ -152,6 +165,6 @@ streaks, location reminders, importers for other apps' files, desktop and web ve
 
 ## Platform and release
 
-- Application id: `com.aliraza.dailytodos`.
+- Application id: `com.aliraza.dailytodos` (renamed from Daily Tasks; its backups still import).
 - Minimum Android 8.0 (API 26).
 - Released on GitHub; F-Droid maybe later. Not planned for Google Play.

@@ -7,11 +7,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.text.format.DateFormat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.os.UserManagerCompat
 import com.aliraza.dailytodos.DailyTodosApp
+import com.aliraza.dailytodos.DeviceClock
 import com.aliraza.dailytodos.MainActivity
 import com.aliraza.dailytodos.R
 import com.aliraza.dailytodos.core.focus.FocusPhase
@@ -19,8 +19,8 @@ import com.aliraza.dailytodos.core.focus.FocusRounds
 import com.aliraza.dailytodos.core.focus.FocusTimer
 import com.aliraza.dailytodos.core.model.FiredBy
 import com.aliraza.dailytodos.core.model.Settings
+import com.aliraza.dailytodos.ui.components.formatTime
 import kotlinx.coroutines.launch
-import java.util.Date
 
 /**
  * The timer outside the app (PLAN.md section 6). A round's end posts one notification offering the next
@@ -77,7 +77,7 @@ class AndroidFocusSignals(private val context: Context, private val signal: EndS
         }
     }
 
-    override fun showProgress(timer: FocusTimer, title: String) {
+    override fun showProgress(timer: FocusTimer, title: String, settings: Settings) {
         val running = timer.phase == FocusPhase.FOCUS || timer.phase == FocusPhase.BREAK
         if (!running || !context.canPostNotifications()) {
             manager.cancel(PROGRESS_TAG, NOTIFICATION_ID)
@@ -99,7 +99,7 @@ class AndroidFocusSignals(private val context: Context, private val signal: EndS
             .setDeleteIntent(action(FocusAction.SHOW))
         val endsAt = timer.endsAt
         if (endsAt != null) {
-            val at = DateFormat.getTimeFormat(context).format(Date.from(endsAt))
+            val at = formatTime(endsAt.atZone(DeviceClock.zone).toLocalTime(), settings.clockFormat)
             builder.setWhen(endsAt.toEpochMilli()).setShowWhen(true)
                 .setUsesChronometer(true).setChronometerCountDown(true)
                 .setContentText(

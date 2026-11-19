@@ -1,0 +1,125 @@
+package com.aliraza.dailytodos.ui
+
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.compose.animation.core.Transition
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
+
+/**
+ * The transition between back stacks. A stack change animates to the new page; a back swipe seeks it
+ * towards the page below, so that page peeks in under the finger, and the swipe then either goes back
+ * or lets the page settle where it was. [backEnabled] false leaves back to someone else (a selection).
+ *
+ * Durations follow the system animator scale, which Compose applies to every animation, so turning
+ * animations off in the phone's settings turns these off too.
+ */
+@Composable
+internal fun rememberPageTransition(
+    nav: Navigation,
+    backEnabled: Boolean,
+    tabSeek: TabSeek = rememberTabSeek(),
+): Transition<List<String>> {
+    val seekable = remember { SeekableTransitionState(nav.stack) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(nav.stack) { seekable.animateTo(nav.stack) }
+    // A tab swipe seeks towards the tab beside this one; let go, and the page either carries on to
+    // that tab (the swipe switched tabs) or slides back from wherever the finger left it.
+    LaunchedEffect(tabSeek) {
+        snapshotFlow { tabSeek.target to tabSeek.progress }.collect { (target, progress) ->
+            when {
+                target != null -> seekable.seekTo(progress, targetState = listOf(target))
+                seekable.targetState != nav.stack -> seekable.animateTo(nav.stack)
+            }
+        }
+    }
+    PredictiveBackHandler(enabled = backEnabled && nav.canGoBack) { swipe ->
+        val below = nav.stack.dropLast(1)
+        try {
+            swipe.collect { seekable.seekTo(it.progress, targetState = below) }
+            nav.back()
+        } catch (e: CancellationException) {
+            // The swipe was let go short of going back. This coroutine is already cancelled, so the
+            // page settles back from a scope of its own.
+            scope.launch { seekable.animateTo(seekable.currentState) }
+            throw e
+        }
+    }
+    return rememberTransition(seekable, label = "page")
+}
+
+/**
+ * How one page gives way to the next: tabs slide sideways in their bar order, as a swipe between them
+ * does; a push slides the new page in from the right
+ * over the old one, which drifts a little left; a pop plays that in reverse.
+ */
+internal fun AnimatedContentTransitionScope<List<String>>.pageTransform(): ContentTransform =
+    when (transitionKind(initialState, targetState)) {
+        TransitionKind.TAB -> when (val side = tabSide(initialState.first(), targetState.first())) {
+            0 -> fadeIn() togetherWith fadeOut()
+
+            // Side by side like a pager, no fade: the two pages stay fully drawn under the finger.
+            else ->
+                slideInHorizontally(tween(PAGE_MS, easing = PageEasing)) { side * it } togetherWith
+                    slideOutHorizontally(tween(PAGE_MS, easing = PageEasing)) { -side * it }
+        }
+
+        TransitionKind.PUSH ->
+            slideInHorizontally(tween(PAGE_MS, easing = FastOutSlowInEasing)) { it } +
+                fadeIn(tween(PAGE_MS)) togetherWith
+                slideOutHorizontally(tween(PAGE_MS, easing = FastOutSlowInEasing)) { -it / DRIFT } +
+                fadeOut(tween(PAGE_MS))
+
+        TransitionKind.POP -> ContentTransform(
+            targetContentEnter = slideInHorizontally(tween(PAGE_MS, easing = FastOutSlowInEasing)) { -it / DRIFT } +
+                fadeIn(tween(PAGE_MS)),
+            initialContentExit = slideOutHorizontally(tween(PAGE_MS, easing = FastOutSlowInEasing)) { it } +
+                fadeOut(tween(PAGE_MS)),
+            // The page going away stays on top as it slides off, uncovering the one below.
+            targetContentZIndex = -1f,
+        )
+    }
+
+/** 1 when [to] sits right of [from] in the tab bar, -1 when left, 0 when either is not a tab. */
+internal fun tabSide(from: String, to: String): Int {
+    val start = Route.tabs.indexOf(from)
+    val end = Route.tabs.indexOf(to)
+    return if (start < 0 || end < 0) 0 else end.compareTo(start)
+}
+
+/**
+ * How far into the tab slide to seek so the pages sit [moved] (0 to 1) of a width along, as the finger
+ * is: the inverse of [PageEasing], found by halving.
+ */
+internal fun seekFraction(moved: Float): Float {
+    var low = 0f
+    var high = 1f
+    repeat(INVERSE_STEPS) {
+        val mid = (low + high) / 2
+        if (PageEasing.transform(mid) < moved.coerceIn(0f, 1f)) low = mid else high = mid
+    }
+    return (low + high) / 2
+}
+
+private val PageEasing = FastOutSlowInEasing
+private const val INVERSE_STEPS = 20
+
+private const val PAGE_MS = 300
+
+/** The old page moves a quarter of the width while the new one covers it. */
+private const val DRIFT = 4

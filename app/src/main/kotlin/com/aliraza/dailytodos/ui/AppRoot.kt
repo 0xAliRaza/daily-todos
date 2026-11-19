@@ -2,8 +2,18 @@ package com.aliraza.dailytodos.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.Transition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,12 +27,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -33,8 +45,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -53,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -75,10 +86,14 @@ import com.aliraza.dailytodos.ui.calendar.CalendarState
 import com.aliraza.dailytodos.ui.components.AddOptions
 import com.aliraza.dailytodos.ui.components.AppIcons
 import com.aliraza.dailytodos.ui.components.KeyboardGuardBox
+import com.aliraza.dailytodos.ui.components.LocalWeekStart
+import com.aliraza.dailytodos.ui.components.Notice
+import com.aliraza.dailytodos.ui.components.NoticeCard
 import com.aliraza.dailytodos.ui.components.QuickAddBar
 import com.aliraza.dailytodos.ui.components.QuickAddState
 import com.aliraza.dailytodos.ui.components.due
 import com.aliraza.dailytodos.ui.components.longDateLabel
+import com.aliraza.dailytodos.ui.components.startWords
 import com.aliraza.dailytodos.ui.components.switchedOffWhen
 import com.aliraza.dailytodos.ui.focus.FocusScreen
 import com.aliraza.dailytodos.ui.focus.FocusViewModel
@@ -119,7 +134,8 @@ fun AppRoot(
     // Read through derivedStateOf so the root recomposes when the date turns, not every minute.
     val clock = tasks.now.collectAsStateWithLifecycle()
     val today by remember { derivedStateOf { clock.value.toLocalDate() } }
-    val upcoming = remember(today) { UpcomingState(today) }
+    val weekStart = LocalWeekStart.current
+    val upcoming = remember(today, weekStart) { UpcomingState(today, weekStart) }
     val calendar = remember { CalendarState(tasks.now.value.toLocalDate()) }
     LaunchedEffect(route) { selection.clear() }
     OpenedEffect(
@@ -128,10 +144,14 @@ fun AppRoot(
         onFocus = nav::openFocus,
         onHandled = onOpenedHandled,
     )
-    BackHandler(enabled = selection.active || nav.canGoBack) { if (selection.active) selection.clear() else nav.back() }
+    // Clearing a selection wins over going back; a back swipe otherwise lets the page below peek in.
+    BackHandler(enabled = selection.active) { selection.clear() }
+    val tabSeek = rememberTabSeek()
+    val pages = rememberPageTransition(nav, backEnabled = !selection.active, tabSeek)
 
     val snackbar = remember { SnackbarHostState() }
     UndoSnackbars(tasks, snackbar)
+    FocusNotices(focus, snackbar)
     val ctx = rememberRowContext(
         tasks,
         selection,
@@ -139,40 +159,43 @@ fun AppRoot(
         onFocus = nav::openFocus,
     ) { sheetTask = it }
     val quickAdd = remember { QuickAddState() }
-    val showsAdd = route in Route.takesTasks || route.listId() != null
-    val canAdd = showsAdd && !selection.active
+    val canAdd = showsAdd(route) && !selection.active
+    val addContext = contextDate(route, upcoming, calendar)
+    val addStart = rememberStartWords(tasks, route, addContext)
+    val topBar: @Composable (String) -> Unit = { shown ->
+        // A page sliding away keeps its title; only the page in front shows the selection.
+        RootTopBar(shown, selection.active && shown == route, selection, tasks, nav) {
+            if (it.isNotEmpty()) rescheduling = ArrayList(it)
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
-            SnackbarHost(snackbar) { data ->
-                Snackbar(
-                    data,
-                    shape = MaterialTheme.shapes.large,
-                    containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    actionColor = MaterialTheme.colorScheme.inversePrimary,
-                )
-            }
-        },
-        topBar = {
-            RootTopBar(selection, tasks, nav) { if (it.isNotEmpty()) rescheduling = ArrayList(it) }
+            SnackbarHost(snackbar) { data -> NoticeCard(data) }
         },
         floatingActionButton = {
-            if (canAdd && !quickAdd.open) AddButton(quickAdd::show)
+            AnimatedVisibility(
+                visible = canAdd && !quickAdd.open,
+                enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(),
+                exit = scaleOut(tween(QUICK_MS)) + fadeOut(tween(QUICK_MS)),
+            ) { AddButton { quickAdd.show(addStart) } }
         },
         bottomBar = {
             BottomBars(
                 route,
                 showAdd = canAdd && quickAdd.open,
+                picking = quickAdd.picking,
                 onTab = nav::tab,
                 nowFocusing = nowFocusing(focus, route, nav::openFocus),
             ) {
-                AddBar(tasks, quickAdd, route, contextDate(route, upcoming, calendar))
+                AddBar(tasks, quickAdd, route, addContext)
             }
         },
     ) { padding ->
         val screens = Screens(tasks, settings, focus, ctx, upcoming, calendar, nav)
-        Content(route, screens, padding, addButton = showsAdd, typing = quickAdd.focused)
+        val onTab = nav::tab.takeIf { !selection.active && !quickAdd.open }
+        Pages(pages, screens, topBar, padding, PageInput(route, quickAdd.focused, quickAdd.open, tabSeek, onTab))
     }
     rescheduling?.let { ids -> RescheduleHost(tasks, ids) { rescheduling = null } }
     sheetTask?.let { id ->
@@ -215,34 +238,79 @@ private fun nowFocusing(focus: FocusViewModel, route: String, onOpen: (String) -
     return { NowFocusingBar(timer, title.orEmpty(), focus::now) { onOpen(taskId) } }
 }
 
-/** The selection bar while picking several tasks, else the title bar. */
+/** Whether [route] has the + button that adds tasks: the dated views and every list. */
+private fun showsAdd(route: String): Boolean = route in Route.takesTasks || route.listId() != null
+
+/** Whether [route] keeps room at its bottom for the + button: only while the button shows. */
+internal fun clearsAddButton(route: String, addBarOpen: Boolean): Boolean = showsAdd(route) && !addBarOpen
+
+/** The selection bar while [selecting] several tasks, else [route]'s title bar. */
 @Composable
 private fun RootTopBar(
+    route: String,
+    selecting: Boolean,
     selection: Selection,
     tasks: TasksViewModel,
     nav: Navigation,
     onReschedule: (Collection<String>) -> Unit,
 ) {
-    if (selection.active) {
-        SelectionBar(selection, tasks, onReschedule)
-        return
+    // The selection bar fades in over the title rather than replacing it in one frame.
+    AnimatedContent(
+        selecting,
+        transitionSpec = { fadeIn(tween(QUICK_MS)) togetherWith fadeOut(tween(QUICK_MS)) },
+        label = "topBar",
+    ) { selectingNow ->
+        if (selectingNow) SelectionBar(selection, tasks, onReschedule) else TopBar(route, tasks, nav::back, nav::open)
     }
-    TopBar(nav.route, tasks, nav::back, nav::open)
 }
 
 /**
- * The current screen, faded between routes. With an [addButton] the last row keeps clear of it; while
- * [typing] a tap anywhere only closes the keyboard.
+ * The pages of the back stack, each its [topBar] over its screen, moved as one by [transition] while the
+ * bars at the bottom stay put. A page with the + button keeps its last row clear of it; while [typing] a
+ * tap on the screen only closes the keyboard.
  */
 @Composable
-private fun Content(route: String, screens: Screens, padding: PaddingValues, addButton: Boolean, typing: Boolean) {
-    val inner = if (addButton) padding.clearOfAddButton() else padding
-    KeyboardGuardBox(alsoWhen = typing) {
-        AnimatedContent(route, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "route") { shown ->
-            RouteContent(shown, screens, inner)
+private fun Pages(
+    transition: Transition<List<String>>,
+    screens: Screens,
+    topBar: @Composable (String) -> Unit,
+    padding: PaddingValues,
+    input: PageInput,
+) {
+    // The swipe is read here, outside the pages: the pages move with the finger, so a reading taken on
+    // them would see only part of each move and the page would trail behind it.
+    transition.AnimatedContent(
+        transitionSpec = { pageTransform() },
+        contentKey = { it.last() },
+        modifier = Modifier.tabSwipe(input.tabSeek, input.route, input.onTab),
+    ) { stack ->
+        val shown = stack.last()
+        Scaffold(
+            modifier = Modifier.graphicsLayer { translationX = input.tabSeek.stretch.value },
+            topBar = { topBar(shown) },
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0),
+        ) { inner ->
+            val page = PaddingValues(top = inner.calculateTopPadding(), bottom = padding.calculateBottomPadding())
+            KeyboardGuardBox(alsoWhen = input.typing) {
+                val clear = clearsAddButton(shown, input.addBarOpen)
+                RouteContent(shown, screens, if (clear) page.clearOfAddButton() else page)
+            }
         }
     }
 }
+
+/**
+ * What the pages need from around them: the [route] in front, whether the add bar is [typing] or
+ * [addBarOpen], and the tab swipe ([onTab] null while it is off).
+ */
+private class PageInput(
+    val route: String,
+    val typing: Boolean,
+    val addBarOpen: Boolean,
+    val tabSeek: TabSeek,
+    val onTab: ((String) -> Unit)?,
+)
 
 /** Acts on what a notification opened: a task's sheet, or the focus timer. */
 @Composable
@@ -281,6 +349,9 @@ private fun PaddingValues.clearOfAddButton(): PaddingValues = PaddingValues(
     top = calculateTopPadding(),
     bottom = calculateBottomPadding() + AddButtonClearance,
 )
+
+/** Quick exits and fades: the + button, the add bar leaving, the selection bar. */
+private const val QUICK_MS = 150
 
 /** Room left under a screen's content so its last rows can scroll clear of the round add button. */
 internal val AddButtonClearance = 80.dp
@@ -346,13 +417,15 @@ private fun RouteContent(route: String, s: Screens, padding: PaddingValues) {
 
 /**
  * The add bar or the now-focusing bar above the tabs. While typing the tabs step aside, so the add bar
- * sits on the keyboard.
+ * sits on the keyboard. While [picking] (a picker hides the keyboard) the bar keeps the keyboard's room,
+ * so it stays still behind the picker and drops only if the keyboard doesn't come back.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BottomBars(
     route: String,
     showAdd: Boolean,
+    picking: Boolean,
     onTab: (String) -> Unit,
     nowFocusing: (@Composable () -> Unit)?,
     addBar: @Composable () -> Unit,
@@ -361,14 +434,39 @@ private fun BottomBars(
     val focus = LocalFocusManager.current
     // Closing the keyboard ends the edit, so no cursor is left blinking in the bar.
     LaunchedEffect(typing) { if (!typing) focus.clearFocus() }
-    Column(if (typing) Modifier.imePadding() else Modifier) {
-        val focusing = nowFocusing.takeIf { !showAdd && !typing }
-        if (showAdd) addBar()
+    val hold = rememberKeyboardHold(picking)
+    val held = showAdd && hold.holding
+    val room = when {
+        held -> WindowInsets.ime.union(WindowInsets(bottom = hold.height))
+        typing -> WindowInsets.ime
+        else -> null
+    }
+    Column(room?.let { Modifier.windowInsetsPadding(it) } ?: Modifier) {
+        val raised = typing || held
+        val focusing = nowFocusing.takeIf { !showAdd && !raised }
+        AnimatedVisibility(
+            visible = showAdd,
+            enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+            exit = shrinkVertically(tween(QUICK_MS), shrinkTowards = Alignment.Bottom) + fadeOut(tween(QUICK_MS)),
+        ) { addBar() }
         focusing?.invoke()
-        if (route in Route.top && !typing) {
+        if (route in Route.top && !raised) {
             TabBar(route, onTab)
         } else if (showAdd || focusing != null) {
             Spacer(Modifier.navigationBarsPadding())
+        }
+    }
+}
+
+/** The timer's short words on what a tap did, in the same snackbar as undo. */
+@Composable
+private fun FocusNotices(focus: FocusViewModel, host: SnackbarHostState) {
+    val resources = LocalResources.current
+    LaunchedEffect(focus) {
+        focus.notices.collectLatest { notice ->
+            host.showSnackbar(
+                Notice(resources.getString(notice.title), resources.getString(notice.detail), notice.icon),
+            )
         }
     }
 }
@@ -380,10 +478,25 @@ private fun UndoSnackbars(tasks: TasksViewModel, host: SnackbarHostState) {
     LaunchedEffect(tasks) {
         tasks.undo.collectLatest { event ->
             val message = resources.getQuantityString(event.message, event.count, event.count)
-            val result = host.showSnackbar(message, actionLabel = undoLabel, duration = SnackbarDuration.Short)
+            val result = host.showSnackbar(Notice(message, actionLabel = undoLabel))
             if (result == SnackbarResult.ActionPerformed) event.undo()
         }
     }
+}
+
+/**
+ * The words the add bar's line starts with on [route]: the open list's tag and the picked [contextDate].
+ * The default list gets no tag, and tomorrow is left to the default-date pill where it would show anyway.
+ */
+@Composable
+private fun rememberStartWords(tasks: TasksViewModel, route: String, contextDate: LocalDate?): String {
+    val now by tasks.now.collectAsStateWithLifecycle()
+    val lists by tasks.lists.collectAsStateWithLifecycle()
+    val settings by tasks.settings.collectAsStateWithLifecycle()
+    val open = lists.firstOrNull { it.id == route.listId() }?.takeIf { !it.isDefault }
+    val today = now.toLocalDate()
+    val defaultDay = today.plusDays(1).takeIf { settings.undatedGetsTomorrow && open == null }
+    return startWords(open?.name, contextDate, today, defaultDay)
 }
 
 @Composable
@@ -392,8 +505,8 @@ private fun AddBar(tasks: TasksViewModel, state: QuickAddState, route: String, c
     val lists by tasks.lists.collectAsStateWithLifecycle()
     val settings by tasks.settings.collectAsStateWithLifecycle()
     val listId = route.listId()
-    val parsed = remember(state.text, state.excluded, lists, now) { tasks.parse(state.text, state.excluded.keys) }
-    val all = remember(state.text, lists, now) { tasks.parse(state.text, emptySet()) }
+    val parsed = remember(state.text, state.excluded, lists, now) { state.read(state.excluded.keys, tasks::parse) }
+    val all = remember(state.text, lists, now) { state.read(emptySet(), tasks::parse) }
     // A typed date switched off means "no date", so the default stays out while one is.
     val defaultOff = state.defaultDateOff || switchedOffWhen(all, state.excluded.keys).isNotEmpty()
     val preview = tasks.defaultDate(parsed, settings, listId, contextDate, off = false)
@@ -414,10 +527,10 @@ private fun AddBar(tasks: TasksViewModel, state: QuickAddState, route: String, c
         options = AddOptions(lists.map { it.name }, target),
         onSubmit = {
             // Parsed again from the field itself: a second Enter before recomposition must not add twice.
-            if (state.text.isNotBlank()) {
-                val line = tasks.parse(state.text, state.excluded.keys)
+            val line = state.read(state.excluded.keys, tasks::parse)
+            if (line.title.isNotBlank()) {
                 val off = state.defaultDateOff ||
-                    switchedOffWhen(tasks.parse(state.text, emptySet()), state.excluded.keys).isNotEmpty()
+                    switchedOffWhen(state.read(emptySet(), tasks::parse), state.excluded.keys).isNotEmpty()
                 tasks.add(line, listId, tasks.defaultDate(line, settings, listId, contextDate, off))
                 state.clear()
             }
@@ -651,8 +764,8 @@ private fun TabBar(route: String, onTab: (String) -> Unit) {
 @Composable
 private fun RowScope.Tab(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    val tint = if (selected) scheme.secondary else scheme.onSurfaceVariant
-    val text = if (selected) scheme.secondary else scheme.onSurfaceVariant
+    val tint by animateColorAsState(if (selected) scheme.secondary else scheme.onSurfaceVariant, label = "tab")
+    val text = tint
     Column(
         Modifier.weight(1f).clickable(role = Role.Tab, onClick = onClick).padding(top = 8.dp, bottom = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

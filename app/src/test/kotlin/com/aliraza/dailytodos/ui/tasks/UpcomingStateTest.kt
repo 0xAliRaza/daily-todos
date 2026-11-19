@@ -2,6 +2,7 @@ package com.aliraza.dailytodos.ui.tasks
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.DayOfWeek
 import java.time.LocalDate
 
 class UpcomingStateTest {
@@ -88,5 +89,16 @@ class UpcomingStateTest {
         state.follow(LocalDate.of(2026, 12, 3))
         assertEquals(LocalDate.of(2026, 11, 30), state.weekStart)
         assertEquals(LocalDate.of(2026, 12, 3), state.selected)
+    }
+
+    @Test
+    fun aSundayWeekRunsTheStripFromSunday() {
+        val state = UpcomingState(LocalDate.of(2026, 11, 18), DayOfWeek.SUNDAY)
+        assertEquals(LocalDate.of(2026, 11, 15), state.thisWeek)
+        assertEquals(LocalDate.of(2026, 11, 22), state.page(forward = true))
+        // Saturday still belongs to the week that started the Sunday before.
+        state.follow(LocalDate.of(2026, 12, 5))
+        assertEquals(LocalDate.of(2026, 11, 29), state.weekStart)
+        assertEquals(LocalDate.of(2026, 12, 5), state.days(emptySet()).last())
     }
 }

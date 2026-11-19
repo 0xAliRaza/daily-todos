@@ -12,6 +12,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +45,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -105,7 +107,7 @@ fun toneColor(tone: DateTone): Color = with(MaterialTheme.tokens) {
 
 /**
  * A round check box whose ring shows the priority, so it reads before the title does. A ticked box
- * fills with the same colour.
+ * fills with the same colour. Ticking it gives a short confirming tick of haptic feedback.
  */
 @Composable
 fun RoundCheck(
@@ -125,11 +127,15 @@ fun RoundCheck(
     val edge by animateColorAsState(if (checked) filled else ring, label = "checkEdge")
     val weight = if (priority == Priority.NONE) 1.5.dp else 2.dp
     val label = checkLabel(checked, priority)
+    val tick = rememberTick(HapticFeedbackType.Confirm)
     Box(
         modifier = modifier
             .size(40.dp)
             .clip(CircleShape)
-            .clickable(role = Role.Checkbox, onClick = onClick)
+            .clickable(role = Role.Checkbox) {
+                if (!checked) tick()
+                onClick()
+            }
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
@@ -324,7 +330,7 @@ private fun Notes(notes: String) {
 
 @Composable
 private fun MetaLine(today: LocalDate, meta: RowMeta) {
-    val time = meta.time?.let(::timeLabel)
+    val time = meta.time?.let { timeLabel(it) }
     val whenText = listOfNotNull(meta.date?.let { dayLabel(it, today) }, time).joinToString(" ")
     if (whenText.isEmpty() && meta.listName == null) return
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -443,12 +449,23 @@ private fun HeaderButton(action: HeaderAction) {
     }
 }
 
-/** A calm, centred message for a screen with nothing to show; [icon] says which kind of empty it is. */
+/**
+ * A calm, centred message for a screen with nothing to show; [icon] says which kind of empty it is. It
+ * takes the page's [padding] and centres inside it: the room under it includes an open keyboard, so the
+ * message moves up above the keyboard rather than being cut off by it.
+ */
 @Composable
-fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, icon: ImageVector = AppIcons.Check) {
+fun EmptyState(
+    title: String,
+    body: String,
+    padding: PaddingValues,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = AppIcons.Check,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .padding(padding)
             .padding(horizontal = 40.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,

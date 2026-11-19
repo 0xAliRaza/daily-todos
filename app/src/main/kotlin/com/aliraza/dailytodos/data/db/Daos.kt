@@ -50,6 +50,14 @@ interface TaskDao {
     )
     fun observeCompletedSince(since: Instant): Flow<List<TaskEntity>>
 
+    /** Tasks ticked off at or after [from] and before [until], in the order they were ticked. */
+    @Query(
+        "SELECT tasks.* FROM tasks JOIN lists ON lists.id = tasks.list_id " +
+            "WHERE tasks.completed_at >= :from AND tasks.completed_at < :until " +
+            "AND tasks.deleted_at IS NULL AND lists.deleted_at IS NULL ORDER BY tasks.completed_at",
+    )
+    fun observeCompletedBetween(from: Instant, until: Instant): Flow<List<TaskEntity>>
+
     @Query(
         "SELECT * FROM tasks WHERE list_id = :listId AND completed_at IS NOT NULL AND deleted_at IS NULL " +
             "ORDER BY completed_at DESC",
@@ -254,6 +262,10 @@ interface FocusSessionDao {
             "WHERE task_id = :taskId",
     )
     fun observeForTask(taskId: String): Flow<TaskFocusRow>
+
+    /** Sessions that ended at or after [from] and before [until]. */
+    @Query("SELECT * FROM focus_sessions WHERE ended_at >= :from AND ended_at < :until ORDER BY ended_at, id")
+    fun observeEndedBetween(from: Instant, until: Instant): Flow<List<FocusSessionEntity>>
 
     @Insert
     suspend fun insertAll(sessions: List<FocusSessionEntity>)

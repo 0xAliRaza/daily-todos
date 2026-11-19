@@ -5,8 +5,14 @@ import java.time.temporal.ChronoUnit
 
 /** Matchers that produce a time, or a date and a time together. */
 internal object TimeMatchers {
-    private val withMeridiem = Regex("^(\\d{1,2})(?:[:.](\\d{2}))?(a\\.?m|p\\.?m)$")
-    private val clock = Regex("^(\\d{1,2})(?:([:.])(\\d{2}))?$")
+    /** "4pm", "4:30pm", "429pm", and the short "4p", "1030a". */
+    private val withMeridiem = Regex("^(\\d{1,2})(?:[:.]?(\\d{2}))?([ap])(?:\\.?m)?$")
+
+    /** "4", "4:30", "4.30", and "429" or "1630" with the colon left out. */
+    private val clock = Regex("^(\\d{1,2})(?:([:.]?)(\\d{2}))?$")
+
+    /** "1630h", "930h": a 24-hour time with the colon left out. */
+    private val hours = Regex("^(\\d{1,2})(\\d{2})h$")
     private val meridiemWords = setOf("am", "a.m", "pm", "p.m")
     private const val HALF_DAY = 12
     private const val LAST_HOUR = 23
@@ -104,7 +110,8 @@ internal object TimeMatchers {
     }
 
     /**
-     * "4pm", "4:30 pm", "16:30", "at 4", "at 4.30". A bare number without "at" is not a time. A day part
+     * "4pm", "4:30 pm", "429pm", "4p", "16:30", "1630h", "at 4", "at 4.30", "at 429". A bare number
+     * without "at" is not a time, so "Room 429" stays text. A day part
      * right before or after is taken with it and settles am or pm: "evening 8pm", "at 7 in the evening".
      */
     private fun clockTime(ctx: ParseContext, index: Int): Candidate? {
@@ -126,8 +133,10 @@ internal object TimeMatchers {
         val at = if (hasAt) index + 1 else index
         val word = ctx.word(at) ?: return null
         val inline = withMeridiem.matchEntire(word)?.destructured
+        val compact = hours.matchEntire(word)?.destructured
         val (end, time) = when {
             inline != null -> (at + 1) to inline.let { (hour, minute, marker) -> meridiem(hour, minute, marker) }
+            compact != null -> (at + 1) to compact.let { (hour, minute) -> twentyFourHour(hour, minute) }
             else -> clockWithoutInlineMeridiem(ctx, at, word, hasAt) ?: return null
         }
         return time?.let { end to it }
@@ -154,6 +163,14 @@ internal object TimeMatchers {
         val pm = marker.startsWith("p")
         val hour24 = hour % HALF_DAY + if (pm) HALF_DAY else 0
         return TimeValue.Exact(LocalTime.of(hour24, minute))
+    }
+
+    /** "1630h" or "930h": always the 24-hour clock. */
+    private fun twentyFourHour(hourText: String, minuteText: String): TimeValue? {
+        val hour = hourText.toInt()
+        val minute = minuteText.toInt()
+        if (hour > LAST_HOUR || minute > LAST_MINUTE) return null
+        return TimeValue.Exact(LocalTime.of(hour, minute))
     }
 
     /** No am or pm: 0, 13 to 23 and a leading zero ("09:30") are 24-hour; 1 to 12 are ambiguous. */

@@ -24,4 +24,13 @@ class SwipeActionTest {
     fun aRowNotLaidOutYetNeverActs() {
         assertNull(swipeAction(-50f, 0f))
     }
+
+    @Test
+    fun aQuickFlickActsShortOfTheThresholdButOnlyTheWayTheRowMoved() {
+        assertEquals(SwipeAction.FOCUS, releaseAction(40f, width, velocity = 1200f, fling = 800f))
+        assertEquals(SwipeAction.DELETE, releaseAction(-40f, width, velocity = -1200f, fling = 800f))
+        assertNull(releaseAction(40f, width, velocity = -1200f, fling = 800f))
+        assertNull(releaseAction(40f, width, velocity = 300f, fling = 800f))
+        assertNull(releaseAction(40f, 0f, velocity = 1200f, fling = 800f))
+    }
 }

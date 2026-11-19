@@ -1,6 +1,7 @@
 package com.aliraza.dailytodos.data.db
 
 import com.aliraza.dailytodos.core.focus.FocusSession
+import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.HeadsUp
 import com.aliraza.dailytodos.core.model.Priority
 import com.aliraza.dailytodos.core.model.ReminderLogEntry
@@ -10,6 +11,7 @@ import com.aliraza.dailytodos.core.model.Task
 import com.aliraza.dailytodos.core.model.TaskList
 import com.aliraza.dailytodos.core.model.ThemeMode
 import com.aliraza.dailytodos.core.model.TimerSignal
+import com.aliraza.dailytodos.core.model.WeekStart
 import java.time.Duration
 
 /** Conversions between table rows and the domain model in :core. */
@@ -98,6 +100,10 @@ fun SettingsEntity.toDomain() = Settings(
     breakCustomMinutes = breakCustomMinutes,
     timerSignal = enumOrDefault(timerSignal, TimerSignal.BOTH),
     theme = enumOrDefault(theme, ThemeMode.SYSTEM),
+    clockFormat = enumOrDefault(clockFormat, ClockFormat.H12),
+    weekStart = enumOrDefault(weekStart, WeekStart.PHONE),
+    haptics = haptics,
+    keepScreenOn = keepScreenOn,
     lastBackupAt = lastBackupAt,
 )
 
@@ -115,6 +121,10 @@ fun Settings.toEntity() = SettingsEntity(
     breakCustomMinutes = breakCustomMinutes,
     timerSignal = timerSignal.name,
     theme = theme.name,
+    clockFormat = clockFormat.name,
+    weekStart = weekStart.name,
+    haptics = haptics,
+    keepScreenOn = keepScreenOn,
     lastBackupAt = lastBackupAt,
 )
 

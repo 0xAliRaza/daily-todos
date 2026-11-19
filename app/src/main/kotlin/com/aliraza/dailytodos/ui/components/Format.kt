@@ -4,14 +4,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import com.aliraza.dailytodos.R
+import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.Task
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 import kotlin.math.abs
 
 private const val WEEK_DAYS = 7L
@@ -36,7 +37,17 @@ fun dayLabel(date: LocalDate, today: LocalDate): String {
     }
 }
 
-fun timeLabel(time: LocalTime): String = time.format(TIME)
+/** "3:12 PM" or "15:12", in the app's clock format. */
+@Composable
+fun timeLabel(time: LocalTime): String = formatTime(time, LocalClockFormat.current)
+
+/** "3:12 PM" or "15:12". For places outside composition, such as notifications. */
+fun formatTime(time: LocalTime, clock: ClockFormat, locale: Locale = Locale.getDefault()): String =
+    time.format(DateTimeFormatter.ofPattern(if (clock == ClockFormat.H12) "h:mm a" else "HH:mm", locale))
+
+/** An hour on the calendar grid: "2 PM" or "14". */
+fun hourLabel(hour: Int, clock: ClockFormat, locale: Locale = Locale.getDefault()): String =
+    LocalTime.of(hour, 0).format(DateTimeFormatter.ofPattern(if (clock == ClockFormat.H12) "h a" else "HH", locale))
 
 /**
  * A day's section title: "Tomorrow · Thu 19 Nov". Yesterday, today and tomorrow lead with their name;
@@ -84,7 +95,6 @@ fun weekdayLong(date: LocalDate): String =
 fun weekdayShort(date: LocalDate): String =
     date.dayOfWeek.getDisplayName(TextStyle.SHORT, LocalConfiguration.current.locales[0])
 
-private val TIME: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 private val SHORT_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, d MMM")
 private val SECTION_DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM")
 private val SECTION_DAY_YEAR: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM yyyy")

@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -60,7 +61,9 @@ import com.aliraza.dailytodos.core.model.Task
 import com.aliraza.dailytodos.core.model.TimerSignal
 import com.aliraza.dailytodos.data.TaskFocusTotal
 import com.aliraza.dailytodos.ui.components.AppIcons
+import com.aliraza.dailytodos.ui.components.PillChoice
 import com.aliraza.dailytodos.ui.components.RoundCheck
+import com.aliraza.dailytodos.ui.components.rememberTick
 import com.aliraza.dailytodos.ui.components.timeLabel
 import com.aliraza.dailytodos.ui.theme.tokens
 import kotlinx.coroutines.delay
@@ -104,7 +107,9 @@ fun FocusScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            TaskHeader(current, focused, onComplete)
+            TaskHeader(current, focused, onComplete) {
+                KeepScreenOnToggle(settings.keepScreenOn, viewModel::setKeepScreenOn)
+            }
             DialBlock(mood, timer, dialReading(mood, timer, settings, now), now, viewModel, length)
             Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp)) {
                 length?.let {
@@ -138,20 +143,12 @@ private fun rememberNow(viewModel: FocusViewModel, timer: FocusTimer): State<Ins
         }
     }
 
-/** The length of a round still to start: its minutes, the −/+ step, the quick chips, and its name. */
-private class LengthPicker(
-    val minutes: Int,
-    val step: Int,
-    val presets: List<Int>,
-    val label: String,
-    val onChange: (Int) -> Unit,
-)
-
 /** The length that can still be changed: the focus while ready, the break while it waits; none while running. */
 @Composable
 private fun lengthPicker(mood: Mood, settings: Settings, viewModel: FocusViewModel): LengthPicker? = when (mood) {
     Mood.READY -> LengthPicker(
         settings.focusMinutes,
+        Settings.FOCUS_MINUTES_RANGE,
         FOCUS_STEP,
         FocusPresets.FOCUS + settings.focusCustomMinutes,
         stringResource(R.string.focus_label),
@@ -160,6 +157,7 @@ private fun lengthPicker(mood: Mood, settings: Settings, viewModel: FocusViewMod
 
     Mood.BREAK_TIME -> LengthPicker(
         settings.breakMinutes,
+        Settings.BREAK_MINUTES_RANGE,
         BREAK_STEP,
         FocusPresets.BREAK + settings.breakCustomMinutes,
         stringResource(R.string.focus_break),
@@ -175,9 +173,13 @@ private val CHECK_INSET = 8.dp
 /** Lowers the title so its first line centres on the check box's 40dp touch target. */
 private val TITLE_NUDGE = 6.dp
 
-/** The task being worked on and its focus so far, with its round box: ticking it off ends the timer too. */
+/**
+ * The task being worked on and its focus so far, with its round box: ticking it off ends the timer too.
+ * [trailing] sits at the row's end, pushed back out past the row's pull-back so a 40dp target's icon
+ * lines up with the content gutter as the ring does.
+ */
 @Composable
-private fun TaskHeader(task: Task, focused: TaskFocusTotal, onComplete: () -> Unit) {
+private fun TaskHeader(task: Task, focused: TaskFocusTotal, onComplete: () -> Unit, trailing: @Composable () -> Unit) {
     // Pulled back by the touch target's margin, so the ring itself lines up with the content gutter.
     Row(Modifier.fillMaxWidth().padding(top = 4.dp).offset(x = -CHECK_INSET)) {
         RoundCheck(checked = task.completedAt != null, onClick = onComplete, priority = task.priority, size = 24)
@@ -194,6 +196,7 @@ private fun TaskHeader(task: Task, focused: TaskFocusTotal, onComplete: () -> Un
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Box(Modifier.offset(x = CHECK_INSET * 2)) { trailing() }
     }
 }
 
@@ -240,7 +243,7 @@ private fun DialBlock(
                     StepButton(AppIcons.Remove, stringResource(R.string.focus_less, length.label)) {
                         length.onChange(stepDown(length.minutes, length.step))
                     }
-                    Dial(reading, mood.isBreak, caption, dial)
+                    Dial(reading, mood.isBreak, caption, dial, Modifier.dialInput(rememberDialInput(length)))
                     StepButton(AppIcons.Add, stringResource(R.string.focus_more, length.label)) {
                         length.onChange(stepUp(length.minutes, length.step))
                     }
@@ -273,16 +276,16 @@ private val TIME_SIZE = 68.sp
 /**
  * A kitchen-timer dial: a solid arc of the time left (see [DialReading]) on a neutral track, the accent for
  * focus and green for a break, with a tick every five minutes just inside. The time and one caption sit in
- * the middle.
+ * the middle. [modifier] carries the touch input while the length can be set.
  */
 @Composable
-private fun Dial(reading: DialReading, isBreak: Boolean, caption: String, size: Dp) {
+private fun Dial(reading: DialReading, isBreak: Boolean, caption: String, size: Dp, modifier: Modifier = Modifier) {
     val tokens = MaterialTheme.tokens
     val scheme = MaterialTheme.colorScheme
     val sweep by animateFloatAsState(reading.sweep, label = "dial")
     val arc = if (isBreak) tokens.rest else tokens.accent
     val tick = tokens.outline.copy(alpha = TICK_ALPHA)
-    Box(Modifier.size(size), contentAlignment = Alignment.Center) {
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) { drawDial(sweep, arc, tokens.divider, tick) }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -341,7 +344,14 @@ private fun ReadyControls(
             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
         )
     }
-    Buttons(primary = stringResource(R.string.focus_start) to onStart, secondary = null)
+    val tick = rememberTick(HapticFeedbackType.Confirm)
+    Buttons(
+        primary = stringResource(R.string.focus_start) to {
+            tick()
+            onStart()
+        },
+        secondary = null,
+    )
 }
 
 /** Focus has ended and the break waits: skipping it is one tap. */
@@ -377,6 +387,7 @@ private fun RunningControls(viewModel: FocusViewModel, timer: FocusTimer) {
 @Composable
 private fun Presets(options: List<Int>, value: Int, onPick: (Int) -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val tick = rememberTick()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         // A custom length equal to a preset (only from a hand-edited backup) shows once.
         options.distinct().forEach { option ->
@@ -391,7 +402,10 @@ private fun Presets(options: List<Int>, value: Int, onPick: (Int) -> Unit) {
                     .weight(1f)
                     .clip(CircleShape)
                     .background(if (on) scheme.primaryContainer else scheme.surfaceVariant)
-                    .clickable(role = Role.Button) { onPick(option) }
+                    .clickable(role = Role.Button) {
+                        tick()
+                        onPick(option)
+                    }
                     .padding(horizontal = 4.dp, vertical = 8.dp),
             )
         }
@@ -401,7 +415,6 @@ private fun Presets(options: List<Int>, value: Int, onPick: (Int) -> Unit) {
 /** How a round's end makes itself known, the same choice as in Settings: sound, vibrate or both. */
 @Composable
 private fun SignalRow(signal: TimerSignal, onPick: (TimerSignal) -> Unit) {
-    val scheme = MaterialTheme.colorScheme
     Row(
         Modifier.fillMaxWidth().heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -411,23 +424,12 @@ private fun SignalRow(signal: TimerSignal, onPick: (TimerSignal) -> Unit) {
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f),
         )
-        Row(Modifier.clip(CircleShape).background(scheme.surfaceVariant).padding(3.dp)) {
-            TimerSignal.entries.forEach { option ->
-                val on = option == signal
-                Text(
-                    stringResource(signalShort(option)),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (on) scheme.onSurface else scheme.onSurfaceVariant,
-                    modifier = Modifier.clip(CircleShape).background(if (on) scheme.surface else Color.Transparent)
-                        .clickable(role = Role.RadioButton) { onPick(option) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                )
-            }
-        }
+        PillChoice(TimerSignal.entries, signal, { stringResource(signalLabel(it)) }, onPick)
     }
 }
 
-private fun signalShort(signal: TimerSignal): Int = when (signal) {
+/** The name of an end signal, here and in Settings. */
+internal fun signalLabel(signal: TimerSignal): Int = when (signal) {
     TimerSignal.SOUND -> R.string.signal_sound
     TimerSignal.VIBRATE -> R.string.signal_vibrate
     TimerSignal.BOTH -> R.string.signal_both
@@ -436,9 +438,13 @@ private fun signalShort(signal: TimerSignal): Int = when (signal) {
 @Composable
 private fun StepButton(icon: ImageVector, label: String, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val tick = rememberTick()
     Box(
         Modifier.size(STEP_BUTTON).clip(CircleShape).background(scheme.surfaceVariant)
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(role = Role.Button) {
+                tick()
+                onClick()
+            },
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, label, tint = scheme.onSurface, modifier = Modifier.size(20.dp))

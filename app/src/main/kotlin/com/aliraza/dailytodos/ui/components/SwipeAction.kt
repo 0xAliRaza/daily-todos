@@ -1,6 +1,6 @@
 package com.aliraza.dailytodos.ui.components
 
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -14,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,9 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.aliraza.dailytodos.R
 import com.aliraza.dailytodos.ui.theme.tokens
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -51,6 +52,21 @@ internal fun swipeAction(offset: Float, width: Float): SwipeAction? = when {
     else -> null
 }
 
+/**
+ * What letting go does: the action the row was dragged to, or the one a quick flick throws it towards
+ * ([velocity] at least [fling] pixels a second, the same way the row moved). Else nothing.
+ */
+internal fun releaseAction(offset: Float, width: Float, velocity: Float, fling: Float): SwipeAction? =
+    swipeAction(offset, width) ?: when {
+        width <= 0f -> null
+        velocity >= fling && offset > 0f -> SwipeAction.FOCUS
+        velocity <= -fling && offset < 0f -> SwipeAction.DELETE
+        else -> null
+    }
+
+/** A flick this fast acts even short of the threshold. */
+private val FLING_SPEED = 800.dp
+
 /** The icon behind a swiped row grows once letting go would act. */
 private const val ARMED_SCALE = 1.2f
 
@@ -67,18 +83,42 @@ fun SwipeRow(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val offset = remember { Animatable(0f) }
+    // Written straight from each drag step, so no queued update can land after letting go and leave
+    // the row half open.
+    var offset by remember { mutableFloatStateOf(0f) }
     var width by remember { mutableIntStateOf(0) }
     var armed by remember { mutableStateOf<SwipeAction?>(null) }
+    var settling by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
-    val haptics = LocalHapticFeedback.current
+    val tick = rememberTick()
+    val fling = with(LocalDensity.current) { FLING_SPEED.toPx() }
     val drag = rememberDraggableState { delta ->
         val limit = width.toFloat()
-        val next = (offset.value + delta).coerceIn(-limit, if (canFocus) limit else 0f)
-        scope.launch { offset.snapTo(next) }
-        val reached = swipeAction(next, limit)
-        if (reached != armed && reached != null) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+        offset = (offset + delta).coerceIn(-limit, if (canFocus) limit else 0f)
+        val reached = swipeAction(offset, limit)
+        if (reached != armed && reached != null) tick()
         armed = reached
+    }
+    val slideTo: suspend (Float) -> Unit = { target -> animate(offset, target) { value, _ -> offset = value } }
+    val release = { velocity: Float ->
+        val action = releaseAction(offset, width.toFloat(), velocity, fling)
+        armed = null
+        settling = scope.launch {
+            when (action) {
+                SwipeAction.DELETE -> {
+                    slideTo(-width.toFloat())
+                    onDelete()
+                }
+
+                // The row springs back; nothing about the task changes.
+                SwipeAction.FOCUS -> {
+                    onFocus()
+                    slideTo(0f)
+                }
+
+                null -> slideTo(0f)
+            }
+        }
     }
     val focus = stringResource(R.string.action_focus)
     val delete = stringResource(R.string.action_delete)
@@ -90,31 +130,16 @@ fun SwipeRow(
             )
         },
     ) {
-        SwipeBackground(offset.value, armed, Modifier.matchParentSize())
+        SwipeBackground(offset, armed, Modifier.matchParentSize())
         Box(
-            Modifier.offset { IntOffset(offset.value.roundToInt(), 0) }
+            Modifier.offset { IntOffset(offset.roundToInt(), 0) }
                 .background(MaterialTheme.colorScheme.background)
                 .draggable(
                     drag,
                     Orientation.Horizontal,
                     enabled = enabled,
-                    onDragStopped = {
-                        when (swipeAction(offset.value, width.toFloat())) {
-                            SwipeAction.DELETE -> {
-                                offset.animateTo(-width.toFloat())
-                                onDelete()
-                            }
-
-                            // The row springs back; nothing about the task changes.
-                            SwipeAction.FOCUS -> {
-                                onFocus()
-                                offset.animateTo(0f)
-                            }
-
-                            null -> offset.animateTo(0f)
-                        }
-                        armed = null
-                    },
+                    onDragStarted = { settling?.cancel() },
+                    onDragStopped = { velocity -> release(velocity) },
                 ),
         ) { content() }
     }

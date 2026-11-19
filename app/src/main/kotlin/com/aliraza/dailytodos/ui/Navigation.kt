@@ -76,6 +76,19 @@ internal class Navigation(stack: List<String>) {
     }
 }
 
+/** How the screen changes between two back stacks: across tabs, one page deeper, or one page back. */
+internal enum class TransitionKind { TAB, PUSH, POP }
+
+/**
+ * Reads a stack change as a [TransitionKind]. A new root is a tab switch; a stack cut back to a prefix of
+ * itself is a pop; anything else on the same root (an open, or the timer moved to the top) is a push.
+ */
+internal fun transitionKind(from: List<String>, to: List<String>): TransitionKind = when {
+    from.firstOrNull() != to.firstOrNull() -> TransitionKind.TAB
+    to.size < from.size && from.subList(0, to.size) == to -> TransitionKind.POP
+    else -> TransitionKind.PUSH
+}
+
 @Composable
 internal fun rememberNavigation(): Navigation =
     rememberSaveable(saver = Navigation.Saver) { Navigation(listOf(Route.TODAY)) }

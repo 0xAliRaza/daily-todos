@@ -2,6 +2,9 @@
 <resources>
     <string name="app_name">Daily Todos</string>
 
+    <!-- part B -->
+    <string name="due_date_title">Due date</string>
+
     <!-- Common actions -->
     <string name="action_add">Add task</string>
     <string name="action_back">Back</string>

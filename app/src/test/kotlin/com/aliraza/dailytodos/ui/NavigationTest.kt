@@ -52,4 +52,27 @@ class NavigationTest {
         val restored = Navigation.Saver.restore(saved!!)!!
         assertEquals(nav.stack, restored.stack)
     }
+
+    @Test
+    fun aNewRootFadesAsATabSwitch() {
+        assertEquals(TransitionKind.TAB, transitionKind(listOf(Route.TODAY), listOf(Route.LISTS)))
+        assertEquals(TransitionKind.TAB, transitionKind(listOf(Route.TODAY, Route.SETTINGS), listOf(Route.UPCOMING)))
+    }
+
+    @Test
+    fun openingAPageIsAPushAndLeavingItAPop() {
+        val lists = listOf(Route.LISTS)
+        val list = lists + Route.list("l1")
+        assertEquals(TransitionKind.PUSH, transitionKind(lists, list))
+        assertEquals(TransitionKind.POP, transitionKind(list, lists))
+        // The same tab tapped again from deep inside it goes back to its root.
+        assertEquals(TransitionKind.POP, transitionKind(list + Route.SETTINGS, lists))
+    }
+
+    @Test
+    fun theTimerMovedToTheTopIsAPush() {
+        val before = listOf(Route.TODAY, Route.focus("t1"), Route.SETTINGS)
+        val after = listOf(Route.TODAY, Route.SETTINGS, Route.focus("t1"))
+        assertEquals(TransitionKind.PUSH, transitionKind(before, after))
+    }
 }

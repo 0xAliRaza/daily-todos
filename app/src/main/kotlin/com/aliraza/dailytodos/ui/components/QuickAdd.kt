@@ -105,7 +105,7 @@ class QuickAddState {
     var open by mutableStateOf(false)
         private set
 
-    /** A date dialog or menu is open over the bar; it takes the keyboard but mustn't close the bar. */
+    /** A date sheet or menu is open over the bar; it takes the keyboard but mustn't close the bar. */
     var picking by mutableStateOf(false)
 
     fun show() {
@@ -166,6 +166,15 @@ class QuickAddState {
     /** Switches the default date off, or back on. A typed date is switched by tapping its words instead. */
     fun toggleDefaultDate() {
         defaultDateOff = !defaultDateOff
+    }
+
+    /**
+     * "No date" from the date sheet: removes the typed date and time [words] and keeps the default date
+     * out, so the task is added undated. With no typed date it only switches the default off.
+     */
+    fun noDate(words: List<IntRange>) {
+        if (words.isNotEmpty()) put("", words)
+        defaultDateOff = true
     }
 
     fun clear() {
@@ -377,12 +386,22 @@ private fun AddOptionsRow(state: QuickAddState, parsed: ParseResult, due: Due?, 
         }
     }
     if (menu == AddMenu.DATE) {
-        DateDialog(due?.date ?: today, onDismiss = close) { day ->
-            // A typed "tomorrow 4pm" is one span; picking another day keeps its time.
-            val time = parsed.time?.takeIf { parsed.spans.any { it.kind == SpanKind.DATE_TIME } }
-            val words = listOfNotNull(QuickAddWords.date(day, today), time?.let(QuickAddWords::time))
-            state.put(words.joinToString(" "), spans(SpanKind.DATE, SpanKind.DATE_TIME))
-        }
+        DueDateSheet(
+            title = stringResource(R.string.due_date_title),
+            current = due?.takeIf { it.on }?.date,
+            today = today,
+            onPick = { day ->
+                if (day == null) {
+                    state.noDate(due?.words.orEmpty())
+                } else {
+                    // A typed "tomorrow 4pm" is one span; picking another day keeps its time.
+                    val time = parsed.time?.takeIf { parsed.spans.any { it.kind == SpanKind.DATE_TIME } }
+                    val words = listOfNotNull(QuickAddWords.date(day, today), time?.let(QuickAddWords::time))
+                    state.put(words.joinToString(" "), spans(SpanKind.DATE, SpanKind.DATE_TIME))
+                }
+            },
+            onDismiss = close,
+        )
     }
 }
 

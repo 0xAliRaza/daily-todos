@@ -62,7 +62,7 @@ fun FocusStatsScreen(viewModel: FocusViewModel, padding: PaddingValues) {
         EmptyState(
             stringResource(R.string.stats_empty_title),
             stringResource(R.string.stats_empty_body),
-            Modifier.padding(padding),
+            padding,
             icon = AppIcons.Timer,
         )
         return

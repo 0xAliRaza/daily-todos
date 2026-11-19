@@ -2,7 +2,19 @@ package com.aliraza.dailytodos.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.Transition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -13,7 +25,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
@@ -54,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -134,7 +146,7 @@ fun AppRoot(
     )
     // Clearing a selection wins over going back; a back swipe otherwise lets the page below peek in.
     BackHandler(enabled = selection.active) { selection.clear() }
-    val tabSeek = remember { TabSeek() }
+    val tabSeek = rememberTabSeek()
     val pages = rememberPageTransition(nav, backEnabled = !selection.active, tabSeek)
 
     val snackbar = remember { SnackbarHostState() }
@@ -169,7 +181,11 @@ fun AppRoot(
             }
         },
         floatingActionButton = {
-            if (canAdd && !quickAdd.open) AddButton { quickAdd.show(addStart) }
+            AnimatedVisibility(
+                visible = canAdd && !quickAdd.open,
+                enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(),
+                exit = scaleOut(tween(QUICK_MS)) + fadeOut(tween(QUICK_MS)),
+            ) { AddButton { quickAdd.show(addStart) } }
         },
         bottomBar = {
             BottomBars(
@@ -244,11 +260,14 @@ private fun RootTopBar(
     nav: Navigation,
     onReschedule: (Collection<String>) -> Unit,
 ) {
-    if (selecting) {
-        SelectionBar(selection, tasks, onReschedule)
-        return
+    // The selection bar fades in over the title rather than replacing it in one frame.
+    AnimatedContent(
+        selecting,
+        transitionSpec = { fadeIn(tween(QUICK_MS)) togetherWith fadeOut(tween(QUICK_MS)) },
+        label = "topBar",
+    ) { selectingNow ->
+        if (selectingNow) SelectionBar(selection, tasks, onReschedule) else TopBar(route, tasks, nav::back, nav::open)
     }
-    TopBar(route, tasks, nav::back, nav::open)
 }
 
 /**
@@ -267,16 +286,14 @@ private fun Pages(
     transition.AnimatedContent(transitionSpec = { pageTransform() }, contentKey = { it.last() }) { stack ->
         val shown = stack.last()
         Scaffold(
-            modifier = Modifier.tabSwipe(input.tabSeek, shown, input.onTab),
+            modifier = Modifier.graphicsLayer { translationX = input.tabSeek.stretch.value }
+                .tabSwipe(input.tabSeek, shown, input.onTab),
             topBar = { topBar(shown) },
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0),
         ) { inner ->
             val page = PaddingValues(top = inner.calculateTopPadding(), bottom = padding.calculateBottomPadding())
-            // The bars below already make room for the keyboard while the add bar is open; marking that
-            // room as used keeps a page's own keyboard padding (a centred message) from counting it twice.
-            val below = PaddingValues(bottom = padding.calculateBottomPadding())
-            KeyboardGuardBox(alsoWhen = input.typing, Modifier.consumeWindowInsets(below)) {
+            KeyboardGuardBox(alsoWhen = input.typing) {
                 val clear = clearsAddButton(shown, input.addBarOpen)
                 RouteContent(shown, screens, if (clear) page.clearOfAddButton() else page)
             }
@@ -332,6 +349,9 @@ private fun PaddingValues.clearOfAddButton(): PaddingValues = PaddingValues(
     top = calculateTopPadding(),
     bottom = calculateBottomPadding() + AddButtonClearance,
 )
+
+/** Quick exits and fades: the + button, the add bar leaving, the selection bar. */
+private const val QUICK_MS = 150
 
 /** Room left under a screen's content so its last rows can scroll clear of the round add button. */
 internal val AddButtonClearance = 80.dp
@@ -424,7 +444,11 @@ private fun BottomBars(
     Column(room?.let { Modifier.windowInsetsPadding(it) } ?: Modifier) {
         val raised = typing || held
         val focusing = nowFocusing.takeIf { !showAdd && !raised }
-        if (showAdd) addBar()
+        AnimatedVisibility(
+            visible = showAdd,
+            enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+            exit = shrinkVertically(tween(QUICK_MS), shrinkTowards = Alignment.Bottom) + fadeOut(tween(QUICK_MS)),
+        ) { addBar() }
         focusing?.invoke()
         if (route in Route.top && !raised) {
             TabBar(route, onTab)
@@ -727,8 +751,8 @@ private fun TabBar(route: String, onTab: (String) -> Unit) {
 @Composable
 private fun RowScope.Tab(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    val tint = if (selected) scheme.secondary else scheme.onSurfaceVariant
-    val text = if (selected) scheme.secondary else scheme.onSurfaceVariant
+    val tint by animateColorAsState(if (selected) scheme.secondary else scheme.onSurfaceVariant, label = "tab")
+    val text = tint
     Column(
         Modifier.weight(1f).clickable(role = Role.Tab, onClick = onClick).padding(top = 8.dp, bottom = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

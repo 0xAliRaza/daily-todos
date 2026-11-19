@@ -355,7 +355,7 @@ fun TodayContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVal
         EmptyState(
             stringResource(R.string.today_empty_title),
             stringResource(R.string.today_empty_body),
-            Modifier.padding(padding),
+            padding,
         )
         return
     }
@@ -372,6 +372,7 @@ fun TodayContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVal
                 EmptyState(
                     stringResource(R.string.today_done_title),
                     stringResource(R.string.today_done_body),
+                    PaddingValues(0.dp),
                     Modifier.fillParentMaxHeight(ALL_DONE_HEIGHT),
                 )
             }
@@ -584,7 +585,7 @@ fun ListContent(viewModel: TasksViewModel, listId: String, ctx: RowContext, padd
         EmptyState(
             stringResource(R.string.list_empty_title),
             stringResource(R.string.list_empty_body),
-            Modifier.padding(padding),
+            padding,
             icon = AppIcons.Checklist,
         )
         return
@@ -678,15 +679,18 @@ fun SearchContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVa
     Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
         SearchField(query, viewModel.query::tryEmit, Modifier.focusRequester(focus))
         when {
+            // The field above already took the top padding; below, the room includes an open keyboard.
             query.isBlank() -> EmptyState(
                 stringResource(R.string.search_hint_title),
                 stringResource(R.string.search_hint_body),
+                PaddingValues(bottom = padding.calculateBottomPadding()),
                 icon = AppIcons.Search,
             )
 
             results.isEmpty() -> EmptyState(
                 stringResource(R.string.search_none_title),
                 stringResource(R.string.search_none_body, query),
+                PaddingValues(bottom = padding.calculateBottomPadding()),
                 icon = AppIcons.Search,
             )
 

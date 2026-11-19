@@ -12,13 +12,13 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -451,14 +451,21 @@ private fun HeaderButton(action: HeaderAction) {
 
 /**
  * A calm, centred message for a screen with nothing to show; [icon] says which kind of empty it is. It
- * centres in the room the keyboard leaves, so an open keyboard moves it up rather than covering it.
+ * takes the page's [padding] and centres inside it: the room under it includes an open keyboard, so the
+ * message moves up above the keyboard rather than being cut off by it.
  */
 @Composable
-fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, icon: ImageVector = AppIcons.Check) {
+fun EmptyState(
+    title: String,
+    body: String,
+    padding: PaddingValues,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = AppIcons.Check,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .imePadding()
+            .padding(padding)
             .padding(horizontal = 40.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,

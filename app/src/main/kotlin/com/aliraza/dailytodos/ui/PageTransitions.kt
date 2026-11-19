@@ -33,7 +33,7 @@ import kotlin.coroutines.cancellation.CancellationException
 internal fun rememberPageTransition(
     nav: Navigation,
     backEnabled: Boolean,
-    tabSeek: TabSeek = remember { TabSeek() },
+    tabSeek: TabSeek = rememberTabSeek(),
 ): Transition<List<String>> {
     val seekable = remember { SeekableTransitionState(nav.stack) }
     val scope = rememberCoroutineScope()

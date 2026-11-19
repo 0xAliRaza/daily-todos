@@ -14,7 +14,10 @@ versioning.
 - A clearer Settings screen; every choice uses the same pill control.
 - Reminder health shows its status at the top and late reminders in amber.
 - A swiped task row never stays half open; a quick flick opens the timer or deletes.
-- Empty screens centre above the keyboard instead of being cut off by it.
+- Empty screens centre above the keyboard instead of being cut off by it, Search included.
+- Smoother motion: a swipe past the first or last tab stretches and springs back, the pill controls
+  slide to a new choice, and the + button, the add bar, the tab bar and the selection bar animate in
+  and out.
 - The default list says so in words under its name.
 
 ### Added

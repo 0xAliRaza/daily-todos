@@ -46,6 +46,7 @@ class BackupCodecTest {
             clockFormat = ClockFormat.H24,
             weekStart = WeekStart.SUNDAY,
             haptics = false,
+            keepScreenOn = true,
             lastBackupAt = Instant.parse("2026-11-01T08:00:00Z"),
         ),
         lists = listOf(TaskList("default", "Daily", 0, true), TaskList("g", "Groceries", 1, false)),
@@ -204,6 +205,20 @@ class BackupCodecTest {
         assertTrue(valid().contains("\"weekStart\": \"SUNDAY\""))
         assertTrue(valid().contains("\"haptics\": false"))
     }
+
+    /** A version 2 file written before keep screen on reads it as off. */
+    @Test
+    fun aFileWithoutKeepScreenOnImportsWithItOff() {
+        val older = edited { root ->
+            val settings = root.getValue("settings").jsonObject
+            JsonObject(root + ("settings" to JsonObject(settings - "keepScreenOn")))
+        }
+        val expected = sample.settings.copy(keepScreenOn = false)
+        assertEquals(BackupReadResult.Accepted(sample.copy(settings = expected)), BackupCodec.decode(older))
+    }
+
+    @Test
+    fun exportsKeepScreenOn() = assertTrue(valid().contains("\"keepScreenOn\": true"))
 
     /** docs/backup-format.md documents every settings field the app writes. */
     @Test

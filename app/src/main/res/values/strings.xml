@@ -219,6 +219,8 @@
     <string name="stats_title">Focus stats</string>
     <string name="stats_hint">Time spent focusing</string>
     <string name="settings_signal">End signal</string>
+    <string name="keep_screen_on">Keep screen on</string>
+    <string name="settings_keep_screen_on_hint">While focus or a break counts down</string>
     <string name="signal_sound">Sound</string>
     <string name="signal_vibrate">Vibrate</string>
     <string name="signal_both">Both</string>

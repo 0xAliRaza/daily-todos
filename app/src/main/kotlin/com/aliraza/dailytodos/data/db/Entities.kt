@@ -102,6 +102,7 @@ data class SettingsEntity(
     @ColumnInfo(name = "clock_format", defaultValue = "'H12'") val clockFormat: String,
     @ColumnInfo(name = "week_start", defaultValue = "'PHONE'") val weekStart: String,
     @ColumnInfo(defaultValue = "1") val haptics: Boolean,
+    @ColumnInfo(name = "keep_screen_on", defaultValue = "0") val keepScreenOn: Boolean,
     @ColumnInfo(name = "last_backup_at") val lastBackupAt: Instant?,
 ) {
     companion object {

@@ -107,7 +107,9 @@ fun FocusScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            TaskHeader(current, focused, onComplete)
+            TaskHeader(current, focused, onComplete) {
+                KeepScreenOnToggle(settings.keepScreenOn, viewModel::setKeepScreenOn)
+            }
             DialBlock(mood, timer, dialReading(mood, timer, settings, now), now, viewModel, length)
             Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp)) {
                 length?.let {
@@ -171,9 +173,13 @@ private val CHECK_INSET = 8.dp
 /** Lowers the title so its first line centres on the check box's 40dp touch target. */
 private val TITLE_NUDGE = 6.dp
 
-/** The task being worked on and its focus so far, with its round box: ticking it off ends the timer too. */
+/**
+ * The task being worked on and its focus so far, with its round box: ticking it off ends the timer too.
+ * [trailing] sits at the row's end, pushed back out past the row's pull-back so a 40dp target's icon
+ * lines up with the content gutter as the ring does.
+ */
 @Composable
-private fun TaskHeader(task: Task, focused: TaskFocusTotal, onComplete: () -> Unit) {
+private fun TaskHeader(task: Task, focused: TaskFocusTotal, onComplete: () -> Unit, trailing: @Composable () -> Unit) {
     // Pulled back by the touch target's margin, so the ring itself lines up with the content gutter.
     Row(Modifier.fillMaxWidth().padding(top = 4.dp).offset(x = -CHECK_INSET)) {
         RoundCheck(checked = task.completedAt != null, onClick = onComplete, priority = task.priority, size = 24)
@@ -190,6 +196,7 @@ private fun TaskHeader(task: Task, focused: TaskFocusTotal, onComplete: () -> Un
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Box(Modifier.offset(x = CHECK_INSET * 2)) { trailing() }
     }
 }
 

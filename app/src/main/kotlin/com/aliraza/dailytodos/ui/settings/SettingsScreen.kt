@@ -93,6 +93,11 @@ fun SettingsScreen(
             ChoiceRow(R.string.settings_signal, R.string.settings_signal_hint, TimerSignal.entries, s.timerSignal, {
                 stringResource(signalLabel(it))
             }) { v -> viewModel.update { it.copy(timerSignal = v) } }
+            SwitchRow(
+                stringResource(R.string.keep_screen_on),
+                R.string.settings_keep_screen_on_hint,
+                s.keepScreenOn,
+            ) { on -> viewModel.update { it.copy(keepScreenOn = on) } }
         }
         GeneralGroup(s, viewModel)
         DataGroup(s, viewModel)

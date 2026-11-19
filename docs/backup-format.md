@@ -28,6 +28,7 @@ confirmation. Only files written by this app are accepted. Files from before the
     "clockFormat": "H12",
     "weekStart": "PHONE",
     "haptics": true,
+    "keepScreenOn": false,
     "lastBackupAt": "2026-11-18T12:00:00Z"
   },
   "lists": [{ "id": "default", "name": "Daily", "position": 0, "isDefault": true }],
@@ -57,6 +58,8 @@ confirmation. Only files written by this app are accepted. Files from before the
 - `focusMinutes` and `focusCustomMinutes` are 1 to 180; `breakMinutes` and `breakCustomMinutes` are 1 to 60.
   The two custom lengths are the timer's fourth chip; a file without them reads as 90 and 20.
 - A file without `clockFormat`, `weekStart` or `haptics` reads them as `H12`, `PHONE` and `true`.
+- `keepScreenOn` keeps the screen awake while a focus round or break counts down; a file without it
+  reads `false`.
 - Exactly one list has `isDefault: true`.
 - Deleted tasks and lists are not exported. The running focus timer is not exported.
 - `focusSessions` holds the focus time kept per session. `focusedMs` is between 0 and the time from

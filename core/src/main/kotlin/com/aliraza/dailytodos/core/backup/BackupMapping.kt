@@ -40,6 +40,7 @@ internal object ToFile {
         clockFormat = s.clockFormat.name,
         weekStart = s.weekStart.name,
         haptics = s.haptics,
+        keepScreenOn = s.keepScreenOn,
         lastBackupAt = s.lastBackupAt?.toString(),
     )
 
@@ -94,6 +95,7 @@ internal object FromFile {
         clockFormat = enumOf<ClockFormat>(s.clockFormat, "settings.clockFormat"),
         weekStart = enumOf<WeekStart>(s.weekStart, "settings.weekStart"),
         haptics = s.haptics,
+        keepScreenOn = s.keepScreenOn,
         lastBackupAt = s.lastBackupAt?.let { instant(it, "settings.lastBackupAt") },
     )
 

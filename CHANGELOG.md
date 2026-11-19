@@ -9,6 +9,18 @@ versioning.
 
 - The app is now called Daily Todos, with the id `com.aliraza.dailytodos`. Backups made before the
   rename still import.
+- Screens slide in and out, and the back gesture previews the page underneath.
+- One date sheet for rescheduling, the add bar's Date chip and the task sheet.
+- A clearer Settings screen; every choice uses the same pill control.
+- Reminder health shows its status at the top and late reminders in amber.
+
+### Added
+
+- A 12-hour or 24-hour clock (12-hour by default).
+- Weeks start on the phone's first day by default, or on Monday or Sunday.
+- Haptic feedback for completing a task and the timer's controls, with a switch to turn it off.
+- The calendar shows what was done on a picked day and how long each task was focused.
+- A progress line on the now-focusing bar.
 
 ## 0.1.0 — 2026-11-18
 

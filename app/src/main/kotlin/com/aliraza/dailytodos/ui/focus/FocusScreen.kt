@@ -141,20 +141,12 @@ private fun rememberNow(viewModel: FocusViewModel, timer: FocusTimer): State<Ins
         }
     }
 
-/** The length of a round still to start: its minutes, the −/+ step, the quick chips, and its name. */
-private class LengthPicker(
-    val minutes: Int,
-    val step: Int,
-    val presets: List<Int>,
-    val label: String,
-    val onChange: (Int) -> Unit,
-)
-
 /** The length that can still be changed: the focus while ready, the break while it waits; none while running. */
 @Composable
 private fun lengthPicker(mood: Mood, settings: Settings, viewModel: FocusViewModel): LengthPicker? = when (mood) {
     Mood.READY -> LengthPicker(
         settings.focusMinutes,
+        Settings.FOCUS_MINUTES_RANGE,
         FOCUS_STEP,
         FocusPresets.FOCUS + settings.focusCustomMinutes,
         stringResource(R.string.focus_label),
@@ -163,6 +155,7 @@ private fun lengthPicker(mood: Mood, settings: Settings, viewModel: FocusViewMod
 
     Mood.BREAK_TIME -> LengthPicker(
         settings.breakMinutes,
+        Settings.BREAK_MINUTES_RANGE,
         BREAK_STEP,
         FocusPresets.BREAK + settings.breakCustomMinutes,
         stringResource(R.string.focus_break),
@@ -243,7 +236,7 @@ private fun DialBlock(
                     StepButton(AppIcons.Remove, stringResource(R.string.focus_less, length.label)) {
                         length.onChange(stepDown(length.minutes, length.step))
                     }
-                    Dial(reading, mood.isBreak, caption, dial)
+                    Dial(reading, mood.isBreak, caption, dial, Modifier.dialInput(rememberDialInput(length)))
                     StepButton(AppIcons.Add, stringResource(R.string.focus_more, length.label)) {
                         length.onChange(stepUp(length.minutes, length.step))
                     }
@@ -276,16 +269,16 @@ private val TIME_SIZE = 68.sp
 /**
  * A kitchen-timer dial: a solid arc of the time left (see [DialReading]) on a neutral track, the accent for
  * focus and green for a break, with a tick every five minutes just inside. The time and one caption sit in
- * the middle.
+ * the middle. [modifier] carries the touch input while the length can be set.
  */
 @Composable
-private fun Dial(reading: DialReading, isBreak: Boolean, caption: String, size: Dp) {
+private fun Dial(reading: DialReading, isBreak: Boolean, caption: String, size: Dp, modifier: Modifier = Modifier) {
     val tokens = MaterialTheme.tokens
     val scheme = MaterialTheme.colorScheme
     val sweep by animateFloatAsState(reading.sweep, label = "dial")
     val arc = if (isBreak) tokens.rest else tokens.accent
     val tick = tokens.outline.copy(alpha = TICK_ALPHA)
-    Box(Modifier.size(size), contentAlignment = Alignment.Center) {
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) { drawDial(sweep, arc, tokens.divider, tick) }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(

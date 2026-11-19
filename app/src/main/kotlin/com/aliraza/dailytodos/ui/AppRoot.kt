@@ -81,6 +81,7 @@ import com.aliraza.dailytodos.ui.components.QuickAddBar
 import com.aliraza.dailytodos.ui.components.QuickAddState
 import com.aliraza.dailytodos.ui.components.due
 import com.aliraza.dailytodos.ui.components.longDateLabel
+import com.aliraza.dailytodos.ui.components.startWords
 import com.aliraza.dailytodos.ui.components.switchedOffWhen
 import com.aliraza.dailytodos.ui.focus.FocusScreen
 import com.aliraza.dailytodos.ui.focus.FocusViewModel
@@ -146,6 +147,8 @@ fun AppRoot(
     ) { sheetTask = it }
     val quickAdd = remember { QuickAddState() }
     val canAdd = showsAdd(route) && !selection.active
+    val addContext = contextDate(route, upcoming, calendar)
+    val addStart = rememberStartWords(tasks, route, addContext)
     val topBar: @Composable (String) -> Unit = { shown ->
         // A page sliding away keeps its title; only the page in front shows the selection.
         RootTopBar(shown, selection.active && shown == route, selection, tasks, nav) {
@@ -166,7 +169,7 @@ fun AppRoot(
             }
         },
         floatingActionButton = {
-            if (canAdd && !quickAdd.open) AddButton(quickAdd::show)
+            if (canAdd && !quickAdd.open) AddButton { quickAdd.show(addStart) }
         },
         bottomBar = {
             BottomBars(
@@ -176,7 +179,7 @@ fun AppRoot(
                 onTab = nav::tab,
                 nowFocusing = nowFocusing(focus, route, nav::openFocus),
             ) {
-                AddBar(tasks, quickAdd, route, contextDate(route, upcoming, calendar))
+                AddBar(tasks, quickAdd, route, addContext)
             }
         },
     ) { padding ->
@@ -444,14 +447,29 @@ private fun UndoSnackbars(tasks: TasksViewModel, host: SnackbarHostState) {
     }
 }
 
+/**
+ * The words the add bar's line starts with on [route]: the open list's tag and the picked [contextDate].
+ * The default list gets no tag, and tomorrow is left to the default-date pill where it would show anyway.
+ */
+@Composable
+private fun rememberStartWords(tasks: TasksViewModel, route: String, contextDate: LocalDate?): String {
+    val now by tasks.now.collectAsStateWithLifecycle()
+    val lists by tasks.lists.collectAsStateWithLifecycle()
+    val settings by tasks.settings.collectAsStateWithLifecycle()
+    val open = lists.firstOrNull { it.id == route.listId() }?.takeIf { !it.isDefault }
+    val today = now.toLocalDate()
+    val defaultDay = today.plusDays(1).takeIf { settings.undatedGetsTomorrow && open == null }
+    return startWords(open?.name, contextDate, today, defaultDay)
+}
+
 @Composable
 private fun AddBar(tasks: TasksViewModel, state: QuickAddState, route: String, contextDate: LocalDate?) {
     val now by tasks.now.collectAsStateWithLifecycle()
     val lists by tasks.lists.collectAsStateWithLifecycle()
     val settings by tasks.settings.collectAsStateWithLifecycle()
     val listId = route.listId()
-    val parsed = remember(state.text, state.excluded, lists, now) { tasks.parse(state.text, state.excluded.keys) }
-    val all = remember(state.text, lists, now) { tasks.parse(state.text, emptySet()) }
+    val parsed = remember(state.text, state.excluded, lists, now) { state.read(state.excluded.keys, tasks::parse) }
+    val all = remember(state.text, lists, now) { state.read(emptySet(), tasks::parse) }
     // A typed date switched off means "no date", so the default stays out while one is.
     val defaultOff = state.defaultDateOff || switchedOffWhen(all, state.excluded.keys).isNotEmpty()
     val preview = tasks.defaultDate(parsed, settings, listId, contextDate, off = false)
@@ -472,10 +490,10 @@ private fun AddBar(tasks: TasksViewModel, state: QuickAddState, route: String, c
         options = AddOptions(lists.map { it.name }, target),
         onSubmit = {
             // Parsed again from the field itself: a second Enter before recomposition must not add twice.
-            if (state.text.isNotBlank()) {
-                val line = tasks.parse(state.text, state.excluded.keys)
+            val line = state.read(state.excluded.keys, tasks::parse)
+            if (line.title.isNotBlank()) {
                 val off = state.defaultDateOff ||
-                    switchedOffWhen(tasks.parse(state.text, emptySet()), state.excluded.keys).isNotEmpty()
+                    switchedOffWhen(state.read(emptySet(), tasks::parse), state.excluded.keys).isNotEmpty()
                 tasks.add(line, listId, tasks.defaultDate(line, settings, listId, contextDate, off))
                 state.clear()
             }

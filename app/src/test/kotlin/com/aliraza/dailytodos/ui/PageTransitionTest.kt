@@ -76,4 +76,21 @@ class PageTransitionTest {
         assertEquals(listOf(Route.TODAY), nav.stack)
         assertEquals(listOf(Route.TODAY), pages.currentState)
     }
+
+    /** A tab swipe that turns back past where it started heads for the other side from this page. */
+    @Test
+    fun aTabSwipeTurningBackSeeksFromThisPage() {
+        lateinit var seek: TabSeek
+        compose.setContent {
+            seek = rememberTabSeek()
+            nav = remember { Navigation(listOf(Route.UPCOMING)) }
+            pages = rememberPageTransition(nav, backEnabled = true, seek)
+        }
+        compose.runOnIdle { seek.drag(Route.CALENDAR, fraction = 0.05f, edge = 0f) }
+        compose.waitForIdle()
+        compose.runOnIdle { seek.drag(Route.TODAY, fraction = 0.05f, edge = 0f) }
+        compose.waitForIdle()
+        assertEquals(listOf(Route.UPCOMING), pages.currentState)
+        assertEquals(listOf(Route.TODAY), pages.targetState)
+    }
 }

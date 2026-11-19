@@ -24,3 +24,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
 }
+
+// ReadmeExamplesTest checks the README's examples against the parser, so a README edit reruns it.
+tasks.test {
+    inputs.file(rootProject.file("README.md")).withPathSensitivity(PathSensitivity.RELATIVE)
+}

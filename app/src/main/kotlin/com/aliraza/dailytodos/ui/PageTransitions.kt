@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -29,10 +30,24 @@ import kotlin.coroutines.cancellation.CancellationException
  * animations off in the phone's settings turns these off too.
  */
 @Composable
-internal fun rememberPageTransition(nav: Navigation, backEnabled: Boolean): Transition<List<String>> {
+internal fun rememberPageTransition(
+    nav: Navigation,
+    backEnabled: Boolean,
+    tabSeek: TabSeek = remember { TabSeek() },
+): Transition<List<String>> {
     val seekable = remember { SeekableTransitionState(nav.stack) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(nav.stack) { seekable.animateTo(nav.stack) }
+    // A tab swipe seeks towards the tab beside this one; let go, and the page either carries on to
+    // that tab (the swipe switched tabs) or slides back from wherever the finger left it.
+    LaunchedEffect(tabSeek) {
+        snapshotFlow { tabSeek.target to tabSeek.progress }.collect { (target, progress) ->
+            when {
+                target != null -> seekable.seekTo(progress, targetState = listOf(target))
+                seekable.targetState != nav.stack -> seekable.animateTo(nav.stack)
+            }
+        }
+    }
     PredictiveBackHandler(enabled = backEnabled && nav.canGoBack) { swipe ->
         val below = nav.stack.dropLast(1)
         try {
@@ -87,6 +102,23 @@ internal fun tabSide(from: String, to: String): Int {
     val end = Route.tabs.indexOf(to)
     return if (start < 0 || end < 0) 0 else end.compareTo(start)
 }
+
+/**
+ * How far into the tab slide to seek so the pages sit [moved] (0 to 1) of a width along, as the finger
+ * is: the inverse of [PageEasing], found by halving.
+ */
+internal fun seekFraction(moved: Float): Float {
+    var low = 0f
+    var high = 1f
+    repeat(INVERSE_STEPS) {
+        val mid = (low + high) / 2
+        if (PageEasing.transform(mid) < moved.coerceIn(0f, 1f)) low = mid else high = mid
+    }
+    return (low + high) / 2
+}
+
+private val PageEasing = FastOutSlowInEasing
+private const val INVERSE_STEPS = 20
 
 private const val PAGE_MS = 300
 

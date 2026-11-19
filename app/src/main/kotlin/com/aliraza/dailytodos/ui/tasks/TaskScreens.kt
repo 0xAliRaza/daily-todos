@@ -515,20 +515,14 @@ private fun ListRow(list: TaskList, open: Int, modifier: Modifier, onClick: () -
             .padding(start = ListTextStart, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                list.name,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
+        Column(Modifier.weight(1f)) {
+            Text(list.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // The one list that can't be deleted says what it is for, in words rather than a symbol.
             if (list.isDefault) {
-                Icon(
-                    AppIcons.Pin,
+                Text(
                     stringResource(R.string.list_default_mark),
-                    tint = scheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 6.dp).size(14.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
                 )
             }
         }

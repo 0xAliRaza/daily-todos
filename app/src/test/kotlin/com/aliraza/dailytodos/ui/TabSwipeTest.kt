@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -43,6 +44,14 @@ class TabSwipeTest {
     }
 
     @Test
+    fun seekingFollowsTheFingerThroughTheEasing() {
+        assertEquals(0f, seekFraction(0f), 0.01f)
+        assertEquals(1f, seekFraction(1f), 0.01f)
+        val half = seekFraction(0.5f)
+        assertEquals(0.5f, androidx.compose.animation.core.FastOutSlowInEasing.transform(half), 0.01f)
+    }
+
+    @Test
     fun tabsSlideTowardsTheirPlaceInTheBar() {
         assertEquals(1, tabSide(Route.TODAY, Route.CALENDAR))
         assertEquals(-1, tabSide(Route.LISTS, Route.UPCOMING))
@@ -53,8 +62,8 @@ class TabSwipeTest {
     fun anEmptyAreaSwitchesTabsButASwipeableRowKeepsItsSwipe() {
         val picked = mutableListOf<String>()
         compose.setContent {
-            val swipe = rememberTabSwipeState(Route.UPCOMING)
-            Column(Modifier.size(400.dp).tabSwipe(swipe, Route.UPCOMING) { picked += it }) {
+            val seek = remember { TabSeek() }
+            Column(Modifier.size(400.dp).tabSwipe(seek, Route.UPCOMING) { picked += it }) {
                 Box(
                     Modifier.fillMaxWidth().height(100.dp).testTag("row")
                         .draggable(rememberDraggableState {}, Orientation.Horizontal),

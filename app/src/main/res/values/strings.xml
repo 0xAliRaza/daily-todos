@@ -342,7 +342,7 @@
     <string name="week_previous">Previous week</string>
     <string name="week_next">Next week</string>
     <!-- part C -->
-    <string name="list_default_mark">Default list</string>
+    <string name="list_default_mark">Default list · new tasks go here</string>
     <string name="calendar_done">Done · %1$d</string>
     <string name="calendar_done_focused">Done · %1$d · %2$s focused</string>
     <string name="calendar_done_at">Done %1$s</string>

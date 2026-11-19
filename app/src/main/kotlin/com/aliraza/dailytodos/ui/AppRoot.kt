@@ -132,7 +132,8 @@ fun AppRoot(
     )
     // Clearing a selection wins over going back; a back swipe otherwise lets the page below peek in.
     BackHandler(enabled = selection.active) { selection.clear() }
-    val pages = rememberPageTransition(nav, backEnabled = !selection.active)
+    val tabSeek = remember { TabSeek() }
+    val pages = rememberPageTransition(nav, backEnabled = !selection.active, tabSeek)
 
     val snackbar = remember { SnackbarHostState() }
     UndoSnackbars(tasks, snackbar)
@@ -180,7 +181,7 @@ fun AppRoot(
     ) { padding ->
         val screens = Screens(tasks, settings, focus, ctx, upcoming, calendar, nav)
         val onTab = nav::tab.takeIf { !selection.active && !quickAdd.open }
-        Pages(pages, screens, topBar, padding, typing = quickAdd.focused, addBarOpen = quickAdd.open, onTab = onTab)
+        Pages(pages, screens, topBar, padding, PageInput(quickAdd.focused, quickAdd.open, tabSeek, onTab))
     }
     rescheduling?.let { ids -> RescheduleHost(tasks, ids) { rescheduling = null } }
     sheetTask?.let { id ->
@@ -257,25 +258,35 @@ private fun Pages(
     screens: Screens,
     topBar: @Composable (String) -> Unit,
     padding: PaddingValues,
-    typing: Boolean,
-    addBarOpen: Boolean,
-    onTab: ((String) -> Unit)?,
+    input: PageInput,
 ) {
     transition.AnimatedContent(transitionSpec = { pageTransform() }, contentKey = { it.last() }) { stack ->
         val shown = stack.last()
         Scaffold(
+            modifier = Modifier.tabSwipe(input.tabSeek, shown, input.onTab),
             topBar = { topBar(shown) },
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0),
         ) { inner ->
             val page = PaddingValues(top = inner.calculateTopPadding(), bottom = padding.calculateBottomPadding())
-            val swipe = rememberTabSwipeState(shown)
-            KeyboardGuardBox(alsoWhen = typing, Modifier.tabSwipe(swipe, shown, onTab)) {
-                RouteContent(shown, screens, if (clearsAddButton(shown, addBarOpen)) page.clearOfAddButton() else page)
+            KeyboardGuardBox(alsoWhen = input.typing) {
+                val clear = clearsAddButton(shown, input.addBarOpen)
+                RouteContent(shown, screens, if (clear) page.clearOfAddButton() else page)
             }
         }
     }
 }
+
+/**
+ * What the pages need from the bars around them: whether the add bar is [typing] or [addBarOpen], and
+ * the tab swipe ([onTab] null while it is off).
+ */
+private class PageInput(
+    val typing: Boolean,
+    val addBarOpen: Boolean,
+    val tabSeek: TabSeek,
+    val onTab: ((String) -> Unit)?,
+)
 
 /** Acts on what a notification opened: a task's sheet, or the focus timer. */
 @Composable

@@ -75,6 +75,7 @@ import com.aliraza.dailytodos.ui.calendar.CalendarState
 import com.aliraza.dailytodos.ui.components.AddOptions
 import com.aliraza.dailytodos.ui.components.AppIcons
 import com.aliraza.dailytodos.ui.components.KeyboardGuardBox
+import com.aliraza.dailytodos.ui.components.LocalWeekStart
 import com.aliraza.dailytodos.ui.components.QuickAddBar
 import com.aliraza.dailytodos.ui.components.QuickAddState
 import com.aliraza.dailytodos.ui.components.due
@@ -119,7 +120,8 @@ fun AppRoot(
     // Read through derivedStateOf so the root recomposes when the date turns, not every minute.
     val clock = tasks.now.collectAsStateWithLifecycle()
     val today by remember { derivedStateOf { clock.value.toLocalDate() } }
-    val upcoming = remember(today) { UpcomingState(today) }
+    val weekStart = LocalWeekStart.current
+    val upcoming = remember(today, weekStart) { UpcomingState(today, weekStart) }
     val calendar = remember { CalendarState(tasks.now.value.toLocalDate()) }
     LaunchedEffect(route) { selection.clear() }
     OpenedEffect(

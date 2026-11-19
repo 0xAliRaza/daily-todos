@@ -57,7 +57,16 @@ import android.provider.Settings as AndroidSettings
 /** A reminder that fired within this long of its time counts as on time. */
 private val ON_TIME: Duration = Duration.ofSeconds(60)
 
-private data class Check(val title: Int, val ok: Boolean, val okHint: Int, val fixHint: Int, val fix: (() -> Unit)?)
+internal data class Check(val title: Int, val ok: Boolean, val okHint: Int, val fixHint: Int, val fix: (() -> Unit)?)
+
+/** The reminder checks, run again whenever the app comes back to the front. Settings shows their summary. */
+@Composable
+internal fun rememberHealthChecks(dndOverride: Boolean): List<Check> {
+    val context = LocalContext.current
+    var resumed by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumed++ }
+    return remember(resumed, dndOverride) { checks(context) }
+}
 
 /** Every permission and battery setting reminders depend on, the maker's steps, a test and the history. */
 @Composable
@@ -65,10 +74,8 @@ fun HealthScreen(viewModel: SettingsViewModel, padding: PaddingValues) {
     val context = LocalContext.current
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
-    var resumed by remember { mutableIntStateOf(0) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumed++ }
     Messages(viewModel)
-    val checks = remember(resumed, settings.dndOverride) { checks(context) }
+    val checks = rememberHealthChecks(settings.dndOverride)
     val testTitle = stringResource(R.string.health_test_title)
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         Text(

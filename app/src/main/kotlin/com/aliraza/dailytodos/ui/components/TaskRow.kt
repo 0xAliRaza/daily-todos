@@ -324,7 +324,7 @@ private fun Notes(notes: String) {
 
 @Composable
 private fun MetaLine(today: LocalDate, meta: RowMeta) {
-    val time = meta.time?.let(::timeLabel)
+    val time = meta.time?.let { timeLabel(it) }
     val whenText = listOfNotNull(meta.date?.let { dayLabel(it, today) }, time).joinToString(" ")
     if (whenText.isEmpty() && meta.listName == null) return
     Row(verticalAlignment = Alignment.CenterVertically) {

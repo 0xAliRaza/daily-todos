@@ -433,7 +433,7 @@ private fun DuePill(due: Due, today: LocalDate, onToggle: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     // The day alone keeps the pill short; a typed time is already highlighted in the text.
     val label = dayLabel(due.date, today)
-    val full = listOfNotNull(label, due.time?.let(::timeLabel)).joinToString(" ")
+    val full = listOfNotNull(label, due.time?.let { timeLabel(it) }).joinToString(" ")
     val tokens = MaterialTheme.tokens
     val ink = if (due.on) tokens.onAccentContainer else scheme.onSurfaceVariant
     val action = stringResource(if (due.on) R.string.action_unrecognise else R.string.action_recognise, full)

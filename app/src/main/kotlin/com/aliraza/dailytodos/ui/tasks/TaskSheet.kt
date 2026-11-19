@@ -297,7 +297,7 @@ private fun DateRow(task: Task, today: LocalDate, ink: Color, set: ((Task) -> Ta
 private fun TimeRow(task: Task, ink: Color, set: ((Task) -> Task) -> Unit, onPick: () -> Unit) {
     MenuRow(
         icon = AppIcons.Clock,
-        label = task.dueTime?.let(::timeLabel) ?: stringResource(R.string.task_no_time),
+        label = task.dueTime?.let { timeLabel(it) } ?: stringResource(R.string.task_no_time),
         ink = if (task.dueTime != null) ink else MaterialTheme.colorScheme.onSurfaceVariant,
     ) { close ->
         Option(R.string.time_pick, close, onPick)

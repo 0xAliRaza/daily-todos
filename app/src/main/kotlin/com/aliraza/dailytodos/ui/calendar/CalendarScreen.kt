@@ -74,8 +74,10 @@ import com.aliraza.dailytodos.core.model.Priority
 import com.aliraza.dailytodos.core.model.Task
 import com.aliraza.dailytodos.ui.AddButtonClearance
 import com.aliraza.dailytodos.ui.components.AppIcons
+import com.aliraza.dailytodos.ui.components.LocalClockFormat
 import com.aliraza.dailytodos.ui.components.SectionHeader
 import com.aliraza.dailytodos.ui.components.TodayButton
+import com.aliraza.dailytodos.ui.components.hourLabel
 import com.aliraza.dailytodos.ui.components.priorityColor
 import com.aliraza.dailytodos.ui.components.rowDivider
 import com.aliraza.dailytodos.ui.components.sectionDay
@@ -340,7 +342,7 @@ private fun HourLabels(hour: Dp) {
             Box(Modifier.height(hour).fillMaxWidth()) {
                 if (h > 0) {
                     Text(
-                        timeLabel(LocalTime.of(h, 0)).replace(":00", ""),
+                        hourLabel(h, LocalClockFormat.current),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.TopEnd).offset(y = (-7).dp).padding(end = 6.dp),
@@ -403,7 +405,7 @@ private fun Block(task: Task, ctx: RowContext, time: LocalTime?, modifier: Modif
     ) {
         Box(Modifier.width(3.dp).fillMaxHeight().background(ink))
         Text(
-            listOfNotNull(time?.let(::timeLabel), task.title).joinToString(" "),
+            listOfNotNull(time?.let { timeLabel(it) }, task.title).joinToString(" "),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,

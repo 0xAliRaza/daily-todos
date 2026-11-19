@@ -16,6 +16,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.aliraza.dailytodos.core.model.ThemeMode
 import com.aliraza.dailytodos.ui.AppRoot
 import com.aliraza.dailytodos.ui.RequestNotificationPermission
+import com.aliraza.dailytodos.ui.components.ProvideDisplaySettings
 import com.aliraza.dailytodos.ui.focus.FocusViewModel
 import com.aliraza.dailytodos.ui.settings.SettingsViewModel
 import com.aliraza.dailytodos.ui.tasks.TasksViewModel
@@ -60,14 +61,16 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
             }
             DailyTodosTheme(dark = dark) {
-                RequestNotificationPermission()
-                AppRoot(
-                    tasks = tasks,
-                    settings = viewModel(factory = factory),
-                    focus = viewModel(factory = factory),
-                    opened = opened,
-                    onOpenedHandled = { opened = null },
-                )
+                ProvideDisplaySettings(settings) {
+                    RequestNotificationPermission()
+                    AppRoot(
+                        tasks = tasks,
+                        settings = viewModel(factory = factory),
+                        focus = viewModel(factory = factory),
+                        opened = opened,
+                        onOpenedHandled = { opened = null },
+                    )
+                }
             }
         }
     }

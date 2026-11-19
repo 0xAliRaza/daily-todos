@@ -6,11 +6,13 @@ import com.aliraza.dailytodos.MutableClock
 import com.aliraza.dailytodos.core.backup.BackupReadResult
 import com.aliraza.dailytodos.core.backup.Limits
 import com.aliraza.dailytodos.core.backup.RejectReason
+import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.FiredBy
 import com.aliraza.dailytodos.core.model.HeadsUp
 import com.aliraza.dailytodos.core.model.NewTask
 import com.aliraza.dailytodos.core.model.Priority
 import com.aliraza.dailytodos.core.model.ThemeMode
+import com.aliraza.dailytodos.core.model.WeekStart
 import com.aliraza.dailytodos.data.db.AppDatabase
 import com.aliraza.dailytodos.data.db.ReminderLogEntity
 import kotlinx.coroutines.test.runTest
@@ -53,7 +55,14 @@ class BackupRoundTripTest {
     /** A database touching every table and every optional field. */
     private suspend fun Phone.fill() {
         settings.update {
-            it.copy(headsUp = HeadsUp.TEN, theme = ThemeMode.DARK, overdueReminderTime = LocalTime.of(7, 45))
+            it.copy(
+                headsUp = HeadsUp.TEN,
+                theme = ThemeMode.DARK,
+                overdueReminderTime = LocalTime.of(7, 45),
+                clockFormat = ClockFormat.H24,
+                weekStart = WeekStart.SUNDAY,
+                haptics = false,
+            )
         }
         lists.rename(AppDatabase.DEFAULT_LIST_ID, "Today stuff")
         val groceries = lists.create("Groceries")
@@ -98,6 +107,7 @@ class BackupRoundTripTest {
 
         assertEquals(original.backup.snapshot(), restored.backup.snapshot())
         assertEquals(export.at, restored.settings.current().lastBackupAt)
+        assertEquals(original.settings.current(), restored.settings.current())
         // Focus on the deleted task travels without it and still counts.
         assertEquals(
             listOf(Duration.ofMinutes(25), Duration.ofMinutes(10)),

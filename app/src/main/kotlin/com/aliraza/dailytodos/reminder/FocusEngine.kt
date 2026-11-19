@@ -22,8 +22,8 @@ interface FocusSignals {
     /** Removes the last round's alert once its next step no longer applies to [timer]. */
     fun syncAlert(timer: FocusTimer)
 
-    /** The quiet ongoing notification with the countdown; removed when nothing runs. */
-    fun showProgress(timer: FocusTimer, title: String)
+    /** The quiet ongoing notification with the countdown, its end time in the app's clock format. */
+    fun showProgress(timer: FocusTimer, title: String, settings: Settings)
 }
 
 /**
@@ -48,7 +48,7 @@ class FocusEngine(
         } else {
             signals.syncAlert(step.timer)
         }
-        signals.showProgress(step.timer, title(step.timer.taskId))
+        signals.showProgress(step.timer, title(step.timer.taskId), settings)
         return step.timer.endsAt
     }
 

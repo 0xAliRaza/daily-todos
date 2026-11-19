@@ -2,6 +2,7 @@ package com.aliraza.dailytodos.core.focus
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
@@ -22,7 +23,7 @@ class FocusStatsTest {
         session("a", today, 25),
         session("a", today, 25),
         session("b", today.minusDays(1), 50),
-        // Last week's Sunday: in the seven days, not in this week.
+        // Sunday: in the seven days, in this week only when weeks start on Sunday.
         session("b", today.minusDays(4), 15),
         session("gone", today.minusDays(2), 10),
         session(null, today.minusDays(20), 30),
@@ -36,8 +37,18 @@ class FocusStatsTest {
         val stats = stats()
         assertEquals(Duration.ofMinutes(155), stats.total)
         assertEquals(Duration.ofMinutes(50), stats.today)
-        assertEquals(Duration.ofMinutes(110), stats.thisWeek)
+        assertEquals(Duration.ofMinutes(110), stats.thisWeek(DayOfWeek.MONDAY))
         assertEquals(6, stats.sessions)
+    }
+
+    @Test
+    fun aWeekStartingOnSundayCountsLastSunday() {
+        assertEquals(Duration.ofMinutes(125), stats().thisWeek(DayOfWeek.SUNDAY))
+    }
+
+    @Test
+    fun aWeekStartingTodayCountsOnlyToday() {
+        assertEquals(Duration.ofMinutes(50), stats().thisWeek(DayOfWeek.THURSDAY))
     }
 
     @Test

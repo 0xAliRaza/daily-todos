@@ -9,7 +9,9 @@ import com.aliraza.dailytodos.core.backup.BackupReadResult
 import com.aliraza.dailytodos.core.model.NewTask
 import com.aliraza.dailytodos.core.model.ReminderLogEntry
 import com.aliraza.dailytodos.core.model.Settings
+import com.aliraza.dailytodos.core.model.TaskList
 import com.aliraza.dailytodos.data.BackupRepository
+import com.aliraza.dailytodos.data.ListRepository
 import com.aliraza.dailytodos.data.SettingsRepository
 import com.aliraza.dailytodos.data.TaskRepository
 import com.aliraza.dailytodos.data.db.ReminderLogDao
@@ -36,6 +38,7 @@ class SettingsViewModel(
     private val settingsRepo: SettingsRepository,
     private val backup: BackupRepository,
     private val tasks: TaskRepository,
+    lists: ListRepository,
     reminderLog: ReminderLogDao,
     private val clock: Clock,
 ) : ViewModel() {
@@ -44,6 +47,11 @@ class SettingsViewModel(
         SharingStarted.Eagerly,
         Settings(),
     )
+
+    /** The default list's name as it is now, for the row that names it. */
+    val defaultListName: StateFlow<String> = lists.observe()
+        .map { all -> all.firstOrNull { it.isDefault }?.name ?: TaskList.DEFAULT_NAME }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), TaskList.DEFAULT_NAME)
 
     /** The newest reminders first; the log keeps no titles. */
     val history: StateFlow<List<ReminderLogEntry>> = reminderLog.observeAll()
@@ -54,6 +62,8 @@ class SettingsViewModel(
     val pendingImport = MutableStateFlow<BackupContent?>(null)
 
     private val messages = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+
+    /** Short messages to show, as string resources; one may name the app as its only argument. */
     val message: SharedFlow<Int> = messages
 
     val zone: java.time.ZoneId get() = clock.zone

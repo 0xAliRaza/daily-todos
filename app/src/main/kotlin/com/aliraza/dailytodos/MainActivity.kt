@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
                     container.settings,
                     container.backup,
                     container.tasks,
+                    container.lists,
                     container.database.reminderLog(),
                     container.clock,
                 )

@@ -10,6 +10,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aliraza.dailytodos.core.model.Settings
 import com.aliraza.dailytodos.data.db.AppDatabase
 import com.aliraza.dailytodos.data.db.Migrations
+import com.aliraza.dailytodos.data.db.SettingsEntity
+import com.aliraza.dailytodos.data.db.toDomain
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.After
@@ -62,6 +64,7 @@ class MigrationTest {
         FrameworkSQLiteOpenHelperFactory().create(config).writableDatabase.use(fill)
     }
 
+    /** Version 1 runs every migration up to the current schema. */
     @Test
     fun versionOneUpgradesWithEverythingKept() = runTest {
         createVersion(1) { db ->
@@ -86,6 +89,7 @@ class MigrationTest {
             assertEquals("DARK", settings.theme)
             assertEquals(Settings.DEFAULT_FOCUS_CUSTOM_MINUTES, settings.focusCustomMinutes)
             assertEquals(Settings.DEFAULT_BREAK_CUSTOM_MINUTES, settings.breakCustomMinutes)
+            assertDisplayDefaults(settings)
             // A timer from before the upgrade is dropped; there is no focus recorded yet.
             assertNull(room.timer().get())
             assertTrue(room.focusSessions().all().isEmpty())
@@ -127,6 +131,37 @@ class MigrationTest {
         } finally {
             room.close()
         }
+    }
+
+    @Test
+    fun versionThreeUpgradesWithEverythingKept() = runTest {
+        createVersion(3) { db ->
+            db.execSQL("INSERT INTO lists (id, name, position, is_default) VALUES ('default', 'Daily', 0, 1)")
+            db.execSQL(
+                "INSERT INTO settings VALUES " +
+                    "(1, '08:30', 0, 1, 10, 1, '07:00', 1, 50, 10, 40, 7, 'VIBRATE', 'DARK', NULL)",
+            )
+        }
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).build()
+        try {
+            val settings = room.settings().get()!!
+            assertEquals(LocalTime.of(8, 30), settings.defaultReminderTime)
+            assertEquals(40, settings.focusCustomMinutes)
+            assertEquals(7, settings.breakCustomMinutes)
+            assertEquals("DARK", settings.theme)
+            assertDisplayDefaults(settings)
+        } finally {
+            room.close()
+        }
+    }
+
+    /** The display settings added in version 4 start at the app's defaults. */
+    private fun assertDisplayDefaults(settings: SettingsEntity) {
+        val domain = settings.toDomain()
+        val defaults = Settings()
+        assertEquals(defaults.clockFormat, domain.clockFormat)
+        assertEquals(defaults.weekStart, domain.weekStart)
+        assertEquals(defaults.haptics, domain.haptics)
     }
 
     private companion object {

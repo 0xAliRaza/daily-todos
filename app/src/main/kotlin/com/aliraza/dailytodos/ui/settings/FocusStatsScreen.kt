@@ -44,6 +44,7 @@ import com.aliraza.dailytodos.core.focus.FunFacts
 import com.aliraza.dailytodos.core.focus.TaskFocus
 import com.aliraza.dailytodos.ui.components.AppIcons
 import com.aliraza.dailytodos.ui.components.EmptyState
+import com.aliraza.dailytodos.ui.components.LocalWeekStart
 import com.aliraza.dailytodos.ui.components.weekdayShort
 import com.aliraza.dailytodos.ui.focus.FocusViewModel
 import com.aliraza.dailytodos.ui.focus.cardSurface
@@ -99,7 +100,7 @@ private fun Hero(stats: FocusStats) {
 private fun Tiles(stats: FocusStats) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Tile(stringResource(R.string.stats_today), focusDuration(stats.today))
-        Tile(stringResource(R.string.stats_week), focusDuration(stats.thisWeek))
+        Tile(stringResource(R.string.stats_week), focusDuration(stats.thisWeek(LocalWeekStart.current)))
         Tile(stringResource(R.string.stats_sessions), stats.sessions.toString())
     }
 }

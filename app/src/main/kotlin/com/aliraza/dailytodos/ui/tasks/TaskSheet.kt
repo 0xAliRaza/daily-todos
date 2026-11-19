@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aliraza.dailytodos.R
+import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.Priority
 import com.aliraza.dailytodos.core.model.Subtask
 import com.aliraza.dailytodos.core.model.Task
@@ -66,6 +67,7 @@ import com.aliraza.dailytodos.core.model.TaskList
 import com.aliraza.dailytodos.data.TaskFocusTotal
 import com.aliraza.dailytodos.ui.components.AppIcons
 import com.aliraza.dailytodos.ui.components.DateDialog
+import com.aliraza.dailytodos.ui.components.LocalClockFormat
 import com.aliraza.dailytodos.ui.components.RoundCheck
 import com.aliraza.dailytodos.ui.components.dayLabel
 import com.aliraza.dailytodos.ui.components.dueTone
@@ -401,7 +403,11 @@ private fun MenuRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimeDialog(initial: LocalTime, onDismiss: () -> Unit, onPick: (LocalTime) -> Unit) {
-    val state = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute)
+    val state = rememberTimePickerState(
+        initialHour = initial.hour,
+        initialMinute = initial.minute,
+        is24Hour = LocalClockFormat.current == ClockFormat.H24,
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {

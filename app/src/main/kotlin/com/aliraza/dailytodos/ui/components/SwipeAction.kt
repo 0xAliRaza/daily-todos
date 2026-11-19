@@ -23,9 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -71,13 +69,13 @@ fun SwipeRow(
     var width by remember { mutableIntStateOf(0) }
     var armed by remember { mutableStateOf<SwipeAction?>(null) }
     val scope = rememberCoroutineScope()
-    val haptics = LocalHapticFeedback.current
+    val tick = rememberTick()
     val drag = rememberDraggableState { delta ->
         val limit = width.toFloat()
         val next = (offset.value + delta).coerceIn(-limit, if (canFocus) limit else 0f)
         scope.launch { offset.snapTo(next) }
         val reached = swipeAction(next, limit)
-        if (reached != armed && reached != null) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+        if (reached != armed && reached != null) tick()
         armed = reached
     }
     val focus = stringResource(R.string.action_focus)

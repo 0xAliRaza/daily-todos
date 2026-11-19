@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -60,7 +61,9 @@ import com.aliraza.dailytodos.core.model.Task
 import com.aliraza.dailytodos.core.model.TimerSignal
 import com.aliraza.dailytodos.data.TaskFocusTotal
 import com.aliraza.dailytodos.ui.components.AppIcons
+import com.aliraza.dailytodos.ui.components.PillChoice
 import com.aliraza.dailytodos.ui.components.RoundCheck
+import com.aliraza.dailytodos.ui.components.rememberTick
 import com.aliraza.dailytodos.ui.components.timeLabel
 import com.aliraza.dailytodos.ui.theme.tokens
 import kotlinx.coroutines.delay
@@ -341,7 +344,14 @@ private fun ReadyControls(
             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
         )
     }
-    Buttons(primary = stringResource(R.string.focus_start) to onStart, secondary = null)
+    val tick = rememberTick(HapticFeedbackType.Confirm)
+    Buttons(
+        primary = stringResource(R.string.focus_start) to {
+            tick()
+            onStart()
+        },
+        secondary = null,
+    )
 }
 
 /** Focus has ended and the break waits: skipping it is one tap. */
@@ -377,6 +387,7 @@ private fun RunningControls(viewModel: FocusViewModel, timer: FocusTimer) {
 @Composable
 private fun Presets(options: List<Int>, value: Int, onPick: (Int) -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val tick = rememberTick()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         // A custom length equal to a preset (only from a hand-edited backup) shows once.
         options.distinct().forEach { option ->
@@ -391,7 +402,10 @@ private fun Presets(options: List<Int>, value: Int, onPick: (Int) -> Unit) {
                     .weight(1f)
                     .clip(CircleShape)
                     .background(if (on) scheme.primaryContainer else scheme.surfaceVariant)
-                    .clickable(role = Role.Button) { onPick(option) }
+                    .clickable(role = Role.Button) {
+                        tick()
+                        onPick(option)
+                    }
                     .padding(horizontal = 4.dp, vertical = 8.dp),
             )
         }
@@ -401,7 +415,6 @@ private fun Presets(options: List<Int>, value: Int, onPick: (Int) -> Unit) {
 /** How a round's end makes itself known, the same choice as in Settings: sound, vibrate or both. */
 @Composable
 private fun SignalRow(signal: TimerSignal, onPick: (TimerSignal) -> Unit) {
-    val scheme = MaterialTheme.colorScheme
     Row(
         Modifier.fillMaxWidth().heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -411,23 +424,12 @@ private fun SignalRow(signal: TimerSignal, onPick: (TimerSignal) -> Unit) {
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f),
         )
-        Row(Modifier.clip(CircleShape).background(scheme.surfaceVariant).padding(3.dp)) {
-            TimerSignal.entries.forEach { option ->
-                val on = option == signal
-                Text(
-                    stringResource(signalShort(option)),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (on) scheme.onSurface else scheme.onSurfaceVariant,
-                    modifier = Modifier.clip(CircleShape).background(if (on) scheme.surface else Color.Transparent)
-                        .clickable(role = Role.RadioButton) { onPick(option) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                )
-            }
-        }
+        PillChoice(TimerSignal.entries, signal, { stringResource(signalLabel(it)) }, onPick)
     }
 }
 
-private fun signalShort(signal: TimerSignal): Int = when (signal) {
+/** The name of an end signal, here and in Settings. */
+internal fun signalLabel(signal: TimerSignal): Int = when (signal) {
     TimerSignal.SOUND -> R.string.signal_sound
     TimerSignal.VIBRATE -> R.string.signal_vibrate
     TimerSignal.BOTH -> R.string.signal_both
@@ -436,9 +438,13 @@ private fun signalShort(signal: TimerSignal): Int = when (signal) {
 @Composable
 private fun StepButton(icon: ImageVector, label: String, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val tick = rememberTick()
     Box(
         Modifier.size(STEP_BUTTON).clip(CircleShape).background(scheme.surfaceVariant)
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(role = Role.Button) {
+                tick()
+                onClick()
+            },
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, label, tint = scheme.onSurface, modifier = Modifier.size(20.dp))

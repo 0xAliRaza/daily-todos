@@ -141,7 +141,8 @@ detekt and lint run with no baseline: every finding fails the build.
 - Notifications name the task. While a round runs: "Focus · ends at 11:42" (or Break) with a live
   countdown, Pause and Stop (or End break). At a focus end: Start break and Skip break. At a break end:
   Start focus. The end alerts have no Stop. An alert whose next step no longer applies is removed.
-- Screen on: one setting, off by default, switched in Settings or by the "Screen on" chip on the timer.
+- Caffeinated (keep screen on): one setting, off by default, switched in Settings or by the "Screen on"
+  chip on the timer.
   While on, the screen stays awake on the app's screens as long as focus or a break counts down; paused,
   waiting or idle, the phone sleeps as usual. Only while the app is in front; no wake lock.
 - Focus stats: the all-time total, Today, This week and Sessions, a 7-day bar chart, the top 5 tasks
@@ -162,7 +163,7 @@ detekt and lint run with no baseline: every finding fails the build.
 - Groups: Reminders, Reliability (Reminder health with its status, Battery optimisation), Focus,
   Appearance, General and Your data. A "Reminders may be late" banner leads when a health check fails.
 - Every choice is the same pill control; on/off settings are switches.
-- Focus: Focus stats, the end signal and Screen on. The Do Not Disturb override stays with Reminders.
+- Focus: Focus stats, the end signal and Caffeinated. The Do Not Disturb override stays with Reminders.
 - Appearance: theme (System, Light, Dark), a black background for the dark theme, and the accent (ink
   blue, violet, teal or graphite).
 - General: time format, 12-hour by default; week starts on, following the phone by default, or Monday or

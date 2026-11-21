@@ -6,7 +6,8 @@ Type a task in one line — `Call bank tomorrow 4pm p1`, `Milk #groceries` — a
 and list are picked out as you type. Every dated task reminds you on time, even with battery saving on,
 after a restart, or when the phone was switched off across the reminder time.
 
-**Status:** first release, 0.1.0. It is used daily, and rough edges get fixed as they show up.
+**Status:** 0.2.0, a fresh design with accents and a true black theme. It is used daily, and rough
+edges get fixed as they show up.
 
 ## Why
 
@@ -26,15 +27,17 @@ Daily Todos stays small on purpose:
 - Swipe a task right to focus on it, left to delete it. Reschedule from the task, from a multi-select, or
   every overdue task at once.
 - Pick the date, priority or list by hand while adding, or just type them.
-- One notification per task with Done and Snooze; overdue tasks remind again the next morning.
+- One notification per task, naming when and which list, with Complete and Snooze; overdue tasks remind
+  again the next morning.
 - A Reminder health screen that checks every permission and battery setting for your phone's maker and
   keeps a history of when each reminder was due and when it actually fired.
 - A focus timer for each task, with focus and break rounds whose ends are scheduled like reminders and
   signalled by sound, a long vibration or both. A bar shows the running round on every screen.
-- Drag around the focus dial to set a round's length; switch Caffeinated on to keep the screen awake
-  while a round counts down.
+- Drag around the focus dial to set a round's length; switch Caffeinated on (the Screen on chip on the timer)
+  to keep the screen awake while a round counts down.
 - Focus stats: total focus time, today, this week, a 7-day chart and the tasks you focused on most.
 - The calendar shows what was done on a picked day and how long each task was focused.
+- Light, dark or pure black for OLED screens, in one of four accents: ink blue, violet, teal or graphite.
 - A 12-hour or 24-hour clock, the week starting on the phone's first day or on Monday or Sunday, and
   haptic feedback you can switch off.
 - Export and import of everything as one JSON file.
@@ -84,15 +87,15 @@ Updates install over the old version and keep your tasks, as long as they come f
 Each release lists the APK's SHA-256 checksum. On a computer, compare it with:
 
 ```sh
-shasum -a 256 daily-todos-0.1.0.apk          # macOS and Linux
-certutil -hashfile daily-todos-0.1.0.apk SHA256   # Windows
+shasum -a 256 daily-todos-0.2.0.apk          # macOS and Linux
+certutil -hashfile daily-todos-0.2.0.apk SHA256   # Windows
 ```
 
 Every release is signed with the same key. To check the signature, run `apksigner` from the Android
 SDK build tools; the certificate's SHA-256 must be:
 
 ```sh
-apksigner verify --print-certs daily-todos-0.1.0.apk
+apksigner verify --print-certs daily-todos-0.2.0.apk
 # Signer #1 certificate SHA-256 digest:
 # 8c979ffda619eb7701524bcfc866c040969ffc0b9e18170f98a0733801ec39ba
 ```

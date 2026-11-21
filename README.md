@@ -6,7 +6,7 @@ Type a task in one line — `Call bank tomorrow 4pm p1`, `Milk #groceries` — a
 and list are picked out as you type. Every dated task reminds you on time, even with battery saving on,
 after a restart, or when the phone was switched off across the reminder time.
 
-**Status:** 0.2.0, a fresh design with accents and a true black theme. It is used daily, and rough
+**Status:** 0.2.1, a fresh design with accents and a true black theme. It is used daily, and rough
 edges get fixed as they show up.
 
 ## Why
@@ -87,15 +87,15 @@ Updates install over the old version and keep your tasks, as long as they come f
 Each release lists the APK's SHA-256 checksum. On a computer, compare it with:
 
 ```sh
-shasum -a 256 daily-todos-0.2.0.apk          # macOS and Linux
-certutil -hashfile daily-todos-0.2.0.apk SHA256   # Windows
+shasum -a 256 daily-todos-0.2.1.apk          # macOS and Linux
+certutil -hashfile daily-todos-0.2.1.apk SHA256   # Windows
 ```
 
 Every release is signed with the same key. To check the signature, run `apksigner` from the Android
 SDK build tools; the certificate's SHA-256 must be:
 
 ```sh
-apksigner verify --print-certs daily-todos-0.2.0.apk
+apksigner verify --print-certs daily-todos-0.2.1.apk
 # Signer #1 certificate SHA-256 digest:
 # 8c979ffda619eb7701524bcfc866c040969ffc0b9e18170f98a0733801ec39ba
 ```

@@ -3,6 +3,13 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow semantic
 versioning.
 
+## 0.2.1 — 2026-11-21
+
+### Fixed
+
+- A task set inside its own early heads-up (11:33 PM set at 11:31 PM with a 10-minute heads-up) never
+  reminded. It now reminds at the task's own time.
+
 ## 0.2.0 — 2026-11-21
 
 ### Changed

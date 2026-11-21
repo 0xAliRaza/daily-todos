@@ -6,6 +6,7 @@ import com.aliraza.dailytodos.MutableClock
 import com.aliraza.dailytodos.core.backup.BackupReadResult
 import com.aliraza.dailytodos.core.backup.Limits
 import com.aliraza.dailytodos.core.backup.RejectReason
+import com.aliraza.dailytodos.core.model.Accent
 import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.FiredBy
 import com.aliraza.dailytodos.core.model.HeadsUp
@@ -58,6 +59,8 @@ class BackupRoundTripTest {
             it.copy(
                 headsUp = HeadsUp.TEN,
                 theme = ThemeMode.DARK,
+                accent = Accent.GRAPHITE,
+                blackBackground = true,
                 overdueReminderTime = LocalTime.of(7, 45),
                 clockFormat = ClockFormat.H24,
                 weekStart = WeekStart.SUNDAY,

@@ -1,6 +1,7 @@
 package com.aliraza.dailytodos.core.backup
 
 import com.aliraza.dailytodos.core.focus.FocusSession
+import com.aliraza.dailytodos.core.model.Accent
 import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.FiredBy
 import com.aliraza.dailytodos.core.model.HeadsUp
@@ -43,6 +44,8 @@ class BackupCodecTest {
             breakCustomMinutes = 7,
             timerSignal = TimerSignal.VIBRATE,
             theme = ThemeMode.DARK,
+            accent = Accent.TEAL,
+            blackBackground = true,
             clockFormat = ClockFormat.H24,
             weekStart = WeekStart.SUNDAY,
             haptics = false,
@@ -215,6 +218,23 @@ class BackupCodecTest {
         }
         val expected = sample.settings.copy(keepScreenOn = false)
         assertEquals(BackupReadResult.Accepted(sample.copy(settings = expected)), BackupCodec.decode(older))
+    }
+
+    /** A version 2 file written before the accent setting reads ink blue on the plain dark page. */
+    @Test
+    fun aFileWithoutAccentImportsTheDefaults() {
+        val older = edited { root ->
+            val settings = root.getValue("settings").jsonObject
+            JsonObject(root + ("settings" to JsonObject(settings - "accent" - "blackBackground")))
+        }
+        val expected = sample.settings.copy(accent = Accent.INK_BLUE, blackBackground = false)
+        assertEquals(BackupReadResult.Accepted(sample.copy(settings = expected)), BackupCodec.decode(older))
+    }
+
+    @Test
+    fun exportsTheAccentAndBlackBackground() {
+        assertTrue(valid().contains("\"accent\": \"TEAL\""))
+        assertTrue(valid().contains("\"blackBackground\": true"))
     }
 
     @Test

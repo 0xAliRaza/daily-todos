@@ -18,7 +18,7 @@ import com.aliraza.dailytodos.core.model.TaskList
         TimerStateEntity::class,
         FocusSessionEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

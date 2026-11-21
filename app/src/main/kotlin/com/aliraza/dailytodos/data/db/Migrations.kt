@@ -70,5 +70,13 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(V1_TO_V2, V2_TO_V3, V3_TO_V4, V4_TO_V5)
+    /** Version 6: the accent colour and the black background for the dark theme. */
+    val V5_TO_V6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `settings` ADD COLUMN `accent` TEXT NOT NULL DEFAULT 'INK_BLUE'")
+            db.execSQL("ALTER TABLE `settings` ADD COLUMN `black_background` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    val ALL = arrayOf(V1_TO_V2, V2_TO_V3, V3_TO_V4, V4_TO_V5, V5_TO_V6)
 }

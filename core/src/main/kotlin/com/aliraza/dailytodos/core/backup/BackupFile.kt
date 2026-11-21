@@ -1,5 +1,6 @@
 package com.aliraza.dailytodos.core.backup
 
+import com.aliraza.dailytodos.core.model.Accent
 import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.Settings
 import com.aliraza.dailytodos.core.model.WeekStart
@@ -8,7 +9,8 @@ import kotlinx.serialization.Serializable
 /*
  * The backup file, version 2: one JSON document. Dates are ISO dates (2026-12-25), times are HH:mm wall
  * clock values, instants are ISO-8601 UTC timestamps (2026-11-18T09:30:00Z). The format is documented
- * in docs/backup-format.md; any change to these classes needs a new version and an upgrade path.
+ * in docs/backup-format.md. A new optional field with a default stays version 2, since older files still
+ * read; removing or changing the meaning of a field needs a new version and an upgrade path.
  */
 
 @Serializable
@@ -39,6 +41,8 @@ data class BackupSettings(
     val breakCustomMinutes: Int = Settings.DEFAULT_BREAK_CUSTOM_MINUTES,
     val timerSignal: String,
     val theme: String,
+    val accent: String = Accent.INK_BLUE.name,
+    val blackBackground: Boolean = false,
     val clockFormat: String = ClockFormat.H12.name,
     val weekStart: String = WeekStart.PHONE.name,
     val haptics: Boolean = true,

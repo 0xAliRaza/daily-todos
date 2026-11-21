@@ -99,6 +99,8 @@ data class SettingsEntity(
     @ColumnInfo(name = "break_custom_minutes", defaultValue = "20") val breakCustomMinutes: Int,
     @ColumnInfo(name = "timer_signal") val timerSignal: String,
     val theme: String,
+    @ColumnInfo(defaultValue = "'INK_BLUE'") val accent: String,
+    @ColumnInfo(name = "black_background", defaultValue = "0") val blackBackground: Boolean,
     @ColumnInfo(name = "clock_format", defaultValue = "'H12'") val clockFormat: String,
     @ColumnInfo(name = "week_start", defaultValue = "'PHONE'") val weekStart: String,
     @ColumnInfo(defaultValue = "1") val haptics: Boolean,

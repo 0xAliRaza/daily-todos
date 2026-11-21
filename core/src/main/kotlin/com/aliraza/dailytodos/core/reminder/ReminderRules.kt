@@ -30,10 +30,22 @@ object ReminderRules {
     /**
      * The task as it should be saved after its date or time was set: earlier marks are dropped, and an
      * instant that already passed counts as handled, so typing "8am" at noon does not ping at once.
+     *
+     * A time set inside its own heads-up window (11:33 PM typed at 11:31 PM with a 10-minute heads-up)
+     * has missed its early reminder but not the task itself, so it reminds at the task's own time.
      */
     fun rescheduled(task: Task, settings: Settings, now: Instant, zone: ZoneId): Task {
         val fresh = task.copy(notifiedFor = null, snoozedUntil = null)
-        return fresh.copy(notifiedFor = due(fresh, settings, now, zone))
+        val handled = due(fresh, settings, now, zone)
+        val own = ownTime(fresh, zone)?.takeIf { handled != null && it.isAfter(now) }
+        return fresh.copy(notifiedFor = handled, snoozedUntil = own)
+    }
+
+    /** The instant of a timed task's own date and time, ignoring any heads-up. */
+    private fun ownTime(task: Task, zone: ZoneId): Instant? {
+        val date = task.dueDate ?: return null
+        val time = task.dueTime ?: return null
+        return date.atTime(time).atZone(zone).toInstant()
     }
 
     private fun pending(task: Task, settings: Settings, now: Instant, zone: ZoneId): List<Instant> {

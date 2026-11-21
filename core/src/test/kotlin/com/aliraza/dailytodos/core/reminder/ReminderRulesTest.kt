@@ -157,6 +157,35 @@ class ReminderRulesTest {
     }
 
     @Test
+    fun aTimeSetInsideTheHeadsUpWindowStillRemindsAtTheTaskTime() {
+        val early = settings.copy(headsUp = HeadsUp.TEN)
+        val typedAt2331 = task(date = today, time = time(23, 33))
+        val saved = ReminderRules.rescheduled(typedAt2331, early, at(today, 23, 31), zone)
+        assertNull(ReminderRules.due(saved, early, at(today, 23, 31), zone))
+        assertEquals(at(today, 23, 33), ReminderRules.next(saved, early, at(today, 23, 31), zone))
+
+        val posted = saved.copy(notifiedFor = at(today, 23, 33))
+        assertEquals(at(tomorrow, 9), ReminderRules.next(posted, early, at(today, 23, 33), zone))
+    }
+
+    @Test
+    fun aHeadsUpStillAheadRemindsOnceAndNotAgainAtTheTaskTime() {
+        val early = settings.copy(headsUp = HeadsUp.TEN)
+        val saved = ReminderRules.rescheduled(task(date = today, time = time(16)), early, at(today, 8), zone)
+        assertEquals(at(today, 15, 50), ReminderRules.next(saved, early, at(today, 8), zone))
+
+        val posted = saved.copy(notifiedFor = at(today, 15, 50))
+        assertEquals(at(tomorrow, 9), ReminderRules.next(posted, early, at(today, 15, 50), zone))
+    }
+
+    @Test
+    fun raisingTheHeadsUpPastItsEarlyMomentRemindsAtOnce() {
+        val t = task(date = today, time = time(16))
+        val earlier = settings.copy(headsUp = HeadsUp.THIRTY)
+        assertEquals(at(today, 15, 30), ReminderRules.due(t, earlier, at(today, 15, 45), zone))
+    }
+
+    @Test
     fun wallClockTimeFollowsTheTimeZone() {
         val t = task(date = today, time = time(16))
         val newYork = ZoneId.of("America/New_York")

@@ -19,7 +19,10 @@ data class Task(
     val dueDate: LocalDate? = null,
     val dueTime: LocalTime? = null,
     val position: Long = 0,
-    /** A pending snooze; replaces the computed reminder until it has been posted. */
+    /**
+     * A one-off reminder that replaces the computed one until it has been posted: a snooze, or the task's
+     * own time when it was set after its heads-up had already passed.
+     */
     val snoozedUntil: Instant? = null,
     /** The latest reminder instant already posted. Anything at or before it counts as handled. */
     val notifiedFor: Instant? = null,

@@ -32,7 +32,10 @@ internal object Vocabulary {
     }
 
     /** Relative days that are always recognised (unless capitalised mid-sentence). */
-    val relativeDays: Map<String, Long> = mapOf("today" to 0, "tomorrow" to 1, "tmrw" to 1)
+    val relativeDays: Map<String, Long> = mapOf("yesterday" to -1, "today" to 0, "tomorrow" to 1, "tmrw" to 1)
+
+    /** "next week": the day the next week starts on. */
+    val NEXT_WEEK = listOf("next", "week")
 
     /** Short relative days; like short weekdays they need context ("Call tom" stays a name). */
     val shortRelativeDays: Map<String, Long> = mapOf("tod" to 0, "tom" to 1)

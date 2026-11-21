@@ -1,6 +1,7 @@
 package com.aliraza.dailytodos.reminder
 
 import androidx.core.util.AtomicFile
+import com.aliraza.dailytodos.core.model.ClockFormat
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -11,12 +12,26 @@ import java.io.IOException
  * A small copy of the upcoming reminders in device-protected storage, readable before the first unlock
  * after a restart, when the database is not (PLAN.md section 5, "Restart before unlock").
  *
- * Holds titles of upcoming reminders only; that trade-off is stated in SECURITY.md.
+ * Holds the titles, due times and list names of upcoming reminders only; that trade-off is stated in
+ * SECURITY.md.
  */
 class ScheduleMirror(file: File) {
 
+    /**
+     * One upcoming reminder. [dueMillis] is the task's own due moment (the start of its day when it has no
+     * time, with [timed] false); with [listName] it words the notification like the engine does. Files
+     * written before these fields existed read them as their defaults.
+     */
     @Serializable
-    data class Entry(val taskId: String, val title: String, val atMillis: Long, val overdue: Boolean = false)
+    data class Entry(
+        val taskId: String,
+        val title: String,
+        val atMillis: Long,
+        val overdue: Boolean = false,
+        val listName: String? = null,
+        val dueMillis: Long? = null,
+        val timed: Boolean = false,
+    )
 
     @Serializable
     data class Fired(val taskId: String, val atMillis: Long, val firedAtMillis: Long)
@@ -26,6 +41,7 @@ class ScheduleMirror(file: File) {
      * @property firedBeforeUnlock reminders posted from this file while locked, to be recorded in the
      *   database after unlock.
      * @property dndOverride whether reminders use the channel that passes Do Not Disturb.
+     * @property clockFormat how the reminder body writes times.
      */
     @Serializable
     data class Snapshot(
@@ -33,6 +49,7 @@ class ScheduleMirror(file: File) {
         val upcoming: List<Entry> = emptyList(),
         val firedBeforeUnlock: List<Fired> = emptyList(),
         val dndOverride: Boolean = false,
+        val clockFormat: ClockFormat = ClockFormat.H12,
     )
 
     private val atomic = AtomicFile(file)

@@ -18,8 +18,6 @@
     <string name="action_remove">Remove</string>
     <string name="action_save">Save</string>
     <string name="action_undo">Undo</string>
-    <string name="action_unrecognise">Don’t read %1$s from the text</string>
-    <string name="action_recognise">Read %1$s from the text again</string>
     <plurals name="selected_count">
         <item quantity="one">%1$d selected</item>
         <item quantity="other">%1$d selected</item>
@@ -30,7 +28,6 @@
     <string name="day_tomorrow">Tomorrow</string>
     <string name="day_yesterday">Yesterday</string>
     <string name="date_next_week">Next week</string>
-    <string name="date_pick">Pick a date…</string>
     <string name="time_dialog_title">Select time</string>
     <string name="time_remove">Remove time</string>
     <string name="time_use_keyboard">Type the time</string>
@@ -41,7 +38,6 @@
     <string name="today_empty_title">All clear</string>
     <string name="today_empty_body">Nothing due today. Tap + to add something, or enjoy the free time.</string>
     <string name="today_done_title">All done for today</string>
-    <string name="today_done_body">Everything due today is ticked off.</string>
     <string name="today_section_overdue">Overdue</string>
     <string name="upcoming_title">Upcoming</string>
     <string name="calendar_title">Calendar</string>
@@ -60,8 +56,6 @@
         <item quantity="one">%1$d later</item>
         <item quantity="other">%1$d later</item>
     </plurals>
-    <string name="completed_title">Completed · %1$d</string>
-    <string name="completed_toggle">Show or hide completed tasks</string>
     <string name="subtasks_progress_label">Sub-tasks done: %1$d of %2$d</string>
     <string name="subtasks_show">Show sub-tasks</string>
     <string name="subtasks_hide">Hide sub-tasks</string>
@@ -71,7 +65,6 @@
     <string name="list_delete_body">Its tasks are deleted with it. You can still undo right after.</string>
     <string name="action_reschedule">Reschedule</string>
     <string name="action_focus">Focus</string>
-    <string name="subtask_add_inline">Add a sub-task</string>
     <string name="lists_title">Lists</string>
     <string name="list_new">New list</string>
     <string name="list_rename">Rename list</string>
@@ -91,11 +84,11 @@
     <!-- Undo -->
     <plurals name="undo_completed">
         <item quantity="one">Completed</item>
-        <item quantity="other">%1$d completed</item>
+        <item quantity="other">%1$d tasks completed</item>
     </plurals>
     <plurals name="undo_reopened">
         <item quantity="one">Marked not done</item>
-        <item quantity="other">%1$d marked not done</item>
+        <item quantity="other">%1$d tasks marked not done</item>
     </plurals>
     <plurals name="undo_deleted">
         <item quantity="one">Task deleted</item>
@@ -108,7 +101,7 @@
     <string name="today_reschedule_overdue">Reschedule overdue tasks</string>
     <plurals name="undo_rescheduled">
         <item quantity="one">Rescheduled</item>
-        <item quantity="other">%1$d rescheduled</item>
+        <item quantity="other">%1$d tasks rescheduled</item>
     </plurals>
     <plurals name="undo_list_deleted">
         <item quantity="one">List deleted</item>
@@ -121,7 +114,7 @@
 
     <!-- Task sheet -->
     <string name="task_title_hint">Task name</string>
-    <string name="task_notes_hint">Notes</string>
+    <string name="task_notes_hint">Add notes</string>
     <string name="task_no_date">No date</string>
     <string name="task_no_time">No time</string>
     <string name="task_subtasks">Sub-tasks</string>
@@ -133,9 +126,6 @@
 
     <!-- Reminders -->
     <string name="reminder_overdue">Overdue</string>
-    <string name="reminder_action_done">Done</string>
-    <string name="reminder_action_snooze_short">10 min</string>
-    <string name="reminder_action_snooze_long">1 hour</string>
     <string name="channel_reminders">Reminders</string>
     <string name="channel_reminders_description">One notification for each task when it is due.</string>
     <string name="channel_reminders_dnd">Reminders through Do Not Disturb</string>
@@ -145,13 +135,8 @@
     <string name="focus_title">Focus</string>
     <string name="focus_label">Focus</string>
     <string name="focus_break">Break</string>
-    <string name="focus_signal">Signal</string>
     <string name="focus_paused">Paused</string>
-    <string name="focus_until">until %1$s</string>
-    <string name="focus_break_until">Break · until %1$s</string>
     <string name="focus_minutes">%1$d min</string>
-    <string name="focus_less">Shorter %1$s</string>
-    <string name="focus_more">Longer %1$s</string>
     <string name="focus_start">Start focus</string>
     <string name="focus_start_break">Start break</string>
     <string name="focus_skip_break">Skip break</string>
@@ -165,7 +150,6 @@
     <string name="focus_alert_focus_done">%1$d min of focus done</string>
     <string name="focus_alert_break_done">Break is over</string>
     <string name="focus_break_time">Break time</string>
-    <string name="focus_done_headline">%1$s of focus done</string>
     <string name="focus_other_running">Starting here ends the timer on “%1$s”.</string>
     <string name="duration_hours">%1$d h</string>
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
@@ -191,7 +175,6 @@
     <string name="clock_12">12-hour</string>
     <string name="clock_24">24-hour</string>
     <string name="settings_week_start">Week starts on</string>
-    <string name="week_start_phone">Phone (%1$s)</string>
     <string name="settings_haptics">Haptic feedback</string>
     <string name="settings_haptics_hint">A light tick on key taps</string>
 
@@ -199,22 +182,20 @@
     <string name="settings_title">Settings</string>
     <string name="settings_reminders">Reminders</string>
     <string name="settings_default_time">Default reminder time</string>
-    <string name="settings_default_time_hint">For tasks with a date and no time</string>
     <string name="settings_undated_tomorrow">New %1$s tasks get tomorrow</string>
     <string name="settings_undated_tomorrow_hint">Tasks typed without a date</string>
     <string name="settings_date_only">Remind tasks without a time</string>
     <string name="settings_date_only_hint">At the default reminder time</string>
     <string name="settings_heads_up">Early heads-up</string>
-    <string name="settings_heads_up_none">On time</string>
+    <string name="settings_heads_up_none">Off</string>
     <string name="settings_overdue">Overdue reminders</string>
-    <string name="settings_overdue_hint">Undone tasks remind each morning</string>
-    <string name="settings_overdue_time">Overdue reminder time</string>
+    <string name="settings_overdue_hint">Remind me each morning about missed tasks</string>
+    <string name="settings_overdue_time">Remind at</string>
     <string name="settings_dnd">Break through Do Not Disturb</string>
     <string name="settings_dnd_hint">Reminders and timer ends ring on silent</string>
     <string name="settings_reliability">Reliability</string>
         <string name="settings_battery">Battery optimisation</string>
     <string name="settings_battery_ok">Unrestricted</string>
-    <string name="settings_battery_todo">Restricted · tap to allow background use</string>
     <string name="settings_focus">Focus</string>
     <string name="stats_title">Focus stats</string>
     <string name="stats_hint">Time spent focusing</string>
@@ -229,53 +210,43 @@
     <string name="signal_vibrate">Vibrate</string>
     <string name="signal_both">Both</string>
     <string name="settings_general">General</string>
-    <string name="settings_theme">Theme</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="settings_data">Your data</string>
 
     <!-- Focus stats -->
-    <string name="stats_all_time">All-time focus</string>
     <string name="stats_today">Today</string>
     <string name="stats_week">This week</string>
     <string name="stats_sessions">Sessions</string>
     <string name="stats_last_days">Last 7 days</string>
-    <string name="stats_top">Most focused</string>
     <string name="stats_deleted">Deleted tasks</string>
     <string name="stats_empty_title">No focus yet</string>
     <string name="stats_empty_body">Swipe a task right to focus on it. The time you spend shows up here.</string>
-    <string name="stats_fact_intro">That’s as long as</string>
     <plurals name="fact_moon_laser">
         <item quantity="one">trip of laser light to the Moon and back</item>
         <item quantity="other">trips of laser light to the Moon and back</item>
     </plurals>
-    <string name="fact_moon_laser_note">Light takes about 2.5 seconds for the round trip.</string>
     <plurals name="fact_sunlight">
         <item quantity="one">journey of sunlight to Earth</item>
         <item quantity="other">journeys of sunlight to Earth</item>
     </plurals>
-    <string name="fact_sunlight_note">Sunlight takes about 8 minutes 20 seconds to reach us.</string>
     <plurals name="fact_iss_orbit">
         <item quantity="one">orbit of the Space Station around Earth</item>
         <item quantity="other">orbits of the Space Station around Earth</item>
     </plurals>
-    <string name="fact_iss_orbit_note">The International Space Station goes round about every 92 minutes.</string>
     <plurals name="fact_mayfly">
         <item quantity="one">whole adult life of a mayfly</item>
         <item quantity="other">whole adult lives of a mayfly</item>
     </plurals>
-    <string name="fact_mayfly_note">A grown mayfly lives about a day, often less.</string>
     <plurals name="fact_apollo_11">
         <item quantity="one">Apollo 11 trip from launch to the Moon</item>
         <item quantity="other">Apollo 11 trips from launch to the Moon</item>
     </plurals>
-    <string name="fact_apollo_11_note">Apollo 11 landed 102 hours 45 minutes after lift-off.</string>
     <plurals name="fact_moon_orbit">
         <item quantity="one">orbit of the Moon around Earth</item>
         <item quantity="other">orbits of the Moon around Earth</item>
     </plurals>
-    <string name="fact_moon_orbit_note">The Moon goes round Earth once every 27.3 days.</string>
 
     <!-- Backup -->
     <string name="backup_export">Export backup</string>
@@ -296,17 +267,11 @@
     <string name="health_checks">Checks</string>
     <string name="health_notifications">Notifications</string>
     <string name="health_allowed">Allowed</string>
-    <string name="health_notifications_fix">Off · tap to allow</string>
     <string name="health_exact">Exact alarms</string>
-    <string name="health_exact_ok">Allowed, so reminders land on the minute</string>
-    <string name="health_exact_fix">Not allowed · tap to allow</string>
     <string name="health_maker_steps">Steps for this phone</string>
-    <string name="health_test">Send a test reminder</string>
-    <string name="health_test_title">%1$s test reminder</string>
     <string name="health_test_sent">A test reminder arrives in about a minute</string>
     <string name="health_history">Recent reminders</string>
     <string name="health_history_empty">No reminders yet.</string>
-    <string name="health_history_due">Due %1$s · Fired %2$s</string>
     <string name="health_on_time">On time</string>
     <string name="health_late">%1$s late</string>
     <string name="health_history_note">History stays on this phone and stores no task titles.</string>
@@ -358,4 +323,7 @@
         <item quantity="one">%1$d thing to fix</item>
         <item quantity="other">%1$d things to fix</item>
     </plurals>
+    <string name="row_done_at">Done %1$s</string>
+    <string name="row_ago_minutes">%1$d min ago</string>
+    <string name="row_ago_hours">%1$d h ago</string>
 </resources>

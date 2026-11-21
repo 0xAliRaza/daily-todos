@@ -1,36 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The app's mark: a focus dial two thirds of the way round, its hand pointing at where the focus has
-  reached. Drawn inside the adaptive icon's 66dp safe zone (centre 54,54); white on the ink-blue
-  background, and the same shape serves as the monochrome layer for themed icons.
+  The app's mark, the through-ring: a ring of radius 24 around the centre, open at the top right, with
+  the tick breaking out through the gap. Everything sits inside the 66 dp safe zone of the 108 dp canvas.
+  Also the monochrome layer for themed icons, which only reads the alpha.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- The dial's track: the whole round, faint. -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FFFFFFFF"
-        android:strokeAlpha="0.32"
-        android:strokeWidth="3.9"
-        android:pathData="M33,54 A21,21 0 1,1 75,54 A21,21 0 1,1 33,54" />
-    <!-- Focus done so far: two thirds of the round, from twelve o'clock. -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="7"
+        android:strokeWidth="9"
         android:strokeLineCap="round"
-        android:pathData="M54.00,33.00 A21,21 0 1,1 35.81,64.50" />
-    <!-- The hand, from the hub to where focus has reached. -->
+        android:strokeLineJoin="round"
+        android:pathData="M77.91,51.91A24,24 0,1 1,58.17 30.36" />
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="4.5"
+        android:strokeWidth="9"
         android:strokeLineCap="round"
-        android:pathData="M54,54L35.81,64.50" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M49,54 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+        android:strokeLineJoin="round"
+        android:pathData="M41,52.5l9.5,9.5 25,-27" />
 </vector>

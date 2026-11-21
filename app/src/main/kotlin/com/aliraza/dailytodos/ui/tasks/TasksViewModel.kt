@@ -1,6 +1,8 @@
 package com.aliraza.dailytodos.ui.tasks
 
+import android.content.res.Resources
 import androidx.annotation.PluralsRes
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aliraza.dailytodos.R
@@ -21,6 +23,7 @@ import com.aliraza.dailytodos.data.SubtaskProgress
 import com.aliraza.dailytodos.data.SubtaskRepository
 import com.aliraza.dailytodos.data.TaskRepository
 import com.aliraza.dailytodos.ui.components.DefaultDate
+import com.aliraza.dailytodos.ui.components.phoneFirstDay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -44,8 +47,38 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-/** Something just done that the snackbar offers to undo. */
-data class UndoEvent(@param:PluralsRes val message: Int, val count: Int, val undo: () -> Unit)
+/** What an undoable action did, in words: [many] counts the tasks, [one] names the single one. */
+enum class UndoAction(@param:PluralsRes val many: Int, @param:StringRes val one: Int?) {
+    COMPLETED(R.plurals.undo_completed, R.string.undo_completed_named),
+    REOPENED(R.plurals.undo_reopened, R.string.undo_reopened_named),
+    DELETED(R.plurals.undo_deleted, R.string.undo_deleted_named),
+    RESCHEDULED(R.plurals.undo_rescheduled, R.string.undo_rescheduled_named),
+    MOVED(R.plurals.undo_moved, R.string.undo_moved_named),
+    REORDERED(R.plurals.undo_reordered, null),
+    LIST_DELETED(R.plurals.undo_list_deleted, R.string.undo_deleted_named),
+}
+
+/**
+ * Something just done that the snackbar offers to undo: [count] tasks, the [title] of the one task (or
+ * list) when only one was touched, and the list they went to ([target]) for a move.
+ */
+data class UndoEvent(
+    val action: UndoAction,
+    val count: Int,
+    val title: String? = null,
+    val target: String? = null,
+    val undo: () -> Unit,
+) {
+    /** The snackbar's words: "“Call bank” completed" for one named task, "3 tasks completed" otherwise. */
+    fun text(resources: Resources): String {
+        val one = action.one
+        return if (title != null && one != null) {
+            resources.getString(one, title, target)
+        } else {
+            resources.getQuantityString(action.many, count, count, target)
+        }
+    }
+}
 
 /** One day in Upcoming; [tasks] is empty for a free day. */
 data class UpcomingDay(val date: LocalDate, val tasks: List<Task>)
@@ -140,6 +173,7 @@ class TasksViewModel(
             listNames = lists.value.map { it.name },
             excluded = excluded,
             untitled = untitled,
+            weekStart = settings.value.weekStart.resolve(phoneFirstDay()),
         ),
     )
 
@@ -198,9 +232,11 @@ class TasksViewModel(
         val batch = ids.toList()
         viewModelScope.launch {
             tasks.setCompleted(batch, done)
-            val message = if (done) R.plurals.undo_completed else R.plurals.undo_reopened
+            val action = if (done) UndoAction.COMPLETED else UndoAction.REOPENED
             undoEvents.tryEmit(
-                UndoEvent(message, batch.size) { viewModelScope.launch { tasks.setCompleted(batch, !done) } },
+                UndoEvent(action, batch.size, titleOfOne(batch)) {
+                    viewModelScope.launch { tasks.setCompleted(batch, !done) }
+                },
             )
         }
     }
@@ -209,12 +245,12 @@ class TasksViewModel(
         if (ids.isEmpty()) return
         val batch = ids.toList()
         viewModelScope.launch {
+            val title = titleOfOne(batch)
             tasks.setDeleted(batch, deleted = true)
             undoEvents.tryEmit(
-                UndoEvent(
-                    R.plurals.undo_deleted,
-                    batch.size,
-                ) { viewModelScope.launch { tasks.setDeleted(batch, false) } },
+                UndoEvent(UndoAction.DELETED, batch.size, title) {
+                    viewModelScope.launch { tasks.setDeleted(batch, false) }
+                },
             )
         }
     }
@@ -224,7 +260,7 @@ class TasksViewModel(
         viewModelScope.launch {
             tasks.reorder(after)
             undoEvents.tryEmit(
-                UndoEvent(R.plurals.undo_reordered, 1) { viewModelScope.launch { tasks.reorder(before) } },
+                UndoEvent(UndoAction.REORDERED, 1) { viewModelScope.launch { tasks.reorder(before) } },
             )
         }
     }
@@ -235,7 +271,7 @@ class TasksViewModel(
         viewModelScope.launch {
             val before = tasks.updateTasks(ids) { it.movedTo(date) }.associateBy { it.id }
             undoEvents.tryEmit(
-                UndoEvent(R.plurals.undo_rescheduled, before.size) {
+                UndoEvent(UndoAction.RESCHEDULED, before.size, before.values.singleOrNull()?.title) {
                     viewModelScope.launch {
                         tasks.updateTasks(before.keys) { now ->
                             val was = before.getValue(now.id)
@@ -246,6 +282,34 @@ class TasksViewModel(
             )
         }
     }
+
+    /**
+     * Moves [ids] to the list [listId], each to the bottom there; undo puts each back in its own list at
+     * its old place. Tasks already in that list stay as they are and aren't counted.
+     */
+    fun moveToList(ids: Collection<String>, listId: String) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            val moved = tasks.updateTasks(ids) { it.copy(listId = listId) }.filter { it.listId != listId }
+            if (moved.isEmpty()) return@launch
+            val target = lists.value.firstOrNull { it.id == listId }?.name.orEmpty()
+            undoEvents.tryEmit(
+                UndoEvent(UndoAction.MOVED, moved.size, moved.singleOrNull()?.title, target) {
+                    viewModelScope.launch { moveBack(moved) }
+                },
+            )
+        }
+    }
+
+    /** Puts each of [before] back in its list, then at its old position, which the move back reset. */
+    private suspend fun moveBack(before: List<Task>) {
+        val was = before.associateBy { it.id }
+        tasks.updateTasks(was.keys) { it.copy(listId = was.getValue(it.id).listId) }
+        tasks.updateTasks(was.keys) { it.copy(position = was.getValue(it.id).position) }
+    }
+
+    /** The title of the one task in [ids], to name it in the snackbar; null for several. */
+    private suspend fun titleOfOne(ids: List<String>): String? = ids.singleOrNull()?.let { tasks.task(it)?.title }
 
     fun update(id: String, change: (Task) -> Task) {
         viewModelScope.launch { tasks.updateTask(id, change) }
@@ -284,9 +348,14 @@ class TasksViewModel(
     /** Deletes a list and its tasks, with undo. The default list is refused further down. */
     fun deleteList(id: String) {
         viewModelScope.launch {
+            val name = lists.value.firstOrNull { it.id == id }?.name
             listRepo.setDeleted(id, deleted = true)
             undoEvents.tryEmit(
-                UndoEvent(R.plurals.undo_list_deleted, 1) { viewModelScope.launch { listRepo.setDeleted(id, false) } },
+                UndoEvent(
+                    UndoAction.LIST_DELETED,
+                    1,
+                    name,
+                ) { viewModelScope.launch { listRepo.setDeleted(id, false) } },
             )
         }
     }

@@ -63,21 +63,28 @@ fun sectionDay(day: LocalDate, today: LocalDate): String {
 fun sectionDate(day: LocalDate, today: LocalDate): String =
     day.format(if (day.year == today.year) SECTION_DAY else SECTION_DAY_YEAR)
 
-/** How near a due date is. It picks the date's colour, so a list can be read at a glance. */
-enum class DateTone { OVERDUE, TODAY, TOMORROW, THIS_WEEK, LATER }
+/**
+ * How near a due date is. It picks the date's colour, so a list can be read at a glance: red only for a
+ * day before today, ink for today, grey for a time already passed today and for every later day.
+ */
+enum class DateTone { OVERDUE, PASSED, TODAY, TOMORROW, THIS_WEEK, LATER }
 
-/** The tone of a task's due date as of [now]; null when it has no date. An open task past its time is overdue. */
+/**
+ * The tone of a task's due date as of [now]; null when it has no date. An open task from a day before
+ * today is overdue; one whose time passed earlier today is only [DateTone.PASSED], not red.
+ */
 fun Task.dueTone(now: LocalDateTime): DateTone? = dueDate?.let { date ->
     val today = now.toLocalDate()
-    val passed = date == today && dueTime?.isBefore(now.toLocalTime()) == true
-    dateTone(date, today, late = isOpen && (passed || date.isBefore(today)))
+    val passed = isOpen && date == today && dueTime?.isBefore(now.toLocalTime()) == true
+    dateTone(date, today, passed = passed)
 }
 
-/** [late] marks a task due today whose time has passed: it reads as overdue too. */
-fun dateTone(date: LocalDate, today: LocalDate, late: Boolean = false): DateTone {
+/** [passed] marks an open task due today whose time has gone by. */
+fun dateTone(date: LocalDate, today: LocalDate, passed: Boolean = false): DateTone {
     val days = ChronoUnit.DAYS.between(today, date)
     return when {
-        late || days < 0 -> DateTone.OVERDUE
+        days < 0 -> DateTone.OVERDUE
+        days == 0L && passed -> DateTone.PASSED
         days == 0L -> DateTone.TODAY
         days == 1L -> DateTone.TOMORROW
         days < WEEK_DAYS -> DateTone.THIS_WEEK

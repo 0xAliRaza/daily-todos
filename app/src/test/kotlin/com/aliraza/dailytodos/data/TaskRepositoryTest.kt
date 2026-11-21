@@ -105,6 +105,19 @@ class TaskRepositoryTest {
         assertEquals(listOf("Milk"), repository.observeCompletedInList(groceries.id).first().map { it.title })
     }
 
+    /** Several tasks moved together land at the bottom of the new list one after another, in their order. */
+    @Test
+    fun tasksMovedTogetherKeepTheirOrderAtTheBottom() = runTest {
+        val groceries = lists.create("Groceries")
+        repository.addTask(NewTask("Bread", listId = groceries.id))
+        val milk = repository.addTask(NewTask("Milk"))
+        val eggs = repository.addTask(NewTask("Eggs"))
+        repository.updateTasks(listOf(eggs.id, milk.id)) { it.copy(listId = groceries.id) }
+        val moved = repository.observeOpenInList(groceries.id).first()
+        assertEquals(listOf("Bread", "Milk", "Eggs"), moved.map { it.title })
+        assertEquals(moved.size, moved.map { it.position }.toSet().size)
+    }
+
     @Test
     fun subtaskProgressCountsTickedAndTotalPerTask() = runTest {
         val trip = repository.addTask(NewTask("Trip"))

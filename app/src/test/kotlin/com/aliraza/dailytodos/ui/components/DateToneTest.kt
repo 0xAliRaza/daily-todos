@@ -12,9 +12,9 @@ class DateToneTest {
     private val today = LocalDate.of(2026, 11, 18)
 
     @Test
-    fun pastDatesAndPassedTimesAreOverdue() {
+    fun pastDatesAreOverdueAndPassedTimesAreNot() {
         assertEquals(DateTone.OVERDUE, dateTone(today.minusDays(1), today))
-        assertEquals(DateTone.OVERDUE, dateTone(today, today, late = true))
+        assertEquals(DateTone.PASSED, dateTone(today, today, passed = true))
     }
 
     @Test
@@ -26,7 +26,7 @@ class DateToneTest {
     }
 
     @Test
-    fun anOpenTaskPastItsTimeTodayIsOverdueButADoneOneIsNot() {
+    fun anOpenTaskPastItsTimeTodayHasPassedButIsNotOverdue() {
         val now = today.atTime(19, 0)
         val task = Task(
             id = "t",
@@ -37,7 +37,8 @@ class DateToneTest {
             createdAt = Instant.EPOCH,
             updatedAt = Instant.EPOCH,
         )
-        assertEquals(DateTone.OVERDUE, task.dueTone(now))
+        assertEquals(DateTone.PASSED, task.dueTone(now))
+        assertEquals(DateTone.OVERDUE, task.copy(dueDate = today.minusDays(1)).dueTone(now))
         assertEquals(DateTone.TODAY, task.copy(dueTime = LocalTime.of(20, 0)).dueTone(now))
         assertEquals(DateTone.TODAY, task.copy(completedAt = Instant.EPOCH).dueTone(now))
         assertEquals(null, task.copy(dueDate = null).dueTone(now))

@@ -21,17 +21,30 @@ class BeforeUnlockReminders(
             .filter { it.atMillis <= now && (it.taskId to it.atMillis) !in alreadyFired }
             .groupBy { it.taskId }
             .map { (_, entries) -> entries.maxBy { it.atMillis } }
-        val posted = due.filter { entry ->
-            poster.post(
-                ReminderContent(entry.taskId, entry.title, Instant.ofEpochMilli(entry.atMillis), entry.overdue),
-                snapshot.dndOverride,
-            )
-        }
+        val posted = due.filter { entry -> poster.post(contentOf(entry, snapshot, now), snapshot.dndOverride) }
         if (posted.isNotEmpty()) {
             val fired = posted.map { ScheduleMirror.Fired(it.taskId, it.atMillis, now) }
             mirror.write(snapshot.copy(firedBeforeUnlock = snapshot.firedBeforeUnlock + fired))
         }
         snapshot.upcoming.map { it.atMillis }.filter { it > now }.minOrNull()
             ?.let { alarm.arm(Instant.ofEpochMilli(it)) }
+    }
+
+    /** Words the notification as the engine would; an entry from an older file falls back to its alarm time. */
+    private fun contentOf(entry: ScheduleMirror.Entry, snapshot: ScheduleMirror.Snapshot, now: Long): ReminderContent {
+        val due = Instant.ofEpochMilli(entry.dueMillis ?: entry.atMillis).atZone(clock.zone).toLocalDateTime()
+        val dueTime = due.toLocalTime().takeIf { entry.timed }
+        val local = Instant.ofEpochMilli(now).atZone(clock.zone).toLocalDateTime()
+        val kind = if (entry.overdue) ReminderKind.OVERDUE else ReminderKind.of(due.toLocalDate(), dueTime, local)
+        return ReminderContent(
+            taskId = entry.taskId,
+            title = entry.title,
+            at = Instant.ofEpochMilli(entry.atMillis),
+            kind = kind,
+            dueDate = due.toLocalDate(),
+            dueTime = dueTime,
+            listName = entry.listName,
+            clockFormat = snapshot.clockFormat,
+        )
     }
 }

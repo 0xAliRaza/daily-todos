@@ -10,7 +10,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** A header's action is a named icon button, and its count still shows beside it. */
+/** A header's action is a named text button, and its count still shows beside the title. */
 @RunWith(AndroidJUnit4::class)
 class SectionHeaderTest {
 
@@ -18,13 +18,13 @@ class SectionHeaderTest {
     val compose = createComposeRule()
 
     @Test
-    fun theActionIsANamedButtonNextToTheCount() {
+    fun theActionIsANamedButtonAndTheCountStays() {
         var taps = 0
         compose.setContent {
             SectionHeader(
                 "Overdue",
-                trailing = "2",
-                action = HeaderAction(AppIcons.Reschedule, "Reschedule overdue tasks") { taps++ },
+                count = 2,
+                action = HeaderAction("Reschedule", AppIcons.Reschedule, "Reschedule overdue tasks") { taps++ },
             )
         }
         compose.onNodeWithText("2").assertExists()

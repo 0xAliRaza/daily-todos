@@ -58,9 +58,10 @@ class QuickAddNoDateTest {
         edit(TextFieldValue(line, TextRange(line.length)))
     }
 
-    private fun pickNoDate(state: QuickAddState) {
+    /** Opens the date sheet from the Date chip, which shows the typed date once one is read. */
+    private fun pickNoDate(state: QuickAddState, chip: String = "Date") {
         compose.setContent { Bar(state) }
-        compose.onNodeWithText("Date").performClick()
+        compose.onNodeWithText(chip).performClick()
         compose.onNodeWithText("Due date").assertExists()
         compose.onNodeWithText("No date").performClick()
         compose.waitForIdle()
@@ -69,7 +70,7 @@ class QuickAddNoDateTest {
     @Test
     fun noDateRemovesATypedDateAndKeepsTheDefaultOut() {
         val state = typed("Call bank tomorrow 4pm p1")
-        pickNoDate(state)
+        pickNoDate(state, chip = "Thu 19 Nov, 4:00 PM")
         assertEquals("Call bank p1", state.text.trim())
         assertTrue(state.defaultDateOff)
         val parsed = parse(state.text, emptySet())
@@ -79,7 +80,7 @@ class QuickAddNoDateTest {
     }
 
     @Test
-    fun noDateTurnsTheDefaultPillOff() {
+    fun noDateTurnsTheDefaultDateOff() {
         val state = typed("Call bank")
         pickNoDate(state)
         assertEquals("Call bank", state.text)

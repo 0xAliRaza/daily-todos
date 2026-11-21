@@ -1,26 +1,26 @@
 package com.aliraza.dailytodos.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -37,22 +37,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.OffsetMapping
@@ -63,6 +71,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aliraza.dailytodos.R
+import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.Priority
 import com.aliraza.dailytodos.core.parse.ParseResult
 import com.aliraza.dailytodos.core.parse.QuickAddWords
@@ -71,6 +80,7 @@ import com.aliraza.dailytodos.core.parse.SpanKind
 import com.aliraza.dailytodos.ui.theme.tokens
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.Locale
 
 /**
  * A tap that drops the cursor inside a recognised word, without changing the text, means "don't read
@@ -220,23 +230,23 @@ private fun startLine(words: String): TextFieldValue =
  * The words a line starts with when the bar opens: the tag of the list screen it opened on, and the
  * picked [date] of Upcoming or the calendar, both as a pick from the chips would write them. [listName]
  * is null on the default list, whose tasks need no tag. A [date] equal to [defaultDay], which the
- * default-date pill offers anyway, is left to the pill.
+ * default-day chip offers anyway, is left to that chip.
  */
 fun startWords(listName: String?, date: LocalDate?, today: LocalDate, defaultDay: LocalDate?): String = listOfNotNull(
     listName?.let(QuickAddWords::list),
     date?.takeIf { it != defaultDay }?.let { QuickAddWords.date(it, today) },
 ).joinToString(" ")
 
-/** The default date a task would get on adding, shown in the date pill so it can be tapped away. */
+/** The default date a task would get on adding, shown in the default-day chip so it can be tapped away. */
 data class DefaultDate(val date: LocalDate, val time: LocalTime?)
 
 /**
- * What the due pill shows. [on] is false for a date the user switched off: it stays in the pill, greyed,
- * so one tap brings it back. [words] are the typed words behind it (as excluded ranges when off); empty
- * for the default date.
+ * When the task will be due, as the chips show it. [on] is false for a date the user switched off: the
+ * default-day chip stays, unset, so one tap brings it back. [words] are the typed words behind it (as
+ * excluded ranges when off); empty for the default date.
  */
 data class Due(val date: LocalDate, val time: LocalTime?, val on: Boolean, val words: List<IntRange>) {
-    /** The default date, not one typed. Only it gets the pill; a typed date shows as highlighted words. */
+    /** The default date, not one typed. Only it gets the default-day chip; a typed date fills the Date chip. */
     val isDefault: Boolean get() = words.isEmpty()
 }
 
@@ -247,7 +257,7 @@ fun switchedOffWhen(all: ParseResult, excluded: Set<IntRange>): List<IntRange> =
 private fun IntRange.overlaps(other: IntRange): Boolean = first <= other.last && other.first <= last
 
 /**
- * Picks the due pill. A date read from the text wins. Next comes a typed date the user switched off,
+ * Picks when the task is due. A date read from the text wins. Next comes a typed date the user switched off,
  * greyed. Last is the default date, on or off. [all] is the same text parsed with nothing excluded, and
  * [default] is the default date as it would be if switched on.
  */
@@ -267,8 +277,24 @@ fun due(
 }
 
 /**
- * The one-line add bar: a plus, the text, a pill saying when the task will be due, and send. Words the
- * parser read are highlighted in place; tapping one un-recognises it, and tapping the pill drops the date.
+ * What the Date chip says about a date read from the line: "Fri 27 Nov, 8:00 PM", or the day alone.
+ * Null while no typed date is switched on; the chip then just offers a date, and the default date has
+ * a chip of its own.
+ */
+internal fun dateChipLabel(
+    due: Due?,
+    today: LocalDate,
+    clock: ClockFormat,
+    locale: Locale = Locale.getDefault(),
+): String? = due?.takeIf { it.on && !it.isDefault }?.let { typed ->
+    val time = typed.time?.let { formatTime(it, clock, locale) }
+    listOfNotNull(sectionDate(typed.date, today), time).joinToString(", ")
+}
+
+/**
+ * The add bar: the line, which grows to three lines before it scrolls, and send; under it the chips.
+ * Words the parser read are highlighted in place, and tapping one un-recognises it. The chips show what
+ * was understood, and a pick from them writes the same words into the line.
  *
  * The bar is forgiving to touch: a tap anywhere on it, or on the soft fade just above it, gives the
  * keyboard back to the line instead of falling through to the list behind and closing the bar.
@@ -284,32 +310,26 @@ fun QuickAddBar(
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scheme = MaterialTheme.colorScheme
+    val tokens = MaterialTheme.tokens
     // The bar opens from the + button, so it comes with the keyboard, and gets it back after a picker.
     val requester = remember { FocusRequester() }
     LaunchedEffect(state.picking) { if (!state.picking) requester.requestFocus() }
-    val shape = RoundedCornerShape(BAR_CORNER)
+    val shape = RoundedCornerShape(topStart = BAR_CORNER, topEnd = BAR_CORNER)
     Column(modifier.fillMaxWidth().keepsTyping(requester)) {
         // The list fades out under the bar, which sets the bar apart and widens what counts as a tap on it.
         Spacer(
             Modifier.fillMaxWidth().height(FADE_HEIGHT)
-                .background(Brush.verticalGradient(listOf(Color.Transparent, scheme.background))),
+                .background(Brush.verticalGradient(listOf(Color.Transparent, tokens.background))),
         )
-        Column(
-            Modifier.fillMaxWidth().background(scheme.background).padding(start = 12.dp, end = 12.dp, bottom = 6.dp)
-                .shadow(
-                    BAR_ELEVATION,
-                    shape,
-                    ambientColor = MaterialTheme.tokens.accent,
-                    spotColor = MaterialTheme.tokens.accent,
-                )
-                .clip(shape)
-                .background(scheme.surfaceVariant),
-        ) {
+        Column(Modifier.fillMaxWidth().shadow(BAR_ELEVATION, shape).clip(shape).background(tokens.sheet)) {
             Row(
-                Modifier.heightIn(min = 54.dp).padding(start = 14.dp, end = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) { InputRow(state, parsed, due, today, placeholder, requester, onSubmit) }
+                Modifier.fillMaxWidth().padding(start = 20.dp, top = 10.dp, end = 12.dp, bottom = 2.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                LineField(state, parsed, due, placeholder, requester, onSubmit, Modifier.weight(1f))
+                // Words alone, typed or started with, make no task, so there is nothing to send yet.
+                if (parsed.title.isNotBlank()) SendButton(onSubmit)
+            }
             AddOptionsRow(state, parsed, due, today, options)
         }
     }
@@ -321,63 +341,72 @@ private val FADE_HEIGHT = 24.dp
 private val BAR_CORNER = 28.dp
 private val BAR_ELEVATION = 6.dp
 
+/** As tall as the send button, so a one-line field sits level with it. */
+private val FIELD_MIN_HEIGHT = 48.dp
+
+/** The line grows this many lines before it scrolls, so the title stays in view. */
+private const val MAX_LINES = 3
+
 /** The line's text: a touch larger than body text, since it is what the bar is for. */
 @Composable
-private fun lineStyle(): TextStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 24.sp)
+private fun lineStyle(): TextStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 26.sp)
 
 /**
- * Taps on the bar that no control inside takes (the plus, the gaps, the fade) put the cursor back in the
- * line. Without it they would reach the list behind, whose keyboard guard closes the bar.
+ * Taps on the bar that no control inside takes (the gaps, the fade) put the cursor back in the line.
+ * Without it they would reach the list behind, whose keyboard guard closes the bar.
  */
 private fun Modifier.keepsTyping(requester: FocusRequester): Modifier =
     pointerInput(requester) { detectTapGestures { requester.requestFocus() } }
 
+/**
+ * The typed line. It never scrolls by itself: the box around it does once it passes [MAX_LINES], so the
+ * highlights drawn behind the words always sit under them.
+ */
 @Composable
-private fun RowScope.InputRow(
+private fun LineField(
     state: QuickAddState,
     parsed: ParseResult,
     due: Due?,
-    today: LocalDate,
     placeholder: String,
     requester: FocusRequester,
     onSubmit: () -> Unit,
+    modifier: Modifier,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    Icon(AppIcons.Add, null, tint = scheme.primary, modifier = Modifier.size(24.dp))
-    Spacer(Modifier.width(10.dp))
-    Box(Modifier.weight(1f).padding(vertical = 12.dp)) {
-        if (state.text.isEmpty()) {
-            Text(
-                placeholder,
-                style = lineStyle(),
-                color = scheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+    val tokens = MaterialTheme.tokens
+    val style = lineStyle()
+    val lineHeight = with(LocalDensity.current) { style.lineHeight.toDp() }
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val most = maxOf(lineHeight * MAX_LINES, FIELD_MIN_HEIGHT)
+    Box(modifier.heightIn(max = most).verticalScroll(rememberScrollState())) {
+        Box(Modifier.heightIn(min = FIELD_MIN_HEIGHT), contentAlignment = Alignment.CenterStart) {
+            if (state.text.isEmpty()) {
+                Text(placeholder, style = style, color = tokens.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            BasicTextField(
+                value = state.value,
+                // A pasted line break would make a second line the parser never reads, so it becomes a space.
+                onValueChange = { next ->
+                    val flat = next.copy(text = next.text.replace('\n', ' '))
+                    state.edit(flat, parsed.spans.map(Span::range), due?.words.orEmpty())
+                },
+                textStyle = style.copy(color = tokens.ink),
+                cursorBrush = SolidColor(tokens.accent),
+                visualTransformation = SpanHighlight(
+                    parsed.spans,
+                    SpanStyle(color = tokens.onAccentContainer, fontWeight = FontWeight.Medium),
+                ),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Send,
+                ),
+                keyboardActions = KeyboardActions(onSend = { onSubmit() }),
+                onTextLayout = { layout = it },
+                modifier = Modifier.fillMaxWidth().focusRequester(requester)
+                    .onFocusChanged { state.focusChanged(it.isFocused) }
+                    .drawBehind { layout?.let { drawTokens(it, parsed.spans, tokens.highlight) } },
             )
         }
-        BasicTextField(
-            value = state.value,
-            onValueChange = { state.edit(it, parsed.spans.map(Span::range), tied = due?.words.orEmpty()) },
-            textStyle = lineStyle().copy(color = scheme.onSurface),
-            cursorBrush = SolidColor(scheme.primary),
-            visualTransformation = SpanHighlight(
-                parsed.spans,
-                SpanStyle(background = scheme.primaryContainer, color = scheme.secondary),
-            ),
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                imeAction = ImeAction.Send,
-            ),
-            keyboardActions = KeyboardActions(onSend = { onSubmit() }),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().focusRequester(requester)
-                .onFocusChanged { state.focusChanged(it.isFocused) },
-        )
     }
-    // Words alone, typed or started with, make no task, so there is nothing to send yet.
-    val hasTitle = parsed.title.isNotBlank()
-    if (due != null && due.isDefault && hasTitle) DuePill(due, today, state::toggleDefaultDate)
-    if (hasTitle) SendButton(onSubmit)
 }
 
 /**
@@ -387,9 +416,9 @@ private fun RowScope.InputRow(
 data class AddOptions(val lists: List<String>, val target: String)
 
 /**
- * Date, priority and list, picked by hand. A pick writes the same words the line would have had typed
- * ("tomorrow", "p1", "#groceries") in place of any that said the same, so it is highlighted and can be
- * tapped off like typed words, and the parser stays the one place a line is read.
+ * The default day (when no date is typed), date, priority and list. A pick writes the same words the
+ * line would have had typed ("tomorrow", "p1", "#groceries") in place of any that said the same, so it is
+ * highlighted and can be tapped off like typed words, and the parser stays the one place a line is read.
  */
 @Composable
 private fun AddOptionsRow(state: QuickAddState, parsed: ParseResult, due: Due?, today: LocalDate, options: AddOptions) {
@@ -404,21 +433,30 @@ private fun AddOptionsRow(state: QuickAddState, parsed: ParseResult, due: Due?, 
     }
     fun spans(vararg kinds: SpanKind) = parsed.spans.filter { it.kind in kinds }.map(Span::range)
     Row(
-        Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // The pill in the line shows the date; this chip only picks one.
-        OptionChip(AppIcons.Today, stringResource(R.string.add_option_date)) { open(AddMenu.DATE) }
+        if (due != null && due.isDefault && parsed.title.isNotBlank()) {
+            AppChip(dayLabel(due.date, today), state::toggleDefaultDate, icon = AppIcons.Today, set = due.on)
+        }
+        DateChip(due, today, onOpen = { open(AddMenu.DATE) }, onClear = { state.noDate(due?.words.orEmpty()) })
         Box {
             val level = parsed.priority.takeIf { it != Priority.NONE }
-            val label = level?.let { "P${it.level}" } ?: stringResource(R.string.add_option_priority)
-            OptionChip(AppIcons.Flag, label, tint = level?.let { priorityColor(it) }) { open(AddMenu.PRIORITY) }
+            AppChip(
+                label = level?.let { stringResource(R.string.priority_short, it.level) }
+                    ?: stringResource(R.string.add_option_priority),
+                onClick = { open(AddMenu.PRIORITY) },
+                icon = AppIcons.Flag,
+                set = level != null,
+                iconTint = level?.let { priorityColor(it) },
+            )
             PriorityMenu(menu == AddMenu.PRIORITY, close) { picked ->
                 state.put(QuickAddWords.priority(picked).orEmpty(), spans(SpanKind.PRIORITY))
             }
         }
         Box {
-            OptionChip(AppIcons.Lists, options.target) { open(AddMenu.LIST) }
+            AppChip(options.target, { open(AddMenu.LIST) }, icon = AppIcons.Lists, set = parsed.listName != null)
             DropdownMenu(menu == AddMenu.LIST, onDismissRequest = close) {
                 options.lists.forEach { name ->
                     DropdownMenuItem(text = { Text(name) }, onClick = {
@@ -432,21 +470,36 @@ private fun AddOptionsRow(state: QuickAddState, parsed: ParseResult, due: Due?, 
     if (menu == AddMenu.DATE) {
         DueDateSheet(
             title = stringResource(R.string.due_date_title),
-            current = due?.takeIf { it.on }?.date,
+            current = DueChoice(due?.takeIf { it.on }?.date, parsed.time),
             today = today,
-            onPick = { day ->
-                if (day == null) {
-                    state.noDate(due?.words.orEmpty())
-                } else {
-                    // A typed "tomorrow 4pm" is one span; picking another day keeps its time.
-                    val time = parsed.time?.takeIf { parsed.spans.any { it.kind == SpanKind.DATE_TIME } }
-                    val words = listOfNotNull(QuickAddWords.date(day, today), time?.let(QuickAddWords::time))
-                    state.put(words.joinToString(" "), spans(SpanKind.DATE, SpanKind.DATE_TIME))
-                }
-            },
+            onPick = { choice -> state.putDue(choice, spans(*WHEN_KINDS.toTypedArray()), due, today) },
             onDismiss = close,
         )
     }
+}
+
+/** The Date chip: the typed date and time once read, with × to take them out of the line. */
+@Composable
+private fun DateChip(due: Due?, today: LocalDate, onOpen: () -> Unit, onClear: () -> Unit) {
+    val label = dateChipLabel(due, today, LocalClockFormat.current)
+    AppChip(
+        label = label ?: stringResource(R.string.add_option_date),
+        onClick = onOpen,
+        icon = AppIcons.Calendar,
+        set = label != null,
+        onClear = onClear.takeIf { label != null },
+        clearLabel = stringResource(R.string.add_chip_clear_date),
+    )
+}
+
+/**
+ * Writes a picked date and time into the line in place of the date and time words [read] from it. No
+ * date takes the typed words out and keeps the default date out too, so the task is added undated.
+ */
+private fun QuickAddState.putDue(choice: DueChoice, read: List<IntRange>, due: Due?, today: LocalDate) {
+    val date = choice.date ?: return noDate(due?.words.orEmpty())
+    val words = listOfNotNull(QuickAddWords.date(date, today), choice.time?.let(QuickAddWords::time))
+    put(words.joinToString(" "), read)
 }
 
 private enum class AddMenu { DATE, PRIORITY, LIST }
@@ -469,55 +522,6 @@ private fun PriorityMenu(expanded: Boolean, onClose: () -> Unit, onPick: (Priori
                 },
             )
         }
-    }
-}
-
-/** A small, quiet button under the line; [tint] colours a value that is set (a priority's flag). */
-@Composable
-private fun OptionChip(icon: ImageVector, label: String, tint: Color? = null, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Row(
-        Modifier.clip(CircleShape).clickable(role = Role.Button, onClick = onClick)
-            .heightIn(min = 36.dp).padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, null, tint = tint ?: scheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant, maxLines = 1)
-    }
-}
-
-/**
- * The default date a task with no typed date gets. On, it is filled with the accent so it reads as set;
- * tapped off, an empty grey outline; tapped again, on.
- */
-@Composable
-private fun DuePill(due: Due, today: LocalDate, onToggle: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    // The day alone keeps the pill short; a typed time is already highlighted in the text.
-    val label = dayLabel(due.date, today)
-    val full = listOfNotNull(label, due.time?.let { timeLabel(it) }).joinToString(" ")
-    val tokens = MaterialTheme.tokens
-    val ink = if (due.on) tokens.onAccentContainer else scheme.onSurfaceVariant
-    val action = stringResource(if (due.on) R.string.action_unrecognise else R.string.action_recognise, full)
-    Row(
-        modifier = Modifier
-            .padding(start = 6.dp)
-            .clip(CircleShape)
-            .background(if (due.on) tokens.accentContainer else Color.Transparent)
-            .border(1.dp, if (due.on) Color.Transparent else scheme.outline, CircleShape)
-            .clickable(role = Role.Button, onClickLabel = action, onClick = onToggle)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(AppIcons.Today, null, tint = if (due.on) ink else scheme.outline, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = ink,
-            maxLines = 1,
-        )
     }
 }
 
@@ -552,26 +556,26 @@ internal fun squeeze(text: String, drop: List<IntRange>): Pair<String, IntArray>
 
 @Composable
 private fun SendButton(onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
+    val tokens = MaterialTheme.tokens
     Box(
         modifier = Modifier
-            .padding(start = 6.dp)
-            .size(40.dp)
+            .padding(start = 10.dp)
+            .size(48.dp)
             .clip(CircleShape)
-            .background(scheme.primary)
+            .background(tokens.accent)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = AppIcons.Send,
+            imageVector = AppIcons.ArrowUp,
             contentDescription = stringResource(R.string.action_add),
-            tint = scheme.onPrimary,
-            modifier = Modifier.size(20.dp),
+            tint = tokens.onAccent,
+            modifier = Modifier.size(24.dp),
         )
     }
 }
 
-/** Paints the recognised words; the text itself is unchanged, so offsets map one to one. */
+/** Colours the recognised words; the text itself is unchanged, so offsets map one to one. */
 private class SpanHighlight(private val spans: List<Span>, private val style: SpanStyle) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val painted = buildAnnotatedString {
@@ -585,3 +589,39 @@ private class SpanHighlight(private val spans: List<Span>, private val style: Sp
 
     override fun hashCode(): Int = spans.hashCode() * 31 + style.hashCode()
 }
+
+/** The rounded tint behind each recognised word, drawn line by line so a wrapped one is tinted on both. */
+private fun DrawScope.drawTokens(layout: TextLayoutResult, spans: List<Span>, color: Color) {
+    val padX = TOKEN_PAD_X.toPx()
+    val insetY = TOKEN_INSET_Y.toPx()
+    val radius = CornerRadius(TOKEN_RADIUS.toPx())
+    val length = layout.layoutInput.text.length
+    spans.filter { it.range.last < length }.forEach { span ->
+        tokenBoxes(layout, span.range).forEach { box ->
+            drawRoundRect(
+                color,
+                topLeft = Offset(box.left - padX, box.top + insetY),
+                size = Size(box.width + padX * 2, box.height - insetY * 2),
+                cornerRadius = radius,
+            )
+        }
+    }
+}
+
+/** The box [range] covers on each line it runs over, without the trailing space a wrap leaves. */
+private fun tokenBoxes(layout: TextLayoutResult, range: IntRange): List<Rect> {
+    val first = layout.getLineForOffset(range.first)
+    val last = layout.getLineForOffset(range.last)
+    return (first..last).map { line ->
+        val start = if (line == first) range.first else layout.getLineStart(line)
+        val lineEnd = layout.getLineEnd(line, visibleEnd = true) - 1
+        val end = if (line == last) range.last else lineEnd.coerceAtLeast(start)
+        val a = layout.getBoundingBox(start)
+        val b = layout.getBoundingBox(end)
+        Rect(minOf(a.left, b.left), layout.getLineTop(line), maxOf(a.right, b.right), layout.getLineBottom(line))
+    }
+}
+
+private val TOKEN_PAD_X = 3.dp
+private val TOKEN_INSET_Y = 2.dp
+private val TOKEN_RADIUS = 4.dp

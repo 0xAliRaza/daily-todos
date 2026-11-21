@@ -55,18 +55,21 @@ class FocusEngineTest {
         tasks = TaskRepository(db, clock, settings) { scheduler.run(FiredBy.CATCH_UP) }
         timers = TimerRepository(db.timer(), db.focusSessions(), settings, clock) { scheduler.run(FiredBy.CATCH_UP) }
         val mirror = ScheduleMirror(File(folder.root, ScheduleMirror.FILE_NAME))
+        val lists = ListRepository(db.lists(), clock)
         scheduler = ReminderScheduler(
             tasks,
+            lists,
             settings,
             db.reminderLog(),
             FakePoster(),
             alarm,
             mirror,
+            FakeTestReminderStore(),
             clock,
             timer = FocusEngine(timers, tasks, signals),
         )
         // An undated task, so no reminder shares the alarm with the timer.
-        val work = ListRepository(db.lists(), clock).create("Work")
+        val work = lists.create("Work")
         taskId = tasks.addTask(NewTask("Write report", listId = work.id)).id
     }
 

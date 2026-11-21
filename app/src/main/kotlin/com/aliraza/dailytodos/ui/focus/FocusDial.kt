@@ -32,20 +32,15 @@ internal fun moodOf(timer: FocusTimer, taskId: String): Mood = when {
 }
 
 /**
- * What the dial shows: the time [left] in a round of [length]. It reads like a kitchen timer: the arc is
- * the time left on an hour's face, or on the round's own length when that is longer, so 25 minutes fill
- * 5/12 of the ring and the arc shrinks from there as the round runs.
+ * What the dial shows: the time [left] in a round of [length]. The arc is the round's progress: full when
+ * it starts and emptying as it runs, whatever its length, so a 25-minute and a 90-minute round draw alike.
  */
 internal data class DialReading(val left: Duration, val length: Duration) {
     val sweep: Float
         get() {
-            val scale = maxOf(HOUR, length)
-            return (left.toMillis().toFloat() / scale.toMillis()).coerceIn(0f, 1f)
+            if (length.isZero || length.isNegative) return 0f
+            return (left.toMillis().toFloat() / length.toMillis()).coerceIn(0f, 1f)
         }
-
-    private companion object {
-        val HOUR: Duration = Duration.ofHours(1)
-    }
 }
 
 /**
@@ -58,13 +53,35 @@ internal fun dialReading(mood: Mood, timer: FocusTimer, settings: Settings, now:
     return DialReading(timer.remaining(now), timer.roundLength ?: planned)
 }
 
-/** The one line under the time: when the round ends, or that it is paused. */
-internal enum class DialCaption { UNTIL, BREAK_UNTIL, PAUSED }
+/**
+ * The one line under the time: what a settled dial is about to start, when a running round ends, or that
+ * it is paused.
+ */
+internal enum class DialCaption { FOCUS_ROUND, BREAK, ENDS, PAUSED }
 
 internal fun dialCaption(mood: Mood, timer: FocusTimer): DialCaption = when {
-    !mood.isSettled && timer.isPaused -> DialCaption.PAUSED
-    mood.isBreak -> DialCaption.BREAK_UNTIL
-    else -> DialCaption.UNTIL
+    mood == Mood.READY -> DialCaption.FOCUS_ROUND
+    mood == Mood.BREAK_TIME -> DialCaption.BREAK
+    timer.isPaused -> DialCaption.PAUSED
+    else -> DialCaption.ENDS
+}
+
+/**
+ * The line under the task's title. While focusing it counts the round under way ([round], one more than
+ * the rounds done) and the time focused before it; otherwise it sums the task's focus so far.
+ */
+internal sealed interface FocusHeadline {
+    data object None : FocusHeadline
+
+    data class Total(val focused: Duration, val rounds: Int) : FocusHeadline
+
+    data class Round(val round: Int, val focusedBefore: Duration?) : FocusHeadline
+}
+
+internal fun focusHeadline(mood: Mood, focused: Duration, rounds: Int): FocusHeadline = when {
+    mood == Mood.FOCUSING -> FocusHeadline.Round(rounds + 1, focused.takeIf { rounds > 0 })
+    rounds == 0 -> FocusHeadline.None
+    else -> FocusHeadline.Total(focused, rounds)
 }
 
 /** One step shorter, snapped to a whole multiple of [step]: 11 → 10 → 5, rather than 11 → 6 → 1. */

@@ -64,7 +64,7 @@ class KeepScreenOnTest {
                 setting = it
             })
         }
-        val toggle = compose.onNodeWithContentDescription("Caffeinated")
+        val toggle = compose.onNodeWithContentDescription("Screen on")
         toggle.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).assertIsOff()
 
         toggle.performClick()

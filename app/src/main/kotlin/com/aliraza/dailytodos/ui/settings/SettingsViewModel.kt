@@ -6,8 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.aliraza.dailytodos.R
 import com.aliraza.dailytodos.core.backup.BackupContent
 import com.aliraza.dailytodos.core.backup.BackupReadResult
-import com.aliraza.dailytodos.core.model.NewTask
-import com.aliraza.dailytodos.core.model.ReminderLogEntry
 import com.aliraza.dailytodos.core.model.Settings
 import com.aliraza.dailytodos.core.model.TaskList
 import com.aliraza.dailytodos.data.BackupRepository
@@ -16,12 +14,14 @@ import com.aliraza.dailytodos.data.SettingsRepository
 import com.aliraza.dailytodos.data.TaskRepository
 import com.aliraza.dailytodos.data.db.ReminderLogDao
 import com.aliraza.dailytodos.data.db.toDomain
+import com.aliraza.dailytodos.reminder.TestReminder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,8 +30,6 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.time.Clock
-import java.time.LocalDateTime
-import java.time.temporal.ChronoUnit
 
 /** Settings, backups and the reminder health screen. */
 class SettingsViewModel(
@@ -41,6 +39,7 @@ class SettingsViewModel(
     lists: ListRepository,
     reminderLog: ReminderLogDao,
     private val clock: Clock,
+    private val testReminder: TestReminder,
 ) : ViewModel() {
     val settings: StateFlow<Settings> = settingsRepo.observe().stateIn(
         viewModelScope,
@@ -53,10 +52,14 @@ class SettingsViewModel(
         .map { all -> all.firstOrNull { it.isDefault }?.name ?: TaskList.DEFAULT_NAME }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), TaskList.DEFAULT_NAME)
 
-    /** The newest reminders first; the log keeps no titles. */
-    val history: StateFlow<List<ReminderLogEntry>> = reminderLog.observeAll()
-        .map { rows -> rows.take(HISTORY_SHOWN).map { it.toDomain() } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), emptyList())
+    /**
+     * The newest reminders first, each with its task's title looked up live by id: the log itself keeps
+     * no titles, so a renamed task shows its new name and a deleted one shows as deleted.
+     */
+    val history: StateFlow<List<HistoryItem>> =
+        combine(reminderLog.observeAll(), tasks.observeTitles()) { rows, titles ->
+            historyItems(rows.take(HISTORY_SHOWN).map { it.toDomain() }, titles)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), emptyList())
 
     /** A checked backup waiting for the user to confirm the replace. */
     val pendingImport = MutableStateFlow<BackupContent?>(null)
@@ -117,16 +120,12 @@ class SettingsViewModel(
     }
 
     /**
-     * A real task in the default list, due a minute from now plus the heads-up, so the test travels the
-     * exact path every reminder takes.
+     * A test reminder a minute from now. It waits on the same alarm as every task's reminder and adds no
+     * task; see [TestReminder].
      */
-    fun sendTestReminder(title: String) {
+    fun sendTestReminder() {
         viewModelScope.launch {
-            val s = settings.value
-            val at = LocalDateTime.now(
-                clock,
-            ).truncatedTo(ChronoUnit.MINUTES).plusMinutes(TEST_MINUTES + s.headsUp.minutes)
-            tasks.addTask(NewTask(title = title, dueDate = at.toLocalDate(), dueTime = at.toLocalTime()))
+            testReminder.send()
             say(R.string.health_test_sent)
         }
     }
@@ -138,6 +137,5 @@ class SettingsViewModel(
     private companion object {
         const val HISTORY_SHOWN = 30
         const val STOP_MS = 5_000L
-        const val TEST_MINUTES = 1L
     }
 }

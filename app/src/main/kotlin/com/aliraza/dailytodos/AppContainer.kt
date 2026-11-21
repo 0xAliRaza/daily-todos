@@ -14,7 +14,9 @@ import com.aliraza.dailytodos.reminder.AndroidFocusSignals
 import com.aliraza.dailytodos.reminder.AndroidReminderPoster
 import com.aliraza.dailytodos.reminder.BeforeUnlockReminders
 import com.aliraza.dailytodos.reminder.EndSignal
+import com.aliraza.dailytodos.reminder.EngineTestReminder
 import com.aliraza.dailytodos.reminder.FocusEngine
+import com.aliraza.dailytodos.reminder.PrefsTestReminderStore
 import com.aliraza.dailytodos.reminder.ReminderActions
 import com.aliraza.dailytodos.reminder.ReminderScheduler
 import com.aliraza.dailytodos.reminder.ScheduleMirror
@@ -50,24 +52,29 @@ class AppContainer(context: Context) {
     val backup: BackupRepository by lazy { BackupRepository(database, settings, clock, onScheduleChanged) }
 
     val alarmArmer by lazy { AndroidAlarmArmer(appContext) }
-    val reminderPoster by lazy { AndroidReminderPoster(appContext) }
+    val reminderPoster by lazy { AndroidReminderPoster(appContext, clock) }
     val focusSignals by lazy { AndroidFocusSignals(appContext, EndSignal(appContext, appScope)) }
     private val mirror by lazy {
         ScheduleMirror(File(appContext.createDeviceProtectedStorageContext().filesDir, ScheduleMirror.FILE_NAME))
     }
 
+    private val testReminderStore by lazy { PrefsTestReminderStore(appContext) }
+
     val scheduler: ReminderScheduler by lazy {
         ReminderScheduler(
             tasks,
+            lists,
             settings,
             database.reminderLog(),
             reminderPoster,
             alarmArmer,
             mirror,
+            testReminderStore,
             clock,
             timer = FocusEngine(timers, tasks, focusSignals),
         )
     }
     val beforeUnlock by lazy { BeforeUnlockReminders(mirror, reminderPoster, alarmArmer, clock) }
-    val reminderActions by lazy { ReminderActions(tasks, reminderPoster, clock) }
+    val testReminder by lazy { EngineTestReminder(testReminderStore, scheduler, clock) }
+    val reminderActions by lazy { ReminderActions(tasks, reminderPoster, testReminder, clock) }
 }

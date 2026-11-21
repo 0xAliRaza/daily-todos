@@ -29,11 +29,13 @@ See the milestones in `PLAN.md`.
 - Sub-tasks: one level of checkboxes inside a task.
 - Three priorities, optional. No labels.
 - Views: Today and Upcoming show dated tasks from every list; then each list on its own. Search.
-  Upcoming lists the days ahead under a week strip (month, week arrows, the seven days from the week start with dots for days
-  with tasks); tapping a day jumps the list to it.
-- Sub-tasks show under their task by default; the "1/3" chevron folds them.
+  Upcoming lists the next seven days under a week strip (month, week arrows, the seven days from the week start with dots
+  for days with tasks); runs of empty days fold into one quiet line, and everything after the seventh day sits in a
+  "Later" group. Tapping a day jumps the list to it.
+- Sub-tasks are folded by default: a row shows "1/3" in its meta line, and tapping it opens them in place.
+  Sub-tasks are added only in the task sheet.
 - Calendar: Day, 3 days, Week and Month views of dated tasks. Timed tasks sit at their time on an hour
-  grid (tasks have no length); Month shows dots per day (grey for done tasks) and the picked day's tasks
+  grid (tasks have no length); tasks with a date and no time sit in a "No time" row above it; Month shows dots per day (grey for done tasks) and the picked day's tasks
   below, then what was done that day with the time focused on each, and folds to that day's week as the
   list scrolls. Past days are greyed.
 - Four tabs: Today, Upcoming, Calendar, Lists. Upcoming and Calendar are separate tabs.
@@ -43,7 +45,9 @@ See the milestones in `PLAN.md`.
   in Today. Each offers today, tomorrow, next week, a picked date or no date, with undo. The add bar's
   Date chip and the task sheet use the same date sheet.
 - Lists show their open counts; a list's menu renames it or deletes it with its tasks (undo right after).
-- Undo on every action, multi-select, drag to reorder. Drag handles show only in multi-select.
+- Undo on every action, naming the task when there is one. Multi-select (Select all; Complete, Reschedule,
+  Move to a list and Delete in a bar that replaces the tabs), drag to reorder. Drag handles show only in
+  multi-select.
 - Sorting: inside a list, manual order with new tasks added at the bottom. In Today, overdue first (its
   header reschedules them all at once), then timed tasks by time, then the rest in manual order.
 
@@ -63,7 +67,9 @@ See the milestones in `PLAN.md`.
 
 **Reminders**
 
-- One notification per task, with Complete and Snooze. Never a summary or overview notification of our own.
+- One notification per task: the task's title, then when and which list ("Today 4:00 PM · Work", "In 10 min ·
+  11:30 AM · Work", "Overdue · Tue 9:00 AM · Daily"), with Complete and Snooze (a fixed 10 minutes). Never a
+  summary or overview notification of our own.
   (Android stacking several notifications in the shade by itself is acceptable.)
 - Early heads-up: one setting makes timed tasks remind 0, 10, 30 or 60 minutes before their time. There is
   no per-task choice.
@@ -77,7 +83,9 @@ See the milestones in `PLAN.md`.
   maker (Samsung, Xiaomi, Oppo, Vivo, OnePlus, Huawei, Tecno, Infinix, with a generic fallback) and can send
   a test reminder one minute out.
 - A reminder history on that screen lists recent reminders with when each was due and when it actually
-  fired, so a late or missed one can be seen and diagnosed. It stays on the device and stores no titles.
+  fired, so a late or missed one can be seen and diagnosed. It stays on the device and stores no titles; the
+  screen looks titles up live and shows "Deleted task" for one that is gone. The test reminder adds nothing
+  to the lists.
 - Optional setting: let reminders and timer ends break through Do Not Disturb.
 
 **Focus timer**
@@ -98,7 +106,8 @@ See the milestones in `PLAN.md`.
   quietly and keeps the time spent.
 - A now-focusing bar sits above the tab bar, and at the bottom of other screens, while a round runs or a
   break waits: the task's title and the countdown, in the accent for focus and green for a break ("Break
-  time" while the break waits). Tapping it returns to the timer.
+  time" while the break waits), with Pause on a focus round and Skip on a break. Tapping it returns to the
+  timer.
 - End signal: Sound and Both play the phone's default notification sound three times at a focus end and
   twice at a break end; Both adds a short buzz to each sound. Vibrate-only gives long full-strength buzzes
   in two groups: three and three at a focus end, two and two at a break end. Longer than a notification,
@@ -130,16 +139,21 @@ See the milestones in `PLAN.md`.
 - Groups: Reminders, Reliability (Reminder health with its status, Battery optimisation), Focus, General
   and Your data. Every choice is the same pill control; on/off settings are switches.
 - Focus: Focus stats, the end signal, and Caffeinated (off by default).
-- General: theme; time format, 12-hour by default; week starts on, following the phone by default, or
+- General: theme, accent (ink blue, violet, teal or graphite) and a black background for the dark theme;
+  time format, 12-hour by default; week starts on, following the phone by default, or
   Monday or Sunday; haptic feedback, on by default, for completing a task and the timer's controls.
 - Android's cloud backup of app data is switched off.
 
 **Design**
 
-- One ink-blue accent on plain neutrals: white in light, near-black grey in dark; both first-class; system font.
-  Red is kept for what is urgent: overdue, P1 and deleting.
+- One accent on plain neutrals: ink blue by default, or violet, teal or graphite; white in light, near-black grey
+  in dark, or pure black for OLED; all first-class; system font. The accent is chrome only (buttons, the add
+  button, selection, the active tab, links, the today marker, the now line) and never colours a task's ring,
+  date or calendar block. Red is kept for what is urgent: overdue (a day before today) and deleting; a time
+  already passed today stays grey. No priority and done are neutral.
 - Signal colours, not extra accents: the check-box ring shows priority (P1 red, P2 orange, P3 blue); a due
-  date is red when overdue, the accent for today, and grey after that.
+  date is red when overdue, ink in semi-bold for today, and grey after that. Ticking a task flashes its ring
+  in the accent, then it settles to the done grey.
 - Flat lists split by hairlines, no cards. Adding a task starts from a round + button and is one
   line: the text, a pill for the default day (only when no date is typed), and send. Every pairing stays at WCAG AA.
 

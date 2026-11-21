@@ -18,22 +18,27 @@ class FocusDialTest {
     private fun min(value: Long): Duration = Duration.ofMinutes(value)
 
     @Test
-    fun aRoundShorterThanAnHourFillsItsShareOfTheHourFace() {
-        assertEquals(5f / 12f, DialReading(min(25), min(25)).sweep, delta)
-        assertEquals(1f / 12f, DialReading(min(5), min(5)).sweep, delta)
-        assertEquals(1f, DialReading(min(60), min(60)).sweep, delta)
-    }
-
-    @Test
-    fun aRoundLongerThanAnHourStartsFullAndShrinksOnItsOwnScale() {
+    fun everyRoundStartsWithAFullArc() {
+        assertEquals(1f, DialReading(min(25), min(25)).sweep, delta)
+        assertEquals(1f, DialReading(min(5), min(5)).sweep, delta)
         assertEquals(1f, DialReading(min(90), min(90)).sweep, delta)
-        assertEquals(0.5f, DialReading(min(45), min(90)).sweep, delta)
     }
 
     @Test
-    fun theArcShrinksWithTheTimeLeftAndEndsEmpty() {
-        assertEquals(10f / 60f, DialReading(min(10), min(25)).sweep, delta)
+    fun aLongRoundEmptiesOnItsOwnLengthLikeAShortOne() {
+        assertEquals(0.5f, DialReading(min(45), min(90)).sweep, delta)
+        assertEquals(0.5f, DialReading(Duration.ofSeconds(750), min(25)).sweep, delta)
+    }
+
+    @Test
+    fun theArcEmptiesWithTheTimeLeftAndEndsEmpty() {
+        assertEquals(10f / 25f, DialReading(min(10), min(25)).sweep, delta)
         assertEquals(0f, DialReading(Duration.ZERO, min(25)).sweep, delta)
+    }
+
+    @Test
+    fun aRoundWithNoLengthDrawsNoArc() {
+        assertEquals(0f, DialReading(Duration.ZERO, Duration.ZERO).sweep, delta)
     }
 
     @Test
@@ -76,14 +81,29 @@ class FocusDialTest {
     }
 
     @Test
-    fun theCaptionSaysPausedOnlyWhileARoundIsPaused() {
-        val paused = FocusRounds.pause(FocusRounds.start("task", settings, now), now)
+    fun theCaptionNamesWhatASettledDialStartsAndWhenARunningOneEnds() {
+        val running = FocusRounds.start("task", settings, now)
+        val paused = FocusRounds.pause(running, now)
+        assertEquals(DialCaption.FOCUS_ROUND, dialCaption(Mood.READY, paused))
+        assertEquals(DialCaption.BREAK, dialCaption(Mood.BREAK_TIME, FocusTimer.Idle))
+        assertEquals(DialCaption.ENDS, dialCaption(Mood.FOCUSING, running))
+        assertEquals(DialCaption.ENDS, dialCaption(Mood.ON_BREAK, running))
         assertEquals(DialCaption.PAUSED, dialCaption(Mood.FOCUSING, paused))
         assertEquals(DialCaption.PAUSED, dialCaption(Mood.ON_BREAK, paused))
-        assertEquals(DialCaption.UNTIL, dialCaption(Mood.READY, paused))
-        assertEquals(DialCaption.UNTIL, dialCaption(Mood.FOCUSING, FocusTimer.Idle))
-        assertEquals(DialCaption.BREAK_UNTIL, dialCaption(Mood.BREAK_TIME, FocusTimer.Idle))
-        assertEquals(DialCaption.BREAK_UNTIL, dialCaption(Mood.ON_BREAK, FocusTimer.Idle))
+    }
+
+    @Test
+    fun theHeadlineCountsTheRoundUnderWayWhileFocusing() {
+        assertEquals(FocusHeadline.Round(1, null), focusHeadline(Mood.FOCUSING, Duration.ZERO, 0))
+        assertEquals(FocusHeadline.Round(2, min(25)), focusHeadline(Mood.FOCUSING, min(25), 1))
+    }
+
+    @Test
+    fun theHeadlineSumsTheTaskOtherwise() {
+        assertEquals(FocusHeadline.None, focusHeadline(Mood.READY, Duration.ZERO, 0))
+        assertEquals(FocusHeadline.Total(min(50), 2), focusHeadline(Mood.READY, min(50), 2))
+        assertEquals(FocusHeadline.Total(min(50), 2), focusHeadline(Mood.BREAK_TIME, min(50), 2))
+        assertEquals(FocusHeadline.Total(min(50), 2), focusHeadline(Mood.ON_BREAK, min(50), 2))
     }
 
     @Test

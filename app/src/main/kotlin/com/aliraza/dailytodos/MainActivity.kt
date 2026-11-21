@@ -6,9 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.drawable.toDrawable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -23,6 +28,7 @@ import com.aliraza.dailytodos.ui.focus.KeepScreenOn
 import com.aliraza.dailytodos.ui.settings.SettingsViewModel
 import com.aliraza.dailytodos.ui.tasks.TasksViewModel
 import com.aliraza.dailytodos.ui.theme.DailyTodosTheme
+import com.aliraza.dailytodos.ui.theme.tokens
 
 class MainActivity : ComponentActivity() {
     /** What a notification asked to open; read by the UI, then cleared. */
@@ -51,6 +57,7 @@ class MainActivity : ComponentActivity() {
                     container.lists,
                     container.database.reminderLog(),
                     container.clock,
+                    container.testReminder,
                 )
             }
             initializer { FocusViewModel(container.timers, container.tasks, container.settings, container.clock) }
@@ -66,7 +73,8 @@ class MainActivity : ComponentActivity() {
             val focus: FocusViewModel = viewModel(factory = factory)
             val timer by focus.timer.collectAsStateWithLifecycle()
             KeepScreenOn(keepsScreenOn(settings.keepScreenOn, timer))
-            DailyTodosTheme(dark = dark) {
+            DailyTodosTheme(dark = dark, black = settings.blackBackground, accent = settings.accent) {
+                WindowBackground()
                 ProvideDisplaySettings(settings) {
                     RequestNotificationPermission()
                     AppRoot(
@@ -79,6 +87,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Paints the window in the theme's page colour, so the black background or a theme picked in the app
+     * shows no lighter frame behind the content while it resizes or a sheet animates.
+     */
+    @Composable
+    private fun WindowBackground() {
+        val page = MaterialTheme.tokens.background.toArgb()
+        SideEffect { window.setBackgroundDrawable(page.toDrawable()) }
     }
 
     override fun onNewIntent(intent: Intent) {

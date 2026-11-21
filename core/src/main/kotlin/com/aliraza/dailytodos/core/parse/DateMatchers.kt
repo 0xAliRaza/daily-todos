@@ -1,5 +1,6 @@
 package com.aliraza.dailytodos.core.parse
 
+import com.aliraza.dailytodos.core.time.nextWeekStart
 import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.Month
@@ -17,6 +18,7 @@ internal object DateMatchers {
     val all: List<Matcher> = listOf(
         Matcher { ctx, i -> prefixed(ctx, i, Vocabulary.datePrefixes) { at, _ -> dayAfterTomorrow(ctx, at) } },
         Matcher { ctx, i -> prefixed(ctx, i, Vocabulary.datePrefixes) { at, p -> relativeDay(ctx, at, p) } },
+        Matcher { ctx, i -> prefixed(ctx, i, Vocabulary.datePrefixes) { at, _ -> nextWeek(ctx, at) } },
         Matcher { ctx, i -> prefixed(ctx, i, Vocabulary.weekdayPrefixes) { at, p -> weekday(ctx, at, p) } },
         Matcher { ctx, i -> prefixed(ctx, i, Vocabulary.datePrefixes) { at, _ -> dayMonth(ctx, at) } },
         Matcher { ctx, i -> prefixed(ctx, i, Vocabulary.datePrefixes) { at, _ -> monthDay(ctx, at) } },
@@ -53,6 +55,13 @@ internal object DateMatchers {
             ?: Vocabulary.shortRelativeDays[token.word]?.takeIf { prefix != null || ctx.isLastWord(at) }
             ?: return null
         return Hit(at + 1, ctx.today.plusDays(offset))
+    }
+
+    /** "next week", like a relative day not when capitalised mid-sentence ("Read Next Week magazine"). */
+    private fun nextWeek(ctx: ParseContext, at: Int): Hit? {
+        if (at > 0 && ctx.tokens.getOrNull(at)?.isCapitalised == true) return null
+        val words = Vocabulary.NEXT_WEEK.indices.map { ctx.word(at + it) }
+        return if (words == Vocabulary.NEXT_WEEK) Hit(at + words.size, ctx.today.nextWeekStart(ctx.weekStart)) else null
     }
 
     private fun weekday(ctx: ParseContext, at: Int, prefix: String?): Hit? {

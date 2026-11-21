@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Today -->
+    <string name="today_section_todo">To do</string>
+    <plurals name="today_done_count">
+        <item quantity="one">%1$d done</item>
+        <item quantity="other">%1$d done</item>
+    </plurals>
+    <plurals name="today_done_finished">
+        <item quantity="one">%1$d task finished.</item>
+        <item quantity="other">%1$d tasks finished.</item>
+    </plurals>
+    <plurals name="today_done_tomorrow">
+        <item quantity="one">Tomorrow has %1$d waiting.</item>
+        <item quantity="other">Tomorrow has %1$d waiting.</item>
+    </plurals>
+    <string name="today_done_tomorrow_none">Nothing is waiting tomorrow.</string>
+    <string name="today_see_tomorrow">See tomorrow</string>
+
+    <!-- Completed, pinned at the bottom of Today and of a list -->
+    <string name="completed_label">Completed</string>
+    <string name="completed_show">Show completed tasks</string>
+    <string name="completed_hide">Hide</string>
+    <string name="completed_hide_label">Hide completed tasks</string>
+
+    <!-- Upcoming -->
+    <string name="upcoming_this_week">This week</string>
+    <string name="upcoming_later">Later</string>
+    <string name="upcoming_free_day">%1$s · nothing planned</string>
+    <string name="upcoming_free_run">%1$s – %2$s · nothing planned</string>
+    <string name="upcoming_pick_day">Pick this day</string>
+
+    <!-- A list -->
+    <string name="list_done_title">All done here</string>
+    <string name="list_done_body">Everything in this list is ticked off.</string>
+    <!-- Under a list's title; the shell's top bar shows it. -->
+    <plurals name="list_open_count">
+        <item quantity="one">%1$d open</item>
+        <item quantity="other">%1$d open</item>
+    </plurals>
+</resources>

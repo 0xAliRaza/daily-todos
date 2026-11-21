@@ -3,6 +3,28 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow semantic
 versioning.
 
+## Unreleased
+
+### Changed
+
+- A new look: a bolder type scale, a large title that collapses on scroll, one outlined icon set, one
+  filled selection style everywhere, sheets with handles that open to full height, and a new app icon,
+  the through-ring.
+- Pick an accent (ink blue, violet, teal or graphite) and a pure black background for the dark theme.
+- Reminders read better: the task's title, then when and which list, with Complete and Snooze (10 min).
+- Today pins Completed at the bottom when everything is done, with "See tomorrow". Upcoming folds empty
+  days and groups everything after the week under Later. The calendar gets a "No time" row.
+- Multi-select can move tasks to another list and select all. Undo names the task.
+- The add bar grows to three lines and its Date chip shows the date and time it understood.
+- Sub-tasks start folded in lists.
+
+### Fixed
+
+- The test reminder no longer adds a task to the Daily list.
+- "yesterday" and "next week" are understood when adding a task.
+- "Week starts on" no longer shows the phone's day twice; the date picker follows it on every Android
+  version.
+
 ## 0.1.0 — 2026-11-19
 
 The first release.

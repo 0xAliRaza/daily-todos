@@ -22,6 +22,12 @@ enum class TimerSignal { SOUND, VIBRATE, BOTH }
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/**
+ * The one accent colour the app's chrome uses: buttons, selection, the active tab. Task data never takes
+ * it. Rose and orange are left out on purpose: they would read as the P1 and P2 signal colours.
+ */
+enum class Accent { INK_BLUE, VIOLET, TEAL, GRAPHITE }
+
 /** How times are written: "3:12 PM" or "15:12". */
 enum class ClockFormat { H12, H24 }
 
@@ -55,6 +61,9 @@ data class Settings(
     val breakCustomMinutes: Int = DEFAULT_BREAK_CUSTOM_MINUTES,
     val timerSignal: TimerSignal = TimerSignal.BOTH,
     val theme: ThemeMode = ThemeMode.SYSTEM,
+    val accent: Accent = Accent.INK_BLUE,
+    /** A pure black page for OLED screens. Only applies while the dark theme shows. */
+    val blackBackground: Boolean = false,
     val clockFormat: ClockFormat = ClockFormat.H12,
     val weekStart: WeekStart = WeekStart.PHONE,
     val haptics: Boolean = true,

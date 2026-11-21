@@ -64,16 +64,25 @@ class SystemEventReceiver : BroadcastReceiver() {
     }
 }
 
-/** Done and Snooze on a reminder. Before the first unlock nothing can be saved, so it is left in place. */
+/** Complete and Snooze on a reminder. Before the first unlock nothing can be saved, so it is left in place. */
 class ReminderActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: return
-        val action = AndroidReminderPoster.Action.entries.firstOrNull { it.name == intent.action } ?: return
+        val (taskId, action) = request(intent) ?: return
         if (!UserManagerCompat.isUserUnlocked(context)) return
         runAsync(context) { reminderActions.handle(taskId, action) }
     }
 
     companion object {
         const val EXTRA_TASK_ID = "task_id"
+
+        /**
+         * The task and button an intent names, or null when it names neither: such as a button left in
+         * the shade by an older version (its 1-hour snooze), which is then ignored.
+         */
+        fun request(intent: Intent): Pair<String, AndroidReminderPoster.Action>? {
+            val taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: return null
+            val action = AndroidReminderPoster.Action.from(intent.action) ?: return null
+            return taskId to action
+        }
     }
 }

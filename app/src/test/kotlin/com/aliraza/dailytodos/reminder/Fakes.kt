@@ -22,6 +22,16 @@ class FakePoster(var allowed: Boolean = true) : ReminderPoster {
     override fun shownTaskIds(): Set<String> = shown.toSet()
 }
 
+class FakeTestReminderStore : TestReminderStore {
+    var at: Instant? = null
+
+    override fun pendingAt(): Instant? = at
+
+    override fun set(at: Instant?) {
+        this.at = at
+    }
+}
+
 class FakeAlarm : AlarmArmer {
     var armedAt: Instant? = null
     var cancelled = false

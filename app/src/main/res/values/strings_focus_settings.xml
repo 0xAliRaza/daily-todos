@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Focus timer -->
+    <string name="focus_none_yet">No focus yet</string>
+    <plurals name="focus_rounds">
+        <item quantity="one">%1$d round</item>
+        <item quantity="other">%1$d rounds</item>
+    </plurals>
+    <string name="focus_round_number">Round %1$d</string>
+    <string name="focus_round_so_far">Round %1$d · %2$s focused so far</string>
+    <string name="focus_round_caption">Focus round</string>
+    <string name="focus_ends">Ends %1$s</string>
+    <string name="focus_round_done">Round done · take a break</string>
+    <string name="focus_today_label">Today</string>
+    <string name="focus_this_task_label">This task</string>
+    <string name="focus_step_less">−%1$d</string>
+    <string name="focus_step_more">+%1$d</string>
+    <plurals name="focus_minutes_less">
+        <item quantity="one">%1$d minute less</item>
+        <item quantity="other">%1$d minutes less</item>
+    </plurals>
+    <plurals name="focus_minutes_more">
+        <item quantity="one">%1$d minute more</item>
+        <item quantity="other">%1$d minutes more</item>
+    </plurals>
+    <string name="focus_screen_on">Screen on</string>
+
+    <!-- Now-focusing bar -->
+    <string name="bar_focus">Focus · %1$s</string>
+    <string name="bar_break">Break · %1$s</string>
+    <string name="bar_next">Next: %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_late_title">Reminders may be late</string>
+    <string name="settings_late_detail">%1$s · %2$s</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_black">Black background</string>
+    <string name="settings_black_hint">Dark theme only · pure black for OLED</string>
+    <string name="settings_accent">Accent</string>
+    <string name="accent_ink_blue">Ink blue</string>
+    <string name="accent_violet">Violet</string>
+    <string name="accent_teal">Teal</string>
+    <string name="accent_graphite">Graphite</string>
+    <string name="week_start_phone_short">Phone</string>
+    <string name="week_start_phone_hint">Your phone starts weeks on %1$s</string>
+
+    <!-- Reminder health -->
+    <string name="health_problem_notifications">Notifications are off</string>
+    <string name="health_problem_exact">Exact alarms are not allowed</string>
+    <string name="health_problem_battery">Battery optimisation is on</string>
+    <string name="health_fix_notifications_lead">Notifications are off for the app.</string>
+    <string name="health_fix_notifications_body">Allow them, then come back here.</string>
+    <string name="health_fix_exact_lead">Exact alarms are not allowed.</string>
+    <string name="health_fix_exact_body">Without them a reminder can arrive minutes late. Allow them, then come back here.</string>
+    <string name="health_fix_battery_lead">Battery optimisation is restricting the app.</string>
+    <string name="health_fix_battery_body">Set Battery to Unrestricted, then come back here.</string>
+    <string name="health_open_notifications">Open notification settings</string>
+    <string name="health_open_exact">Allow exact alarms</string>
+    <string name="health_open_battery">Open battery settings</string>
+    <string name="health_all_set_body">Every check passes, so reminders arrive on time.</string>
+    <string name="health_value_off">Off</string>
+    <string name="health_value_not_allowed">Not allowed</string>
+    <string name="health_value_restricted">Restricted</string>
+    <string name="health_dnd">Do Not Disturb</string>
+    <string name="health_dnd_through">Lets reminders through</string>
+    <string name="health_dnd_quiet">Holds reminders back</string>
+    <string name="health_send_test">Send a test</string>
+    <string name="health_test_hint">Arrives in about a minute. Adds nothing to your lists.</string>
+    <string name="health_deleted_task">Deleted task</string>
+    <string name="health_history_day_due">%1$s · due %2$s</string>
+    <string name="health_history_day_due_fired">%1$s · due %2$s · fired %3$s</string>
+
+    <!-- Focus stats -->
+    <string name="stats_all_time_label">All time</string>
+    <string name="stats_top_all_time">Most focused · all time</string>
+    <string name="stats_bar_minutes">%1$dm</string>
+    <string name="stats_bar_hours">%1$dh</string>
+    <string name="stats_bar_hours_minutes">%1$dh %2$dm</string>
+    <string name="stats_fact_line">That’s as long as %1$d %2$s.</string>
+</resources>

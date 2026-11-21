@@ -41,10 +41,10 @@ class DialInputTest {
     }
 
     @Test
-    fun theAngleInvertsWhatTheRingDraws() {
+    fun eachMinuteSitsAtItsPlaceOnTheTickFace() {
+        // The ring's twelve ticks are an hour face, five minutes apart, as a touch reads it.
         for (m in 1..60) {
-            val sweep = DialReading(minutes(m), minutes(m)).sweep
-            assertEquals(m, minutesAt(sweep * 360f, focus))
+            assertEquals(m, minutesAt(m * 6f, focus))
         }
     }
 

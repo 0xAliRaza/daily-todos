@@ -7,6 +7,7 @@ import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.aliraza.dailytodos.core.model.Accent
 import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.Settings
 import com.aliraza.dailytodos.core.model.WeekStart
@@ -176,6 +177,31 @@ class MigrationTest {
             assertEquals(WeekStart.MONDAY, domain.weekStart)
             assertFalse(domain.haptics)
             assertFalse(domain.keepScreenOn)
+            assertEquals(Accent.INK_BLUE, domain.accent)
+            assertFalse(domain.blackBackground)
+        } finally {
+            room.close()
+        }
+    }
+
+    @Test
+    fun versionFiveUpgradesWithEverythingKept() = runTest {
+        createVersion(5) { db ->
+            db.execSQL("INSERT INTO lists (id, name, position, is_default) VALUES ('default', 'Daily', 0, 1)")
+            db.execSQL(
+                "INSERT INTO settings VALUES " +
+                    "(1, '08:30', 0, 1, 10, 1, '07:00', 1, 50, 10, 40, 7, 'VIBRATE', 'DARK', 'H24', 'MONDAY', 0, 1, " +
+                    "NULL)",
+            )
+        }
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).build()
+        try {
+            val domain = room.settings().get()!!.toDomain()
+            assertEquals(LocalTime.of(8, 30), domain.defaultReminderTime)
+            assertEquals(WeekStart.MONDAY, domain.weekStart)
+            assertTrue(domain.keepScreenOn)
+            assertEquals(Accent.INK_BLUE, domain.accent)
+            assertFalse(domain.blackBackground)
         } finally {
             room.close()
         }
@@ -189,6 +215,8 @@ class MigrationTest {
         assertEquals(defaults.weekStart, domain.weekStart)
         assertEquals(defaults.haptics, domain.haptics)
         assertEquals(defaults.keepScreenOn, domain.keepScreenOn)
+        assertEquals(defaults.accent, domain.accent)
+        assertEquals(defaults.blackBackground, domain.blackBackground)
     }
 
     private companion object {

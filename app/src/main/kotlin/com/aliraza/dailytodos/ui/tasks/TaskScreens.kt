@@ -1,8 +1,8 @@
 package com.aliraza.dailytodos.ui.tasks
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,13 +11,14 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -35,36 +36,39 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aliraza.dailytodos.DeviceClock
 import com.aliraza.dailytodos.R
 import com.aliraza.dailytodos.core.model.Subtask
 import com.aliraza.dailytodos.core.model.Task
 import com.aliraza.dailytodos.core.model.TaskList
 import com.aliraza.dailytodos.data.SubtaskProgress
+import com.aliraza.dailytodos.ui.AddButtonClearance
 import com.aliraza.dailytodos.ui.components.AppIcons
 import com.aliraza.dailytodos.ui.components.DateTone
 import com.aliraza.dailytodos.ui.components.EmptyState
@@ -76,18 +80,16 @@ import com.aliraza.dailytodos.ui.components.SubtaskFold
 import com.aliraza.dailytodos.ui.components.SwipeRow
 import com.aliraza.dailytodos.ui.components.TaskRow
 import com.aliraza.dailytodos.ui.components.dueTone
-import com.aliraza.dailytodos.ui.components.guarded
-import com.aliraza.dailytodos.ui.components.rememberGuardedField
 import com.aliraza.dailytodos.ui.components.rowDivider
-import com.aliraza.dailytodos.ui.components.sectionDay
+import com.aliraza.dailytodos.ui.theme.meta
+import com.aliraza.dailytodos.ui.theme.taskTitle
 import com.aliraza.dailytodos.ui.theme.tokens
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import java.time.ZoneId
 
 /** Multi-select: a long-press starts it, and while it runs a tap toggles a task instead of opening it. */
 @Stable
@@ -105,6 +107,18 @@ class Selection {
     }
 }
 
+/** Which list names a row's meta line shows. */
+enum class ListLabel {
+    /** None: the screen is the list itself. */
+    HIDDEN,
+
+    /** Every list but the default one, so most rows stay one quiet line. */
+    OTHER_LISTS,
+
+    /** Every list, the default one too: search, where a task could be anywhere. */
+    ALWAYS,
+}
+
 /** What every task row needs from the screen around it. */
 class RowContext(
     val now: LocalDateTime,
@@ -115,22 +129,35 @@ class RowContext(
     val subtasks: Map<String, SubtaskProgress> = emptyMap(),
     val subtasksOf: (String) -> Flow<List<Subtask>> = { flowOf(emptyList()) },
     val setSubtaskDone: (Subtask, Boolean) -> Unit = { _, _ -> },
-    val addSubtask: (taskId: String, title: String) -> Unit = { _, _ -> },
     val delete: (Task) -> Unit = {},
     val reschedule: (List<String>) -> Unit = {},
     val focus: (String) -> Unit = {},
+    /** Turns a done task's instant into the phone's wall-clock time. */
+    val zone: ZoneId = DeviceClock.zone,
 ) {
     val today: LocalDate get() = now.toLocalDate()
 
-    /** List names are shown only for tasks outside the default list, so most rows stay one quiet line. */
-    fun meta(task: Task, showDate: Boolean, showList: Boolean = true): RowMeta {
-        val list = lists[task.listId]
+    /**
+     * A task's meta line. Without [showDate] only its time shows, as on Today and under a day's header;
+     * a done task shows when it was ticked, if that was today.
+     */
+    fun meta(task: Task, showDate: Boolean, list: ListLabel = ListLabel.OTHER_LISTS): RowMeta {
+        val taskList = lists[task.listId]
+        val showList = when (list) {
+            ListLabel.HIDDEN -> false
+            ListLabel.OTHER_LISTS -> taskList?.isDefault == false
+            ListLabel.ALWAYS -> true
+        }
+        val tone = task.dueTone(now) ?: DateTone.LATER
         return RowMeta(
             date = task.dueDate?.takeIf { showDate },
             time = task.dueTime,
-            listName = list?.name?.takeIf { showList && !list.isDefault },
-            tone = task.dueTone(now) ?: DateTone.LATER,
+            listName = taskList?.name?.takeIf { showList },
+            tone = tone,
             subtasks = subtasks[task.id]?.let { it.done to it.total },
+            doneAt = task.completedAt?.atZone(zone)?.takeIf { it.toLocalDate() == today }?.toLocalTime(),
+            passedFor = task.dueTime?.takeIf { tone == DateTone.PASSED }
+                ?.let { Duration.between(it, now.toLocalTime()) },
         )
     }
 }
@@ -156,7 +183,6 @@ fun rememberRowContext(
             subtasks = progress,
             subtasksOf = viewModel::observeSubtasks,
             setSubtaskDone = viewModel::setSubtaskDone,
-            addSubtask = viewModel::addSubtask,
             delete = { task -> viewModel.delete(listOf(task.id)) },
             reschedule = onReschedule,
             focus = onFocus,
@@ -164,21 +190,27 @@ fun rememberRowContext(
     }
 }
 
-/** A task row wired to the screen's selection and sheet, with its sub-tasks folding open in place. */
+/**
+ * A task row wired to the screen's selection and sheet. Its sub-tasks start folded; the "1/3" in the
+ * meta line folds them open in place. A done row never folds open.
+ */
 @Composable
 internal fun TaskItem(
     task: Task,
     ctx: RowContext,
     meta: RowMeta,
     modifier: Modifier = Modifier,
+    title: AnnotatedString? = null,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
-    // Sub-tasks show by default; the chevron folds them away.
-    var open by rememberSaveable(task.id) { mutableStateOf(true) }
-    val fold = meta.subtasks?.let { SubtaskFold(open, onToggle = { open = !open }) { InlineSubtasks(task.id, ctx) } }
+    val done = task.completedAt != null
+    var open by rememberSaveable(task.id) { mutableStateOf(false) }
+    val fold = meta.subtasks?.takeIf { !done }?.let {
+        SubtaskFold(open, onToggle = { open = !open }) { InlineSubtasks(task.id, ctx) }
+    }
     SwipeRow(
         enabled = !ctx.selection.active,
-        canFocus = task.completedAt == null,
+        canFocus = !done,
         onFocus = { ctx.focus(task.id) },
         onDelete = { ctx.delete(task) },
         modifier = modifier,
@@ -191,7 +223,9 @@ internal fun TaskItem(
             onToggle = { ctx.toggle(task) },
             onClick = { if (ctx.selection.active) ctx.selection.toggle(task.id) else ctx.open(task.id) },
             onLongClick = { ctx.selection.toggle(task.id) },
+            selecting = ctx.selection.active,
             fold = fold,
+            title = title,
             trailing = trailing,
         )
     }
@@ -199,41 +233,42 @@ internal fun TaskItem(
 
 /**
  * The sub-tasks under an open row, one step in from the title, with a hairline rail down their left
- * that ties them to their task. Tap one, box or text, to tick it.
+ * that ties them to their task. Tap one, box or text, to tick it. New ones are added in the task sheet.
  */
 @Composable
 private fun InlineSubtasks(taskId: String, ctx: RowContext) {
     val subtasks by remember(taskId) { ctx.subtasksOf(taskId) }.collectAsStateWithLifecycle(emptyList())
-    val scheme = MaterialTheme.colorScheme
-    Column(Modifier.padding(top = 4.dp).subtaskRail(MaterialTheme.tokens.divider)) {
+    val tokens = MaterialTheme.tokens
+    Column(Modifier.padding(top = 4.dp).subtaskRail(tokens.hairline)) {
         subtasks.forEach { sub ->
             Row(
-                Modifier.subtaskLine().clickable { ctx.setSubtaskDone(sub, !sub.done) },
+                Modifier.padding(start = RAIL_INSET).fillMaxWidth().heightIn(min = SUBTASK_HEIGHT)
+                    .clip(RoundedCornerShape(8.dp)).clickable { ctx.setSubtaskDone(sub, !sub.done) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RoundCheck(
                     checked = sub.done,
                     onClick = { ctx.setSubtaskDone(sub, !sub.done) },
                     shape = RoundedCornerShape(4.dp),
-                    size = 16,
+                    size = 16.dp,
                 )
                 Text(
                     sub.title,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (sub.done) scheme.onSurfaceVariant else scheme.onSurface,
+                    color = if (sub.done) tokens.ink2 else tokens.ink,
                     textDecoration = if (sub.done) TextDecoration.LineThrough else null,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
-        AddSubtaskLine { ctx.addSubtask(taskId, it) }
     }
 }
 
 /** How far the sub-tasks sit in from the rail, which runs under the title's first letter. */
 private val RAIL_INSET = 6.dp
 private val RAIL_WIDTH = 1.5.dp
+private val SUBTASK_HEIGHT = 40.dp
 
 /** The rail: a short rounded line down the block's left edge, kept clear of its first and last row's ends. */
 private fun Modifier.subtaskRail(color: Color): Modifier = drawBehind {
@@ -242,252 +277,119 @@ private fun Modifier.subtaskRail(color: Color): Modifier = drawBehind {
     drawLine(color, Offset(x, inset), Offset(x, size.height - inset), RAIL_WIDTH.toPx(), StrokeCap.Round)
 }
 
-/** One line in the block, a sub-task or the add line: the same height, inset and press shape. */
-private fun Modifier.subtaskLine(): Modifier =
-    padding(start = RAIL_INSET).fillMaxWidth().heightIn(min = SUBTASK_HEIGHT).clip(RoundedCornerShape(8.dp))
-
-private val SUBTASK_HEIGHT = 40.dp
-
-/**
- * "+ Add a sub-task" under the open sub-tasks. Tapped, it becomes a field; Enter adds and keeps the
- * field ready for the next one; leaving the field closes it.
- */
-@Composable
-internal fun AddSubtaskLine(onAdd: (String) -> Unit) {
-    var editing by remember { mutableStateOf(false) }
-    Row(
-        Modifier.subtaskLine().clickable(enabled = !editing) { editing = true },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Quiet on purpose: it sits under every open list of sub-tasks, so it shouldn't compete with them.
-        // The plus takes the same 40dp column as a sub-task's box, so the two line up.
-        val tint = MaterialTheme.colorScheme.onSurfaceVariant
-        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-            Icon(AppIcons.Add, null, tint = tint, modifier = Modifier.size(16.dp))
-        }
-        if (editing) SubtaskField(onAdd, onClose = { editing = false }) else AddSubtaskHint()
-    }
-}
-
-@Composable
-private fun AddSubtaskHint() {
-    Text(
-        stringResource(R.string.subtask_add_inline),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-/** Takes focus when shown; what's typed is added on Enter and when focus leaves, then [onClose]. */
-@Composable
-private fun RowScope.SubtaskField(onAdd: (String) -> Unit, onClose: () -> Unit) {
-    var draft by remember { mutableStateOf("") }
-    var hadFocus by remember { mutableStateOf(false) }
-    val requester = remember { FocusRequester() }
-    val guarded = rememberGuardedField()
-    val scheme = MaterialTheme.colorScheme
-    val commit = {
-        if (draft.isNotBlank()) onAdd(draft.trim())
-        draft = ""
-    }
-    LaunchedEffect(Unit) { requester.requestFocus() }
-    BasicTextField(
-        value = draft,
-        onValueChange = { draft = it.replace('\n', ' ') },
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodyMedium.copy(color = scheme.onBackground),
-        cursorBrush = SolidColor(scheme.primary),
-        // The hint stays while the field is empty, so an open line still says what it is for.
-        decorationBox = { field ->
-            Box {
-                if (draft.isEmpty()) AddSubtaskHint()
-                field()
-            }
-        },
-        keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.Sentences,
-            imeAction = ImeAction.Done,
-        ),
-        keyboardActions = KeyboardActions(onDone = { commit() }),
-        modifier = Modifier.weight(1f).guarded(guarded).focusRequester(requester).onFocusChanged {
-            if (hadFocus && !it.isFocused) {
-                commit()
-                onClose()
-            }
-            hadFocus = it.isFocused
-        },
-    )
-}
-
-private fun LazyListScope.section(
-    title: Int?,
+/** A titled group of task rows with its count, and at the right an [action] or a quiet [trailing] note. */
+internal fun LazyListScope.section(
+    title: Int,
     tasks: List<Task>,
     ctx: RowContext,
     showDate: Boolean = false,
     action: HeaderAction? = null,
+    trailing: String? = null,
 ) {
     if (tasks.isEmpty()) return
-    if (title != null) {
-        item(key = "h$title") {
-            SectionHeader(
-                stringResource(title),
-                Modifier.animateItem(),
-                trailing = tasks.size.toString(),
-                action = action,
-            )
-        }
+    item(key = "h$title") {
+        SectionHeader(
+            stringResource(title),
+            Modifier.animateItem(),
+            count = tasks.size,
+            trailing = trailing,
+            action = action,
+        )
     }
     items(tasks, key = { it.id }) { task -> TaskItem(task, ctx, ctx.meta(task, showDate), Modifier.animateItem()) }
 }
 
-// Today
+// Completed
 
-/** Share of the screen the "all done" message takes above the completed tasks. */
-private const val ALL_DONE_HEIGHT = 0.55f
+private val COMPLETED_BAR_HEIGHT = 60.dp
 
+/** The bar's right end stays clear for the + button, which sits over it. */
+private val COMPLETED_BAR_END = 92.dp
+
+/**
+ * A page whose done tasks fold into a "Completed 6" bar pinned at its bottom, on the tab bar, rather than
+ * floating after the last row. [pinned] shows the bar (when anything is [done]); tapping it calls [onOpen].
+ * [content] gets the padding its list needs: the page's top, and room above the bar or the page's bottom.
+ */
 @Composable
-fun TodayContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingValues) {
-    val sections by viewModel.todaySections.collectAsStateWithLifecycle()
-    val done by viewModel.completedToday.collectAsStateWithLifecycle()
-    val current = sections ?: return
-    var showDone by rememberSaveable { mutableStateOf(false) }
-    if (current.all.isEmpty() && done.isEmpty()) {
-        EmptyState(
-            stringResource(R.string.today_empty_title),
-            stringResource(R.string.today_empty_body),
-            padding,
-        )
-        return
-    }
-    // Timed tasks first, then the rest, as one group. It gets a header only to set it apart from overdue.
-    val due = current.timed + current.rest
-    val overdueIds = current.overdue.map { it.id }
-    val moveAll = HeaderAction(AppIcons.Reschedule, stringResource(R.string.today_reschedule_overdue)) {
-        ctx.reschedule(overdueIds)
-    }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-        // Everything for today ticked off: say so above what was done, rather than leave a bare header.
-        if (current.all.isEmpty()) {
-            item(key = "allDone") {
-                EmptyState(
-                    stringResource(R.string.today_done_title),
-                    stringResource(R.string.today_done_body),
-                    PaddingValues(0.dp),
-                    Modifier.fillParentMaxHeight(ALL_DONE_HEIGHT),
-                )
-            }
+internal fun PinnedCompletedPage(
+    padding: PaddingValues,
+    done: Int,
+    pinned: Boolean,
+    onOpen: () -> Unit,
+    content: @Composable (PaddingValues) -> Unit,
+) {
+    val top = padding.calculateTopPadding()
+    val bottom = padding.calculateBottomPadding()
+    val showBar = pinned && done > 0
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            // With the bar, the + button reaches only a little above it, so the list needs just that room.
+            val room = if (showBar) AddButtonClearance - COMPLETED_BAR_HEIGHT else bottom
+            content(PaddingValues(top = top, bottom = room.coerceAtLeast(0.dp)))
         }
-        section(R.string.today_section_overdue, current.overdue, ctx, showDate = true, action = moveAll)
-        section(R.string.day_today.takeIf { current.overdue.isNotEmpty() }, due, ctx)
-        completedSection(done, ctx, showDone) { showDone = !showDone }
+        if (showBar) {
+            CompletedBar(done, onOpen)
+            // The page's bottom padding holds the + button's clearance; the bar sits below that, on the tabs.
+            Spacer(Modifier.height((bottom - AddButtonClearance).coerceAtLeast(0.dp)))
+        }
     }
 }
 
-// Upcoming
-
-/** Upcoming: the week strip over one list of days, each picked day jumped to in the list. */
+/** "Completed 6 ⌃" over a top hairline: tapping it opens the done tasks in the list above. */
 @Composable
-fun UpcomingContent(viewModel: TasksViewModel, ctx: RowContext, state: UpcomingState, padding: PaddingValues) {
-    val upcoming by viewModel.upcoming.collectAsStateWithLifecycle()
-    val byDay = upcoming ?: return
-    val days = state.days(byDay.keys)
-    val list = rememberLazyListState()
-    val count = { day: LocalDate -> byDay[day].orEmpty().size }
-    val jump = rememberDayJump(list) { headerIndex(days, count, it).coerceAtLeast(0) }
-    FollowTopDay(list, jump) { dayAt(days, count, it)?.let(state::follow) }
-    Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
-        val actions = WeekStripActions(
-            onHome = {
-                state.home()
-                jump(state.selected)
-            },
-            onPage = { forward -> state.page(forward)?.let(jump) },
-            onWeek = { index -> state.showWeek(index)?.let(jump) },
-            onPick = { day ->
-                state.selected = day
-                jump(day)
-            },
+private fun CompletedBar(count: Int, onOpen: () -> Unit) {
+    val tokens = MaterialTheme.tokens
+    Row(
+        Modifier.fillMaxWidth().background(tokens.background).topHairline(tokens.hairline)
+            .clickable(onClickLabel = stringResource(R.string.completed_show), onClick = onOpen)
+            .height(COMPLETED_BAR_HEIGHT)
+            .padding(start = 20.dp, end = COMPLETED_BAR_END),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.completed_label),
+            style = MaterialTheme.typography.taskTitle,
+            fontWeight = FontWeight.Bold,
+            color = tokens.ink,
         )
-        WeekStrip(state, ctx.today, hasTasks = { count(it) > 0 }, actions)
-        LazyColumn(
-            Modifier.fillMaxSize(),
-            state = list,
-            contentPadding = PaddingValues(bottom = padding.calculateBottomPadding()),
-        ) {
-            days.forEach { day ->
-                upcomingDay(day, byDay[day].orEmpty(), ctx, day == state.selected) { state.follow(day) }
-            }
-        }
+        Text(
+            count.toString(),
+            style = MaterialTheme.typography.meta,
+            fontWeight = FontWeight.SemiBold,
+            color = tokens.ink2,
+        )
+        Icon(AppIcons.ChevronUp, null, tint = tokens.ink2, modifier = Modifier.size(20.dp))
     }
+}
+
+private fun Modifier.topHairline(color: Color): Modifier = drawBehind {
+    drawLine(color, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
 }
 
 /**
- * Scrolls the list to a day's header. While it scrolls, [DayJump.running] is set so the strip doesn't
- * follow the days it passes on the way.
+ * The opened done tasks: a "Completed 6" header with Hide, then the done rows, crossed out with when
+ * each was ticked. Ticking one again reopens it and it goes back up.
  */
-@Stable
-private class DayJump(
-    private val scope: CoroutineScope,
-    private val list: LazyListState,
-    val index: (LocalDate) -> Int,
-) : (LocalDate) -> Unit {
-    var running = false
-        private set
-
-    /** Counts jumps, so a jump cut short by the next one doesn't clear [running] under it. */
-    private var latest = 0
-
-    override fun invoke(day: LocalDate) {
-        val mine = ++latest
-        running = true
-        scope.launch {
-            try {
-                list.animateScrollToItem(index(day))
-            } finally {
-                if (latest == mine) running = false
-            }
-        }
-    }
-}
-
-@Composable
-private fun rememberDayJump(list: LazyListState, index: (LocalDate) -> Int): DayJump {
-    val scope = rememberCoroutineScope()
-    val latest by rememberUpdatedState(index)
-    return remember(list) { DayJump(scope, list) { latest(it) } }
-}
-
-/** As the user scrolls, hands the index of the topmost visible item to [onTop], so the strip follows. */
-@Composable
-private fun FollowTopDay(list: LazyListState, jump: DayJump, onTop: (Int) -> Unit) {
-    val top by rememberUpdatedState(onTop)
-    LaunchedEffect(list) {
-        snapshotFlow { list.firstVisibleItemIndex }.collect { index ->
-            if (list.isScrollInProgress && !jump.running) top(index)
-        }
-    }
-}
-
-/** A day's header: "Tomorrow · Thu 19 Nov". Tapping it picks the day for the add bar. */
-private fun LazyListScope.upcomingDay(
-    day: LocalDate,
-    tasks: List<Task>,
-    ctx: RowContext,
-    picked: Boolean,
-    onPick: () -> Unit,
-) {
-    item(key = "d$day") {
+internal fun LazyListScope.completedSection(done: List<Task>, ctx: RowContext, list: ListLabel, onHide: () -> Unit) {
+    if (done.isEmpty()) return
+    item(key = "completed") {
         SectionHeader(
-            sectionDay(day, ctx.today),
-            Modifier.clickable(onClick = onPick),
-            accent = picked,
-            trailing = tasks.size.takeIf { it > 0 }?.toString(),
+            stringResource(R.string.completed_label),
+            Modifier.animateItem(),
+            count = done.size,
+            action = HeaderAction(
+                stringResource(R.string.completed_hide),
+                AppIcons.ChevronDown,
+                stringResource(R.string.completed_hide_label),
+                onHide,
+            ),
         )
     }
-    items(
-        tasks,
-        key = { it.id },
-    ) { task -> TaskItem(task, ctx, ctx.meta(task, showDate = false), Modifier.animateItem()) }
+    items(done, key = { it.id }) { task ->
+        TaskItem(task, ctx, ctx.meta(task, showDate = false, list = list), Modifier.animateItem())
+    }
 }
 
 // Lists
@@ -510,7 +412,7 @@ private fun ListRow(list: TaskList, open: Int, modifier: Modifier, onClick: () -
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .rowDivider(MaterialTheme.tokens.divider, start = ListTextStart)
+            .rowDivider(MaterialTheme.tokens.hairline, start = ListTextStart)
             .clickable(onClick = onClick)
             .heightIn(min = 52.dp)
             .padding(start = ListTextStart, end = 12.dp),
@@ -575,98 +477,73 @@ private fun NewListField(onCreate: (String) -> Unit) {
     }
 }
 
+/**
+ * One list in manual order, with its done tasks behind the pinned Completed bar. While selecting, each
+ * row gets a drag handle at its right.
+ */
 @Composable
 fun ListContent(viewModel: TasksViewModel, listId: String, ctx: RowContext, padding: PaddingValues) {
     val tasks by remember(listId) { viewModel.listTasks(listId) }.collectAsStateWithLifecycle(null)
     val done by remember(listId) { viewModel.completedInList(listId) }.collectAsStateWithLifecycle(emptyList())
     var showDone by rememberSaveable(listId) { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val reorder = remember(listState) { ReorderState(listState) }
     val current = tasks ?: return
+    LaunchedEffect(current) { reorder.sync(current.map { it.id }) }
     if (current.isEmpty() && done.isEmpty()) {
         EmptyState(
             stringResource(R.string.list_empty_title),
             stringResource(R.string.list_empty_body),
             padding,
-            icon = AppIcons.Checklist,
+            icon = AppIcons.Subtasks,
         )
         return
     }
-    val listState = rememberLazyListState()
-    val reorder = remember(listState) { ReorderState(listState) }
-    LaunchedEffect(current) { reorder.sync(current.map { it.id }) }
-    val byId = current.associateBy { it.id }
-    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = padding) {
-        items(reorder.order.mapNotNull { byId[it] }, key = { it.id }) { task ->
-            val dragging = reorder.dragging == task.id
-            val rowModifier = if (dragging) {
-                Modifier.zIndex(1f).graphicsLayer {
-                    translationY = reorder.offset
-                    shadowElevation = 12f
-                }.background(MaterialTheme.colorScheme.surface)
-            } else {
-                Modifier.animateItem()
-            }
-            // The handles show only while picking tasks, so the list reads as calm as the others.
-            TaskItem(task, ctx, ctx.meta(task, showDate = true, showList = false), rowModifier) {
-                if (ctx.selection.active) {
-                    Icon(
-                        AppIcons.DragHandle,
-                        stringResource(R.string.action_drag),
-                        tint = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(40.dp).padding(8.dp).dragHandle(reorder, task.id, viewModel::reorder),
-                    )
-                }
-            }
+    PinnedCompletedPage(padding, done.size, pinned = !showDone, onOpen = { showDone = true }) { inner ->
+        if (current.isEmpty() && !showDone) {
+            EmptyState(stringResource(R.string.list_done_title), stringResource(R.string.list_done_body), inner)
+            return@PinnedCompletedPage
         }
-        completedSection(done, ctx, showDone, inList = true) { showDone = !showDone }
-    }
-}
-
-/**
- * Done tasks at the bottom, folded into one "Completed · 3" row. Opened, they show crossed out; ticking
- * one again reopens it and it goes back up.
- */
-private fun LazyListScope.completedSection(
-    done: List<Task>,
-    ctx: RowContext,
-    open: Boolean,
-    inList: Boolean = false,
-    onToggle: () -> Unit,
-) {
-    if (done.isEmpty()) return
-    item(key = "completed") { CompletedHeader(done.size, open, onToggle, Modifier.animateItem()) }
-    if (open) {
-        items(done, key = { it.id }) { task ->
-            TaskItem(task, ctx, ctx.meta(task, showDate = true, showList = !inList), Modifier.animateItem())
+        val byId = current.associateBy { it.id }
+        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = inner) {
+            items(reorder.order.mapNotNull { byId[it] }, key = { it.id }) { task ->
+                ReorderableItem(task, ctx, reorder, viewModel::reorder)
+            }
+            if (showDone) completedSection(done, ctx, ListLabel.HIDDEN) { showDone = false }
         }
     }
 }
 
-/** "Completed · 5" with a chevron: a quiet line, no hairline, so done tasks don't compete with open ones. */
+/** A list's row: it follows the finger while dragged, by the handle that shows only while selecting. */
 @Composable
-private fun CompletedHeader(count: Int, open: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
-    val scheme = MaterialTheme.colorScheme
-    val turn by animateFloatAsState(if (open) HALF_TURN else 0f, label = "chevron")
-    Row(
-        modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.completed_toggle), onClick = onToggle)
-            .padding(start = 16.dp, end = 14.dp, top = 14.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            stringResource(R.string.completed_title, count),
-            style = MaterialTheme.typography.labelLarge,
-            color = scheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.width(2.dp))
-        Icon(
-            AppIcons.ChevronDown,
-            null,
-            tint = scheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp).graphicsLayer { rotationZ = turn },
-        )
+private fun LazyItemScope.ReorderableItem(
+    task: Task,
+    ctx: RowContext,
+    reorder: ReorderState,
+    onDrop: (List<String>, List<String>) -> Unit,
+) {
+    val dragging = reorder.dragging == task.id
+    val rowModifier = if (dragging) {
+        Modifier.zIndex(1f).graphicsLayer {
+            translationY = reorder.offset
+            shadowElevation = DRAG_ELEVATION
+        }.background(MaterialTheme.tokens.background)
+    } else {
+        Modifier.animateItem()
+    }
+    TaskItem(task, ctx, ctx.meta(task, showDate = true, list = ListLabel.HIDDEN), rowModifier) {
+        if (ctx.selection.active) {
+            Icon(
+                AppIcons.DragHandle,
+                stringResource(R.string.action_drag),
+                tint = MaterialTheme.tokens.ink3,
+                modifier = Modifier.size(48.dp).padding(12.dp).dragHandle(reorder, task.id, onDrop),
+            )
+        }
     }
 }
 
-private const val HALF_TURN = 180f
+private const val DRAG_ELEVATION = 12f
 
 // Search
 
@@ -694,18 +571,49 @@ fun SearchContent(viewModel: TasksViewModel, ctx: RowContext, padding: PaddingVa
                 icon = AppIcons.Search,
             )
 
-            else -> LazyColumn(
-                Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = padding.calculateBottomPadding()),
-            ) {
-                items(
-                    results,
-                    key = { it.id },
-                ) { task -> TaskItem(task, ctx, ctx.meta(task, showDate = true), Modifier.animateItem()) }
-            }
+            else -> SearchResults(results, query, ctx, padding)
         }
     }
 }
+
+/** The matching tasks, each title with its matches in the add bar's recognised-word colours. */
+@Composable
+private fun SearchResults(results: List<Task>, query: String, ctx: RowContext, padding: PaddingValues) {
+    val tokens = MaterialTheme.tokens
+    val highlight = SpanStyle(background = tokens.highlight, color = tokens.onAccentContainer)
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = padding.calculateBottomPadding())) {
+        items(results, key = { it.id }) { task ->
+            val meta = ctx.meta(task, showDate = true, list = ListLabel.ALWAYS)
+            val title = highlightMatches(task.title, query, highlight)
+            TaskItem(task, ctx, meta, Modifier.animateItem(), title = title)
+        }
+    }
+}
+
+/** Where [query] (trimmed, ignoring case) appears in [text], every time, in order. */
+internal fun matchRanges(text: String, query: String): List<IntRange> {
+    val needle = query.trim()
+    if (needle.isEmpty()) return emptyList()
+    val found = mutableListOf<IntRange>()
+    var from = text.indexOf(needle, ignoreCase = true)
+    while (from >= 0) {
+        found += from until from + needle.length
+        from = text.indexOf(needle, from + needle.length, ignoreCase = true)
+    }
+    return found
+}
+
+/** A search result's title with each match set in [highlight], like a recognised word in the add bar. */
+internal fun highlightMatches(text: String, query: String, highlight: SpanStyle): AnnotatedString =
+    buildAnnotatedString {
+        var at = 0
+        matchRanges(text, query).forEach { range ->
+            append(text.substring(at, range.first))
+            withStyle(highlight) { append(text.substring(range)) }
+            at = range.last + 1
+        }
+        append(text.substring(at))
+    }
 
 @Composable
 private fun SearchField(query: String, onChange: (String) -> Unit, modifier: Modifier) {
@@ -741,5 +649,3 @@ private fun SearchField(query: String, onChange: (String) -> Unit, modifier: Mod
         }
     }
 }
-
-private val MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")

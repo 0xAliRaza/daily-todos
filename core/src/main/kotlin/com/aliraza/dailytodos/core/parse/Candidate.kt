@@ -1,6 +1,7 @@
 package com.aliraza.dailytodos.core.parse
 
 import com.aliraza.dailytodos.core.model.Priority
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -34,6 +35,7 @@ internal class ParseContext(
     val now: LocalDateTime,
     val dayFirst: Boolean,
     val listNames: List<String>,
+    val weekStart: DayOfWeek,
 ) {
     val today: LocalDate = now.toLocalDate()
 

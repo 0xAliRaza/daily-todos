@@ -1,6 +1,7 @@
 package com.aliraza.dailytodos.core.parse
 
 import com.aliraza.dailytodos.core.model.Priority
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -12,6 +13,7 @@ import java.time.LocalTime
  * @property listNames the names of existing lists, for `#name`.
  * @property dayFirst the locale writes numeric dates day first (25/12) rather than month first (12/25).
  * @property excluded character ranges the user tapped to un-recognise; nothing overlapping them is matched.
+ * @property weekStart the first day of the week; "next week" is the day the next week starts on.
  * @property untitled the line holds no title yet, only words to read (the add bar's start words). Its
  *   words are read even with nothing else beside them, and the title stays empty.
  */
@@ -22,6 +24,7 @@ data class QuickAddInput(
     val dayFirst: Boolean = true,
     val excluded: Set<IntRange> = emptySet(),
     val untitled: Boolean = false,
+    val weekStart: DayOfWeek = DayOfWeek.MONDAY,
 )
 
 enum class SpanKind { DATE, TIME, DATE_TIME, PRIORITY, LIST }

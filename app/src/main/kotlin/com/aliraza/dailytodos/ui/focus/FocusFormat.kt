@@ -1,18 +1,10 @@
 package com.aliraza.dailytodos.ui.focus
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.aliraza.dailytodos.R
 import com.aliraza.dailytodos.data.TaskFocusTotal
-import com.aliraza.dailytodos.ui.theme.tokens
 import java.time.Duration
 
 private const val MINUTES_PER_HOUR = 60L
@@ -50,11 +42,3 @@ fun countdown(left: Duration): String {
 }
 
 private const val MILLIS_PER_SECOND = 1_000L
-
-/**
- * A card on the page: the surface colour with a hairline edge. In light mode the surface is as white as
- * the page, so the edge is what shows it.
- */
-@Composable
-fun Modifier.cardSurface(shape: Shape): Modifier =
-    clip(shape).background(MaterialTheme.colorScheme.surface).border(1.dp, MaterialTheme.tokens.divider, shape)

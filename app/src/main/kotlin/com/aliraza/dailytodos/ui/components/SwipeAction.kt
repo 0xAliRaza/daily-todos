@@ -152,13 +152,13 @@ private fun SwipeBackground(offset: Float, armed: SwipeAction?, modifier: Modifi
     val right = offset > 0f
     val tokens = MaterialTheme.tokens
     Box(
-        modifier.background(if (right) tokens.accent else tokens.error).padding(horizontal = 22.dp),
+        modifier.background(if (right) tokens.accent else tokens.danger).padding(horizontal = 22.dp),
         contentAlignment = if (right) Alignment.CenterStart else Alignment.CenterEnd,
     ) {
         Icon(
             if (right) AppIcons.Timer else AppIcons.Delete,
             null,
-            tint = if (right) tokens.onAccent else tokens.onError,
+            tint = if (right) tokens.onAccent else tokens.onDanger,
             modifier = Modifier.size(22.dp).scale(if (armed != null) ARMED_SCALE else 1f),
         )
     }

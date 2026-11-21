@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Add bar -->
+    <string name="add_chip_clear_date">Clear the date</string>
+    <string name="priority_short">P%1$d</string>
+
+    <!-- Task sheet -->
+    <string name="sheet_move">Move to list</string>
+    <string name="sheet_list">List</string>
+    <string name="sheet_priority_none">None</string>
+    <string name="sheet_subtasks_count">Sub-tasks · %1$d/%2$d</string>
+    <string name="sheet_focus_none">No focus yet</string>
+
+    <!-- Date view -->
+    <string name="date_done">Done</string>
+    <string name="date_clears">Clears date and time</string>
+    <string name="date_previous_month">Previous month</string>
+    <string name="date_next_month">Next month</string>
+    <string name="date_time">Time</string>
+    <string name="date_add_time">Add time</string>
+    <string name="date_clear_time">Clear the time</string>
+
+    <!-- Calendar -->
+    <string name="calendar_more">+%1$d</string>
+    <string name="calendar_hidden_short_above">↑%1$d</string>
+    <string name="calendar_hidden_short_below">↓%1$d</string>
+    <string name="calendar_legend_done">Done: no dot</string>
+</resources>

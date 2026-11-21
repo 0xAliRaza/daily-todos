@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Reminder notification buttons. Snooze is a fixed 10 minutes. -->
+    <string name="reminder_action_complete">Complete</string>
+    <string name="reminder_action_snooze">Snooze</string>
+    <!-- Reminder body, ahead of the task's time: "In 10 min · 11:30 AM · Work". -->
+    <string name="reminder_in_minutes">In %1$d min</string>
+    <string name="reminder_in_hours">In %1$d h</string>
+    <!-- The title of the notification Reminder health sends as a test. -->
+    <string name="reminder_test_title">Test reminder</string>
+</resources>

@@ -22,6 +22,7 @@ a public issue. Include the Android version, the phone model and the steps to re
 ## Accepted trade-off
 
 So that reminders still fire after a restart before the phone is first unlocked, the app keeps a small
-file with the titles and times of the next upcoming reminders in device-protected storage. That storage is
-readable before the first unlock, unlike the main database. This is accepted because encryption is not a
-goal of this app; the file holds only upcoming reminders and is rewritten whenever the schedule changes.
+file with the titles, due times and list names of the next upcoming reminders in device-protected
+storage. That storage is readable before the first unlock, unlike the main database. This is accepted
+because encryption is not a goal of this app; the file holds only upcoming reminders and is rewritten
+whenever the schedule changes.

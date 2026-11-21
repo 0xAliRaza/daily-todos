@@ -1,6 +1,7 @@
 package com.aliraza.dailytodos.data.db
 
 import com.aliraza.dailytodos.core.focus.FocusSession
+import com.aliraza.dailytodos.core.model.Accent
 import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.HeadsUp
 import com.aliraza.dailytodos.core.model.Priority
@@ -100,6 +101,8 @@ fun SettingsEntity.toDomain() = Settings(
     breakCustomMinutes = breakCustomMinutes,
     timerSignal = enumOrDefault(timerSignal, TimerSignal.BOTH),
     theme = enumOrDefault(theme, ThemeMode.SYSTEM),
+    accent = enumOrDefault(accent, Accent.INK_BLUE),
+    blackBackground = blackBackground,
     clockFormat = enumOrDefault(clockFormat, ClockFormat.H12),
     weekStart = enumOrDefault(weekStart, WeekStart.PHONE),
     haptics = haptics,
@@ -121,6 +124,8 @@ fun Settings.toEntity() = SettingsEntity(
     breakCustomMinutes = breakCustomMinutes,
     timerSignal = timerSignal.name,
     theme = theme.name,
+    accent = accent.name,
+    blackBackground = blackBackground,
     clockFormat = clockFormat.name,
     weekStart = weekStart.name,
     haptics = haptics,

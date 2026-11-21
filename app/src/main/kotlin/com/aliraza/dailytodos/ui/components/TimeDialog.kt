@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.aliraza.dailytodos.R
 import com.aliraza.dailytodos.core.model.ClockFormat
+import com.aliraza.dailytodos.ui.theme.tokens
 import java.time.LocalTime
 
 /**
@@ -39,7 +40,7 @@ import java.time.LocalTime
 @Composable
 fun TimeDialog(initial: LocalTime, onDismiss: () -> Unit, onPick: (LocalTime) -> Unit, onClear: (() -> Unit)? = null) {
     BasicAlertDialog(onDismissRequest = onDismiss) {
-        Surface(shape = MaterialTheme.shapes.extraLarge, tonalElevation = 6.dp) {
+        Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.tokens.sheet) {
             TimePanel(initial, onDismiss, onPick, onClear)
         }
     }

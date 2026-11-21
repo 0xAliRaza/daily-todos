@@ -17,7 +17,7 @@ object QuickAddParser {
 
     fun parse(input: QuickAddInput): ParseResult {
         val tokens = Tokenizer.tokenize(input.text)
-        val ctx = ParseContext(tokens, input.now, input.dayFirst, input.listNames)
+        val ctx = ParseContext(tokens, input.now, input.dayFirst, input.listNames, input.weekStart)
         val accepted = scan(ctx, input.excluded)
         val title = if (input.untitled) "" else titleWithout(tokens, accepted)
         if (!input.untitled && (accepted.isEmpty() || title.isEmpty())) return ParseResult(title = input.text.trim())

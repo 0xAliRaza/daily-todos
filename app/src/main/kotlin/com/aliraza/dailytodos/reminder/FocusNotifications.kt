@@ -36,7 +36,7 @@ class AndroidFocusSignals(private val context: Context, private val signal: EndS
         val focusEnded = ended.phase == FocusPhase.FOCUS
         val minutes = ended.roundLength?.toMinutes() ?: 0
         val builder = NotificationCompat.Builder(context, NotificationChannels.TIMER_END)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_stat_daily)
             .setColor(context.getColor(if (focusEnded) R.color.notification_rest else R.color.notification_accent))
             .setContentTitle(
                 if (focusEnded) {
@@ -86,7 +86,7 @@ class AndroidFocusSignals(private val context: Context, private val signal: EndS
         NotificationChannels.ensure(context)
         val focusing = timer.phase == FocusPhase.FOCUS
         val builder = NotificationCompat.Builder(context, NotificationChannels.TIMER_RUNNING)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_stat_daily)
             .setColor(context.getColor(if (focusing) R.color.notification_accent else R.color.notification_rest))
             .setContentTitle(title)
             .setOngoing(true)

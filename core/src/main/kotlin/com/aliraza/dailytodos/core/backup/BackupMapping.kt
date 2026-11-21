@@ -1,6 +1,7 @@
 package com.aliraza.dailytodos.core.backup
 
 import com.aliraza.dailytodos.core.focus.FocusSession
+import com.aliraza.dailytodos.core.model.Accent
 import com.aliraza.dailytodos.core.model.ClockFormat
 import com.aliraza.dailytodos.core.model.FiredBy
 import com.aliraza.dailytodos.core.model.HeadsUp
@@ -37,6 +38,8 @@ internal object ToFile {
         breakCustomMinutes = s.breakCustomMinutes,
         timerSignal = s.timerSignal.name,
         theme = s.theme.name,
+        accent = s.accent.name,
+        blackBackground = s.blackBackground,
         clockFormat = s.clockFormat.name,
         weekStart = s.weekStart.name,
         haptics = s.haptics,
@@ -92,6 +95,8 @@ internal object FromFile {
             .also { check(it in Settings.BREAK_MINUTES_RANGE, "settings.breakCustomMinutes") },
         timerSignal = enumOf<TimerSignal>(s.timerSignal, "settings.timerSignal"),
         theme = enumOf<ThemeMode>(s.theme, "settings.theme"),
+        accent = enumOf<Accent>(s.accent, "settings.accent"),
+        blackBackground = s.blackBackground,
         clockFormat = enumOf<ClockFormat>(s.clockFormat, "settings.clockFormat"),
         weekStart = enumOf<WeekStart>(s.weekStart, "settings.weekStart"),
         haptics = s.haptics,

@@ -123,11 +123,16 @@ class TaskRepository(
             val settings = settings.current()
             val now = now()
             val rows = tasks.getMany(ids)
-            val updated = rows.map { row ->
+            // The next free place at the bottom of each list a task moves into, so several tasks moved
+            // together keep their order instead of sharing one position.
+            val nextPosition = mutableMapOf<String, Long>()
+            val updated = rows.sortedBy { it.position }.map { row ->
                 val before = row.toDomain()
                 val after = change(before).copy(id = before.id, updatedAt = now)
                 val moved = if (after.listId != before.listId) {
-                    after.copy(position = (tasks.maxPosition(after.listId) ?: -1) + 1)
+                    val position = nextPosition.getOrPut(after.listId) { (tasks.maxPosition(after.listId) ?: -1) + 1 }
+                    nextPosition[after.listId] = position + 1
+                    after.copy(position = position)
                 } else {
                     after
                 }

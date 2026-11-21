@@ -25,6 +25,8 @@ confirmation. Only files written by this app are accepted. Files from before the
     "breakCustomMinutes": 20,
     "timerSignal": "BOTH",
     "theme": "SYSTEM",
+    "accent": "INK_BLUE",
+    "blackBackground": false,
     "clockFormat": "H12",
     "weekStart": "PHONE",
     "haptics": true,
@@ -54,12 +56,15 @@ confirmation. Only files written by this app are accepted. Files from before the
 - `priority`: 0 none, 1 to 3 (1 is the most urgent). `headsUpMinutes`: 0, 10, 30 or 60.
   `timerSignal`: `SOUND`, `VIBRATE` or `BOTH`. `theme`: `SYSTEM`, `LIGHT` or `DARK`.
   `clockFormat`: `H12` or `H24`. `weekStart`: `PHONE`, `MONDAY` or `SUNDAY`.
+  `accent`: `INK_BLUE`, `VIOLET`, `TEAL` or `GRAPHITE`.
   `firedBy`: `ALARM`, `CATCH_UP` or `BEFORE_UNLOCK`.
 - `focusMinutes` and `focusCustomMinutes` are 1 to 180; `breakMinutes` and `breakCustomMinutes` are 1 to 60.
   The two custom lengths are the timer's fourth chip; a file without them reads as 90 and 20.
 - A file without `clockFormat`, `weekStart` or `haptics` reads them as `H12`, `PHONE` and `true`.
 - `keepScreenOn` keeps the screen awake while a focus round or break counts down; a file without it
   reads `false`.
+- `accent` is the colour of the app's buttons and selection; `blackBackground` gives the dark theme a pure
+  black page. A file without them reads `INK_BLUE` and `false`.
 - Exactly one list has `isDefault: true`.
 - Deleted tasks and lists are not exported. The running focus timer is not exported.
 - `focusSessions` holds the focus time kept per session. `focusedMs` is between 0 and the time from
@@ -81,4 +86,6 @@ default list, invalid UTF-8, and any value this app would never write.
 
 ## Changing the format
 
-Any change to the file is a new version. The app keeps reading every older version it has written.
+A new optional field with a default keeps the version: older files still read, and the field takes its
+default. Removing a field, renaming it or changing what it means is a new version with an upgrade path.
+The app keeps reading every older version it has written.

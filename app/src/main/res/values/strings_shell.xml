@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Undo snackbars that name the one task (or list) they acted on -->
+    <string name="undo_completed_named">“%1$s” completed</string>
+    <string name="undo_reopened_named">“%1$s” marked not done</string>
+    <string name="undo_deleted_named">“%1$s” deleted</string>
+    <string name="undo_rescheduled_named">“%1$s” rescheduled</string>
+    <string name="undo_moved_named">“%1$s” moved to %2$s</string>
+    <plurals name="undo_moved">
+        <item quantity="one">Moved to %2$s</item>
+        <item quantity="other">%1$d tasks moved to %2$s</item>
+    </plurals>
+
+    <!-- Multi-select -->
+    <string name="action_select_all">Select all</string>
+    <string name="action_move">Move</string>
+    <string name="move_title">Move to</string>
+</resources>

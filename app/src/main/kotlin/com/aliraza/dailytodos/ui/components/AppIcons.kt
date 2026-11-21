@@ -1,6 +1,7 @@
 package com.aliraza.dailytodos.ui.components
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -9,162 +10,241 @@ import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
 
 /**
- * The few icons the app uses, as Material Symbols outlines on a 24-unit grid. Kept in code so the app
- * carries no icon library.
+ * The app's icons, drawn the one way the design asks for: outlined, 2-unit strokes with round caps and
+ * joins on a 24-unit grid. Only the selected tab is filled ([selectedTab]). Kept in code so the app
+ * carries no icon library; the shapes are the design boards' own.
  */
 object AppIcons {
-    val Add = icon("Add", "M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z")
-    val Close = icon(
-        "Close",
-        "M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12z",
+    val Add = icon("Add", stroke("M12 5v14M5 12h14"))
+    val Close = icon("Close", stroke("M7 7l10 10M17 7L7 17"))
+    val Check = icon("Check", stroke("M5 12.5l4.5 4.5L19 7.5"))
+    val Back = icon("Back", stroke("M19 12H5.5M11 5.5L4.5 12l6.5 6.5"))
+    val ChevronLeft = icon("ChevronLeft", stroke("M14.5 6l-6 6 6 6"))
+    val ChevronRight = icon("ChevronRight", stroke("M9.5 6l6 6-6 6"))
+    val ChevronDown = icon("ChevronDown", stroke("M7 10l5 5 5-5"))
+    val ChevronUp = icon("ChevronUp", stroke("M6 14.5l6-6 6 6"))
+    val Subtasks = icon("Subtasks", stroke("M6 4v9a3 3 0 0 0 3 3h4"), stroke("M14,16a3,3 0 1,0 6,0a3,3 0 1,0 -6,0z"))
+    val Clock = icon("Clock", stroke("M3.5,12a8.5,8.5 0 1,0 17,0a8.5,8.5 0 1,0 -17,0z"), stroke("M12 7.5V12l3 2"))
+    val Delete = icon("Delete", stroke("M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"))
+    val DragHandle = icon(
+        "DragHandle",
+        stroke("M9 6.5h.01M15 6.5h.01M9 12h.01M15 12h.01M9 17.5h.01M15 17.5h.01", width = 3f),
     )
-    val Check = icon("Check", "M9,16.17L4.83,12l-1.42,1.41L9,19 21,7l-1.41,-1.41z")
-    val Back = icon("Back", "M20,11H7.83l5.59,-5.59L12,4l-8,8 8,8 1.41,-1.41L7.83,13H20v-2z")
-    val ChevronLeft = icon("ChevronLeft", "M15.41,7.41L14,6l-6,6 6,6 1.41,-1.41L10.83,12z")
-    val ChevronRight = icon("ChevronRight", "M10,6L8.59,7.41 13.17,12l-4.58,4.59L10,18l6,-6z")
-    val ChevronDown = icon("ChevronDown", "M16.59,8.59L12,13.17 7.41,8.59 6,10l6,6 6,-6z")
-    val Checklist = icon(
-        "Checklist",
-        "M22,7h-9v2h9V7zM22,15h-9v2h9V15zM5.54,11L2,7.46l1.41,-1.41l2.12,2.12l4.24,-4.24l1.41,1.41L5.54,11z" +
-            "M5.54,19L2,15.46l1.41,-1.41l2.12,2.12l4.24,-4.24l1.41,1.41L5.54,19z",
-    )
-    val Clock = icon(
-        "Clock",
-        "M11.99,2C6.47,2 2,6.48 2,12s4.47,10 9.99,10C17.52,22 22,17.52 22,12S17.52,2 11.99,2zM12,20c-4.42,0 -8," +
-            "-3.58 -8,-8s3.58,-8 8,-8 8,3.58 8,8 -3.58,8 -8,8zM12.5,7H11v6l5.25,3.15 0.75,-1.23 -4.5,-2.67z",
-    )
-    val Delete = icon("Delete", "M6,19c0,1.1 0.9,2 2,2h8c1.1,0 2,-0.9 2,-2V7H6v12zM19,4h-3.5l-1,-1h-5l-1,1H5v2h14V4z")
-    val DragHandle = icon("DragHandle", "M20,9H4v2h16V9zM4,15h16v-2H4v2z")
-    val Flag = icon("Flag", "M14.4,6L14,4H5v17h2v-7h5.6l0.4,2h7V6z")
-    val Send = icon("Send", "M4,12l1.41,1.41L11,7.83V20h2V7.83l5.58,5.59L20,12l-8,-8 -8,8z")
-    val Bell = icon(
-        "Bell",
-        "M12,22c1.1,0 2,-0.9 2,-2h-4c0,1.1 0.89,2 2,2zm6,-6v-5c0,-3.07 -1.64,-5.64 -4.5,-6.32V4c0,-0.83 -0.67," +
-            "-1.5 -1.5,-1.5s-1.5,0.67 -1.5,1.5v0.68C7.63,5.36 6,7.92 6,11v5l-2,2v1h16v-1l-2,-2z",
-    )
+    val Flag = icon("Flag", stroke("M6 21V4M6 4.5h11l-2.5 4.5L17 13.5H6"))
+    val Send = icon("Send", stroke("M4.5 12L20 4.5 16 20l-4-6.5zM12 13.5l8-9"))
+    val Bell = icon("Bell", stroke("M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15zM10 21h4"))
     val Today = icon(
         "Today",
-        "M19,3h-1V1h-2v2H8V1H6v2H5c-1.11,0 -1.99,0.9 -1.99,2L3,19c0,1.1 0.89,2 2,2h14c1.1,0 2,-0.9 2,-2V5c0," +
-            "-1.1 -0.9,-2 -2,-2zm0,16H5V8h14v11zM7,10h5v5H7z",
-    )
-
-    /** A calendar with a turning arrow: move to another day. */
-    val Reschedule = icon(
-        "Reschedule",
-        "M21,12V6c0,-1.1 -0.9,-2 -2,-2h-1V2h-2v2H8V2H6v2H5C3.9,4 3,4.9 3,6v14c0,1.1 0.9,2 2,2h7v-2H5V10h14v2H21z" +
-            "M15.64,20c0.43,1.45 1.77,2.5 3.36,2.5c1.93,0 3.5,-1.57 3.5,-3.5s-1.57,-3.5 -3.5,-3.5c-0.95,0 -1.82," +
-            "0.38 -2.45,1H18V18h-4v-4h1.5v1.43C16.4,14.55 17.64,14 19,14c2.76,0 5,2.24 5,5s-2.24,5 -5,5" +
-            "c-2.42,0 -4.44,-1.72 -4.9,-4H15.64z",
-    )
-    val Upcoming = icon(
-        "Upcoming",
-        "M17,10H7v2h10v-2zM19,3h-1V1h-2v2H8V1H6v2H5c-1.11,0 -1.99,0.9 -1.99,2L3,19c0,1.1 0.89,2 2,2h14c1.1,0 2," +
-            "-0.9 2,-2V5c0,-1.1 -0.9,-2 -2,-2zM19,19H5V8h14v11zM14,14H7v2h7v-2z",
+        stroke(
+            "M6.5,5.5h11a2.5,2.5 0 0,1 2.5,2.5v10a2.5,2.5 0 0,1 -2.5,2.5h-11a2.5,2.5 0 0,1" +
+                " -2.5,-2.5v-10a2.5,2.5 0 0,1 2.5,-2.5z",
+        ),
+        stroke("M4 10h16M8.5 3.5v4M15.5 3.5v4"),
+        fill("M9,13h2a1,1 0 0,1 1,1v2a1,1 0 0,1 -1,1h-2a1,1 0 0,1 -1,-1v-2a1,1 0 0,1 1,-1z"),
     )
     val Calendar = icon(
         "Calendar",
-        "M19,4h-1V2h-2v2H8V2H6v2H5c-1.11,0 -1.99,0.9 -1.99,2L3,20c0,1.1 0.89,2 2,2h14c1.1,0 2,-0.9 2,-2V6c0," +
-            "-1.1 -0.9,-2 -2,-2zm0,16H5V10h14v10zM9,14H7v-2h2v2zm4,0h-2v-2h2v2zm4,0h-2v-2h2v2zm-8,4H7v-2h2v2z" +
-            "m4,0h-2v-2h2v2zm4,0h-2v-2h2v2z",
+        stroke(
+            "M6.5,5.5h11a2.5,2.5 0 0,1 2.5,2.5v10a2.5,2.5 0 0,1 -2.5,2.5h-11a2.5,2.5 0 0,1" +
+                " -2.5,-2.5v-10a2.5,2.5 0 0,1 2.5,-2.5z",
+        ),
+        stroke("M4 10h16M8.5 3.5v4M15.5 3.5v4"),
     )
-    val Lists = icon(
-        "Lists",
-        "M3,13h2v-2H3v2zm0,4h2v-2H3v2zm0,-8h2V7H3v2zm4,4h14v-2H7v2zm0,4h14v-2H7v2zM7,7v2h14V7H7z",
+    val NoDate = icon(
+        "NoDate",
+        stroke(
+            "M6.5,5.5h11a2.5,2.5 0 0,1 2.5,2.5v10a2.5,2.5 0 0,1 -2.5,2.5h-11a2.5,2.5 0 0,1" +
+                " -2.5,-2.5v-10a2.5,2.5 0 0,1 2.5,-2.5z",
+        ),
+        stroke("M4 10h16M8.5 3.5v4M15.5 3.5v4M9.5 13l5 5M14.5 13l-5 5"),
     )
-    val More = icon(
-        "More",
-        "M12,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,10c-1.1,0 -2,0.9 -2,2s0.9,2 2,2 2,-0.9 2,-2" +
-            " -0.9,-2 -2,-2zM12,16c-1.1,0 -2,0.9 -2,2s0.9,2 2,2 2,-0.9 2,-2 -0.9,-2 -2,-2z",
+    val Reschedule = icon(
+        "Reschedule",
+        stroke(
+            "M20 11V7.5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2V18a2 2 0 0 0 2 2h5M4 10h16M8.5 3.5v4M15.5 3.5v4" +
+                "M14.5 17h6.5M18.5 14.5L21 17l-2.5 2.5",
+        ),
     )
-    val Search = icon(
-        "Search",
-        "M15.5,14h-0.79l-0.28,-0.27C15.41,12.59 16,11.11 16,9.5 16,5.91 13.09,3 9.5,3S3,5.91 3,9.5 5.91,16 " +
-            "9.5,16c1.61,0 3.09,-0.59 4.23,-1.57l0.27,0.28v0.79l5,4.99L20.49,19l-4.99,-5zM9.5,14C7.01,14 5," +
-            "11.99 5,9.5S7.01,5 9.5,5 14,7.01 14,9.5 11.99,14 9.5,14z",
+    val Upcoming = icon(
+        "Upcoming",
+        stroke(
+            "M6.5,5.5h11a2.5,2.5 0 0,1 2.5,2.5v10a2.5,2.5 0 0,1 -2.5,2.5h-11a2.5,2.5 0 0,1" +
+                " -2.5,-2.5v-10a2.5,2.5 0 0,1 2.5,-2.5z",
+        ),
+        stroke("M4 10h16M8.5 3.5v4M15.5 3.5v4M8.5 15h6.5M12.8 12.8L15 15l-2.2 2.2"),
     )
+    val Lists = icon("Lists", stroke("M9.5 7h10M9.5 12h10M9.5 17h10M4.5 7h.5M4.5 12h.5M4.5 17h.5"))
+    val More = icon("More", stroke("M12 5.5h.01M12 12h.01M12 18.5h.01", width = 3f))
+    val Search = icon("Search", stroke("M4.5,11a6.5,6.5 0 1,0 13,0a6.5,6.5 0 1,0 -13,0z"), stroke("M16 16l4.5 4.5"))
     val Timer = icon(
         "Timer",
-        "M15,1H9v2h6V1zm-4,13h2V8h-2v6zm8.03,-6.61l1.42,-1.42c-0.43,-0.51 -0.9,-0.99 -1.41,-1.41l-1.42,1.42" +
-            "C16.07,4.74 14.12,4 12,4c-4.97,0 -9,4.03 -9,9s4.02,9 9,9 9,-4.03 9,-9c0,-2.12 -0.74,-4.07 -1.97," +
-            "-5.61zM12,20c-3.87,0 -7,-3.13 -7,-7s3.13,-7 7,-7 7,3.13 7,7 -3.13,7 -7,7z",
+        stroke("M4.5,13.5a7.5,7.5 0 1,0 15,0a7.5,7.5 0 1,0 -15,0z"),
+        stroke("M12 13.5V10M9.5 3h5"),
     )
     val Settings = icon(
         "Settings",
-        "M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 " +
-            "0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 " +
-            "-1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 " +
-            "-0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74," +
-            "8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03," +
-            "1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 " +
-            "1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36," +
-            "-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 " +
-            "0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6," +
-            "1.62 3.6,3.6S13.98,15.6 12,15.6z",
+        stroke(
+            "M12 3.5l1.6 2.2 2.7-.4.9 2.6 2.5 1.1-.4 2.7L21 12l-1.7 2.1.4 2.7-2.5 1.1-.9" +
+                " 2.6-2.7-.4L12 20.5l-1.6-2.2-2.7.4-.9-2.6-2.5-1.1.4-2.7L3 12l1.7-2.1-.4-2.7 2.5-1.1.9-2.6 2.7.4z",
+        ),
+        stroke("M9,12a3,3 0 1,0 6,0a3,3 0 1,0 -6,0z"),
     )
-    val Edit = icon(
-        "Edit",
-        "M3,17.25V21h3.75L17.81,9.94l-3.75,-3.75L3,17.25zM20.71,7.04c0.39,-0.39 0.39,-1.02 0,-1.41l-2.34,-2.34" +
-            "c-0.39,-0.39 -1.02,-0.39 -1.41,0l-1.83,1.83 3.75,3.75 1.83,-1.83z",
-    )
-    val Play = icon("Play", "M8,5v14l11,-7z")
-    val Pause = icon("Pause", "M6,19h4V5H6v14zm8,-14v14h4V5h-4z")
-    val Stop = icon("Stop", "M6,6h12v12H6z")
-    val Remove = icon("Remove", "M19,13H5v-2h14v2z")
-    val Info = icon(
-        "Info",
-        "M11,7h2v2h-2zm0,4h2v6h-2zm1,-9C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zm0,18" +
-            "c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8z",
-    )
-
-    /** An exclamation mark in a ring: something to look at. */
+    val Play = icon("Play", fill("M8 5.5v13l10.5-6.5z"), stroke("M8 5.5v13l10.5-6.5z"))
+    val Pause = icon("Pause", stroke("M9 6v12M15 6v12", width = 2.6f))
+    val Stop = icon("Stop", fill("M8.5,6.5h7a2,2 0 0,1 2,2v7a2,2 0 0,1 -2,2h-7a2,2 0 0,1 -2,-2v-7a2,2 0 0,1 2,-2z"))
+    val Skip = icon("Skip", stroke("M6 6l7 6-7 6zM17 6v12"))
     val Alert = icon(
         "Alert",
-        "M11,15h2v2h-2zm0,-8h2v6h-2zm0.99,-5C6.47,2 2,6.48 2,12s4.47,10 9.99,10C17.52,22 22,17.52 22,12S17.52,2 " +
-            "11.99,2zM12,20c-4.42,0 -8,-3.58 -8,-8s3.58,-8 8,-8 8,3.58 8,8 -3.58,8 -8,8z",
+        stroke("M3.5,12a8.5,8.5 0 1,0 17,0a8.5,8.5 0 1,0 -17,0z"),
+        stroke("M12 7.5v5.5M12 16.5h.01"),
     )
-    val ArrowUp = icon("ArrowUp", "M4,12l1.41,1.41L11,7.83V20h2V7.83l5.58,5.59L20,12l-8,-8 -8,8z")
+    val Alarm = icon(
+        "Alarm",
+        stroke("M4.5,13a7.5,7.5 0 1,0 15,0a7.5,7.5 0 1,0 -15,0z"),
+        stroke("M12 9.5V13l2.5 1.5M4 5l3-2.5M20 5l-3-2.5"),
+    )
+    val Snooze = icon(
+        "Snooze",
+        stroke("M4.5,13a7.5,7.5 0 1,0 15,0a7.5,7.5 0 1,0 -15,0z"),
+        stroke("M9.5 10.5h5l-5 5h5M4 5l3-2.5M20 5l-3-2.5"),
+    )
+    val Battery = icon(
+        "Battery",
+        stroke("M5,7.5h12a2,2 0 0,1 2,2v5a2,2 0 0,1 -2,2h-12a2,2 0 0,1 -2,-2v-5a2,2 0 0,1 2,-2z"),
+        stroke("M21.5 10.5v3M6.5 11.5v1"),
+    )
+    val Moon = icon("Moon", stroke("M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z"))
+    val Move = icon("Move", stroke("M4 7h9M4 12h7M4 17h9M15 12h6M18.5 9.5L21 12l-2.5 2.5"))
+    val Notes = icon("Notes", stroke("M5 6h14M5 11h14M5 16h9"))
+    val ArrowUp = icon("ArrowUp", stroke("M12 19V5.5M6 11l6-6 6 6"))
+    val Cup = icon(
+        "Cup",
+        stroke("M5 9.5h11V15a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4zM16 11.5h1.5a2.5 2.5 0 0 1 0 5H16M8.5 3.5V6M12 3.5V6"),
+    )
+    val CalendarGrid = icon(
+        "CalendarGrid",
+        stroke(
+            "M6.5,5.5h11a2.5,2.5 0 0,1 2.5,2.5v10a2.5,2.5 0 0,1 -2.5,2.5h-11a2.5,2.5 0 0,1" +
+                " -2.5,-2.5v-10a2.5,2.5 0 0,1 2.5,-2.5z",
+        ),
+        stroke("M4 10h16M8.5 3.5v4M15.5 3.5v4"),
+        stroke("M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01", width = 2.6f),
+    )
 
-    /** A keyboard: type the time instead of turning the clock. */
+    /** Minus, for a stepper. */
+    val Remove = icon("Remove", stroke("M5 12h14"))
+
+    /** A pencil: rename. */
+    val Edit = icon("Edit", stroke("M4.5 19.5h4l10-10-4-4-10 10z"), stroke("M13 7l4 4"))
+
+    /** A keyboard: type the time instead of picking it on the dial. */
     val Keyboard = icon(
         "Keyboard",
-        "M20,5H4C2.9,5 2.01,5.9 2.01,7L2,17c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V7C22,5.9 21.1,5 20,5z" +
-            "M11,8h2v2h-2V8zM11,11h2v2h-2V11zM8,8h2v2H8V8zM8,11h2v2H8V11zM7,13H5v-2h2V13zM7,10H5V8h2V10z" +
-            "M16,17H8v-2h8V17zM16,13h-2v-2h2V13zM16,10h-2V8h2V10zM19,13h-2v-2h2V13zM19,10h-2V8h2V10z",
+        stroke(
+            "M5.5,6h13a2.5,2.5 0 0,1 2.5,2.5v7a2.5,2.5 0 0,1 -2.5,2.5h-13a2.5,2.5 0 0,1 -2.5,-2.5v-7" +
+                "a2.5,2.5 0 0,1 2.5,-2.5z",
+        ),
+        stroke("M7 10h.01M10.5 10h.01M14 10h.01M17.5 10h.01M8.5 14.5h7", width = 2.4f),
     )
 
-    /** A steaming mug: keep the screen awake. [CupFilled], with the mug filled in, while it is on. */
-    val Cup = mug("Cup", filled = false)
-    val CupFilled = mug("CupFilled", filled = true)
+    /** The mug filled in: the screen is kept on. */
+    val CupFilled = icon(
+        "CupFilled",
+        fill("M5 9.5h11V15a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z"),
+        stroke("M5 9.5h11V15a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4zM16 11.5h1.5a2.5 2.5 0 0 1 0 5H16M8.5 3.5V6M12 3.5V6"),
+    )
 
-    /** Three wisps of steam rising over a mug with a handle, drawn in rounded 2-unit strokes. */
-    private fun mug(name: String, filled: Boolean): ImageVector {
-        val ink = SolidColor(Color.Black)
-        val stroke = { builder: ImageVector.Builder, path: String ->
-            builder.addPath(
-                pathData = addPathNodes(path),
-                stroke = ink,
-                strokeLineWidth = 2f,
-                strokeLineCap = StrokeCap.Round,
-                strokeLineJoin = StrokeJoin.Round,
-            )
-        }
-        val builder = ImageVector.Builder(name, 24.dp, 24.dp, viewportWidth = 24f, viewportHeight = 24f)
-        val body = "M4,11h12v4.5a4.5,4.5 0 0 1 -4.5,4.5h-3a4.5,4.5 0 0 1 -4.5,-4.5z"
-        if (filled) builder.addPath(pathData = addPathNodes(body), fill = ink)
-        stroke(builder, body)
-        stroke(builder, "M16,12.5h1.5a2.5,2.5 0 0 1 0,5H16")
-        val wisp = "c-0.9,-0.9 0.9,-1.6 0,-2.5c-0.9,-0.9 0.9,-1.6 0,-2.5"
-        stroke(builder, "M7,8${wisp}M10,8${wisp}M13,8$wisp")
-        return builder.build()
+    /**
+     * The app's mark, the through-ring: a ring broken where the tick passes through it. The launcher
+     * icon's 108-unit shape cropped to its middle 72 units, so the ring's centre is the icon's centre.
+     */
+    val Mark = icon(
+        "Mark",
+        stroke("M59.91 33.91A24 24 0 1 1 40.17 12.36", width = 7f),
+        stroke("M23 34.5l9.5 9.5 25-27", width = 7f),
+        viewport = 72f,
+    )
+
+    /** A tab's icon. */
+    enum class Tab { TODAY, UPCOMING, CALENDAR, LISTS }
+
+    fun tab(tab: Tab): ImageVector = when (tab) {
+        Tab.TODAY -> Today
+        Tab.UPCOMING -> Upcoming
+        Tab.CALENDAR -> CalendarGrid
+        Tab.LISTS -> Lists
     }
 
-    private fun icon(name: String, path: String): ImageVector = ImageVector.Builder(
-        name = name,
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
+    /**
+     * The selected tab's filled icon: the body in [ink], the inner detail cut out in [knock] (the colour
+     * of the pill behind it). Drawn with its own colours, so show it with an unspecified tint.
+     */
+    fun selectedTab(tab: Tab, ink: Color, knock: Color): ImageVector {
+        val body = "M6.5 5h11A2.5 2.5 0 0 1 20 7.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4" +
+            " 18.5v-11A2.5 2.5 0 0 1 6.5 5z"
+        val rings = "M8.5 3v3.5M15.5 3v3.5"
+        val parts = when (tab) {
+            Tab.TODAY -> listOf(
+                fill(body, ink),
+                stroke(rings, color = ink),
+                fill(
+                    "M8.7,12h2.6a1.2,1.2 0 0,1 1.2,1.2v2.6a1.2,1.2 0 0,1 -1.2,1.2h-2.6a1.2,1.2 0 0,1 -1.2,-1.2v-2.6" +
+                        "a1.2,1.2 0 0,1 1.2,-1.2z",
+                    knock,
+                ),
+            )
+
+            Tab.UPCOMING -> listOf(
+                fill(body, ink),
+                stroke(rings, color = ink),
+                stroke("M8.5 15h6.5M12.8 12.8L15 15l-2.2 2.2", color = knock),
+            )
+
+            Tab.CALENDAR -> listOf(
+                fill(body, ink),
+                stroke(rings, color = ink),
+                stroke("M8 13h.01M12 13h.01M16 13h.01M8 16.5h.01M12 16.5h.01", width = 2.8f, color = knock),
+            )
+
+            Tab.LISTS -> listOf(
+                stroke("M9.5 7h10M9.5 12h10M9.5 17h10", width = 2.6f, color = ink),
+                fill("M3.3,7a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0z", ink),
+                fill("M3.3,12a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0z", ink),
+                fill("M3.3,17a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0z", ink),
+            )
+        }
+        return icon("Selected$tab", *parts.toTypedArray())
+    }
+
+    /** One drawn part of an icon: a stroked outline or a filled shape. */
+    private class Part(val data: String, val filled: Boolean, val width: Float, val color: Color)
+
+    private fun stroke(data: String, width: Float = STROKE, color: Color = Color.Black) = Part(
+        data,
+        false,
+        width,
+        color,
     )
-        .addPath(pathData = addPathNodes(path), fill = SolidColor(Color.Black))
-        .build()
+
+    private fun fill(data: String, color: Color = Color.Black) = Part(data, true, 0f, color)
+
+    private fun icon(name: String, vararg parts: Part, viewport: Float = GRID): ImageVector =
+        ImageVector.Builder(name, 24.dp, 24.dp, viewport, viewport).apply {
+            parts.forEach { part ->
+                if (part.filled) {
+                    addPath(addPathNodes(part.data), pathFillType = PathFillType.NonZero, fill = SolidColor(part.color))
+                } else {
+                    addPath(
+                        addPathNodes(part.data),
+                        stroke = SolidColor(part.color),
+                        strokeLineWidth = part.width,
+                        strokeLineCap = StrokeCap.Round,
+                        strokeLineJoin = StrokeJoin.Round,
+                    )
+                }
+            }
+        }.build()
+
+    private const val GRID = 24f
+    private const val STROKE = 2f
 }

@@ -1,11 +1,15 @@
 package com.aliraza.dailytodos.ui
 
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.Transition
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -16,23 +20,18 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
@@ -51,6 +50,8 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -58,22 +59,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,7 +80,9 @@ import com.aliraza.dailytodos.ui.calendar.CalendarContent
 import com.aliraza.dailytodos.ui.calendar.CalendarState
 import com.aliraza.dailytodos.ui.components.AddOptions
 import com.aliraza.dailytodos.ui.components.AppIcons
+import com.aliraza.dailytodos.ui.components.HeaderCollapse
 import com.aliraza.dailytodos.ui.components.KeyboardGuardBox
+import com.aliraza.dailytodos.ui.components.LargeHeader
 import com.aliraza.dailytodos.ui.components.LocalWeekStart
 import com.aliraza.dailytodos.ui.components.Notice
 import com.aliraza.dailytodos.ui.components.NoticeCard
@@ -93,11 +90,13 @@ import com.aliraza.dailytodos.ui.components.QuickAddBar
 import com.aliraza.dailytodos.ui.components.QuickAddState
 import com.aliraza.dailytodos.ui.components.due
 import com.aliraza.dailytodos.ui.components.longDateLabel
+import com.aliraza.dailytodos.ui.components.rememberHeaderCollapse
 import com.aliraza.dailytodos.ui.components.startWords
 import com.aliraza.dailytodos.ui.components.switchedOffWhen
 import com.aliraza.dailytodos.ui.focus.FocusScreen
 import com.aliraza.dailytodos.ui.focus.FocusViewModel
 import com.aliraza.dailytodos.ui.focus.NowFocusingBar
+import com.aliraza.dailytodos.ui.focus.barActions
 import com.aliraza.dailytodos.ui.settings.FocusStatsScreen
 import com.aliraza.dailytodos.ui.settings.HealthScreen
 import com.aliraza.dailytodos.ui.settings.SettingsScreen
@@ -117,6 +116,7 @@ import com.aliraza.dailytodos.ui.tasks.rememberRowContext
 import com.aliraza.dailytodos.ui.theme.tokens
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
+import android.graphics.Color as AndroidColor
 
 @Composable
 fun AppRoot(
@@ -129,6 +129,7 @@ fun AppRoot(
     val nav = rememberNavigation()
     var sheetTask by rememberSaveable { mutableStateOf<String?>(null) }
     var rescheduling by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    var moving by rememberSaveable { mutableStateOf<List<String>?>(null) }
     val route = nav.route
     val selection = remember { Selection() }
     // Read through derivedStateOf so the root recomposes when the date turns, not every minute.
@@ -138,6 +139,7 @@ fun AppRoot(
     val upcoming = remember(today, weekStart) { UpcomingState(today, weekStart) }
     val calendar = remember { CalendarState(tasks.now.value.toLocalDate()) }
     LaunchedEffect(route) { selection.clear() }
+    SystemBarsFollowTheme()
     OpenedEffect(
         opened,
         onTask = { sheetTask = it },
@@ -162,13 +164,26 @@ fun AppRoot(
     val canAdd = showsAdd(route) && !selection.active
     val addContext = contextDate(route, upcoming, calendar)
     val addStart = rememberStartWords(tasks, route, addContext)
-    val topBar: @Composable (String) -> Unit = { shown ->
-        // A page sliding away keeps its title; only the page in front shows the selection.
-        RootTopBar(shown, selection.active && shown == route, selection, tasks, nav) {
-            if (it.isNotEmpty()) rescheduling = ArrayList(it)
+    val topBar: @Composable (String, HeaderCollapse) -> Unit = { shown, collapse ->
+        // A page sliding away keeps its title; only the page in front shows the selection, fading in.
+        AnimatedContent(
+            selection.active && shown == route,
+            transitionSpec = { fadeIn(tween(QUICK_MS)) togetherWith fadeOut(tween(QUICK_MS)) },
+            label = "topBar",
+        ) { selecting ->
+            if (selecting) {
+                SelectionHeader(selection, rememberVisibleIds(shown, tasks, calendar))
+            } else {
+                TopBar(shown, collapse, tasks, nav)
+            }
         }
     }
+    val selectionActions = selectionActions(selection, tasks, onMove = { moving = it }) {
+        if (it.isNotEmpty()) rescheduling = ArrayList(it)
+    }
 
+    val addLift = remember { mutableStateOf(0.dp) }
+    val lifted by animateDpAsState(addLift.value, label = "addLift")
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
@@ -179,7 +194,7 @@ fun AppRoot(
                 visible = canAdd && !quickAdd.open,
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(),
                 exit = scaleOut(tween(QUICK_MS)) + fadeOut(tween(QUICK_MS)),
-            ) { AddButton { quickAdd.show(addStart) } }
+            ) { AddButton(Modifier.padding(bottom = lifted)) { quickAdd.show(addStart) } }
         },
         bottomBar = {
             BottomBars(
@@ -188,6 +203,7 @@ fun AppRoot(
                 picking = quickAdd.picking,
                 onTab = nav::tab,
                 nowFocusing = nowFocusing(focus, route, nav::openFocus),
+                selecting = selectionActions.takeIf { selection.active },
             ) {
                 AddBar(tasks, quickAdd, route, addContext)
             }
@@ -195,9 +211,20 @@ fun AppRoot(
     ) { padding ->
         val screens = Screens(tasks, settings, focus, ctx, upcoming, calendar, nav)
         val onTab = nav::tab.takeIf { !selection.active && !quickAdd.open }
-        Pages(pages, screens, topBar, padding, PageInput(route, quickAdd.focused, quickAdd.open, tabSeek, onTab))
+        CompositionLocalProvider(LocalAddButtonLift provides addLift) {
+            Pages(pages, screens, topBar, padding, PageInput(route, quickAdd.focused, quickAdd.open, tabSeek, onTab))
+        }
     }
     rescheduling?.let { ids -> RescheduleHost(tasks, ids) { rescheduling = null } }
+    moving?.let { ids ->
+        MoveSheet(
+            tasks,
+            onPick = { list ->
+                tasks.moveToList(ids, list)
+                selection.clear()
+            },
+        ) { moving = null }
+    }
     sheetTask?.let { id ->
         TaskSheetHost(tasks, focus, id, onFocus = { nav.openFocus(id) }) { sheetTask = null }
     }
@@ -235,7 +262,7 @@ private fun nowFocusing(focus: FocusViewModel, route: String, onOpen: (String) -
     val title by focus.activeTitle.collectAsStateWithLifecycle()
     val taskId = timer.taskId
     if (!timer.isActive || taskId == null || route == Route.focus(taskId)) return null
-    return { NowFocusingBar(timer, title.orEmpty(), focus::now) { onOpen(taskId) } }
+    return { NowFocusingBar(timer, title.orEmpty(), focus::now, focus.barActions()) { onOpen(taskId) } }
 }
 
 /** Whether [route] has the + button that adds tasks: the dated views and every list. */
@@ -244,25 +271,50 @@ private fun showsAdd(route: String): Boolean = route in Route.takesTasks || rout
 /** Whether [route] keeps room at its bottom for the + button: only while the button shows. */
 internal fun clearsAddButton(route: String, addBarOpen: Boolean): Boolean = showsAdd(route) && !addBarOpen
 
-/** The selection bar while [selecting] several tasks, else [route]'s title bar. */
-@Composable
-private fun RootTopBar(
-    route: String,
-    selecting: Boolean,
+/** The bottom bar's actions on the picked tasks; Move keeps the pick until a list is chosen. */
+private fun selectionActions(
     selection: Selection,
     tasks: TasksViewModel,
-    nav: Navigation,
+    onMove: (List<String>) -> Unit,
     onReschedule: (Collection<String>) -> Unit,
-) {
-    // The selection bar fades in over the title rather than replacing it in one frame.
-    AnimatedContent(
-        selecting,
-        transitionSpec = { fadeIn(tween(QUICK_MS)) togetherWith fadeOut(tween(QUICK_MS)) },
-        label = "topBar",
-    ) { selectingNow ->
-        if (selectingNow) SelectionBar(selection, tasks, onReschedule) else TopBar(route, tasks, nav::back, nav::open)
+): @Composable () -> Unit = {
+    SelectionActions(
+        onComplete = {
+            tasks.setDone(selection.ids, done = true)
+            selection.clear()
+        },
+        onReschedule = {
+            onReschedule(selection.ids)
+            selection.clear()
+        },
+        onMove = { onMove(selection.ids.toList()) },
+        onDelete = {
+            tasks.delete(selection.ids)
+            selection.clear()
+        },
+    )
+}
+
+/**
+ * Status and navigation bar icons dark on a light theme and light on a dark one, following the app's
+ * own theme rather than the phone's, which differ when a theme is picked in settings.
+ */
+@Composable
+private fun SystemBarsFollowTheme() {
+    val activity = LocalActivity.current as? ComponentActivity ?: return
+    val dark = MaterialTheme.tokens.background.luminance() < HALF_LUMINANCE
+    LaunchedEffect(activity, dark) {
+        activity.enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { dark },
+            navigationBarStyle = SystemBarStyle.auto(LIGHT_SCRIM, DARK_SCRIM) { dark },
+        )
     }
 }
+
+/** The scrims Android's own edge-to-edge default puts behind three-button navigation. */
+private const val LIGHT_SCRIM = 0xE6FFFFFF.toInt()
+private const val DARK_SCRIM = 0x801B1B1B.toInt()
+private const val HALF_LUMINANCE = 0.5f
 
 /**
  * The pages of the back stack, each its [topBar] over its screen, moved as one by [transition] while the
@@ -273,7 +325,7 @@ private fun RootTopBar(
 private fun Pages(
     transition: Transition<List<String>>,
     screens: Screens,
-    topBar: @Composable (String) -> Unit,
+    topBar: @Composable (String, HeaderCollapse) -> Unit,
     padding: PaddingValues,
     input: PageInput,
 ) {
@@ -285,17 +337,22 @@ private fun Pages(
         modifier = Modifier.tabSwipe(input.tabSeek, input.route, input.onTab),
     ) { stack ->
         val shown = stack.last()
+        // Each page folds its own header as its content scrolls.
+        val collapse = rememberHeaderCollapse()
         Scaffold(
-            modifier = Modifier.graphicsLayer { translationX = input.tabSeek.stretch },
-            topBar = { topBar(shown) },
+            modifier = Modifier
+                .graphicsLayer { translationX = input.tabSeek.stretch }
+                .nestedScroll(collapse.connection),
+            topBar = { topBar(shown, collapse) },
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0),
         ) { inner ->
-            val page = PaddingValues(top = inner.calculateTopPadding(), bottom = padding.calculateBottomPadding())
-            KeyboardGuardBox(alsoWhen = input.typing) {
-                val clear = clearsAddButton(shown, input.addBarOpen)
-                RouteContent(shown, screens, if (clear) page.clearOfAddButton() else page)
-            }
+            val clear = clearsAddButton(shown, input.addBarOpen)
+            val page = PaddingValues(
+                top = inner.calculateTopPadding(),
+                bottom = pageBottom(padding.calculateBottomPadding(), clear),
+            )
+            KeyboardGuardBox(alsoWhen = input.typing) { RouteContent(shown, screens, page) }
         }
     }
 }
@@ -332,29 +389,45 @@ private fun OpenedEffect(
 
 /** The round + that opens the add bar. */
 @Composable
-private fun AddButton(onClick: () -> Unit) {
+private fun AddButton(modifier: Modifier, onClick: () -> Unit) {
     FloatingActionButton(
         onClick = onClick,
+        modifier = modifier,
         shape = CircleShape,
         containerColor = MaterialTheme.tokens.accent,
         contentColor = MaterialTheme.tokens.onAccent,
     ) {
-        Icon(AppIcons.Add, stringResource(R.string.add_placeholder), modifier = Modifier.size(28.dp))
+        Icon(AppIcons.Add, stringResource(R.string.add_placeholder), modifier = Modifier.size(24.dp))
     }
 }
 
-/** Room under the last row, so the + button never covers it. */
+/**
+ * Room under a page's last row: the [bars] below it (tabs, the now-focusing bar, the add bar), and room
+ * for the + button over them while it [clearsButton], so the button never covers the last row.
+ */
+internal fun pageBottom(bars: Dp, clearsButton: Boolean): Dp = if (clearsButton) bars + AddButtonClearance else bars
+
+/** How far the page in front lifts the + button; see [LiftAddButton]. */
+internal val LocalAddButtonLift = staticCompositionLocalOf { mutableStateOf(0.dp) }
+
+/**
+ * Lifts the + button by [by] while the calling page shows, so it clears a bar pinned at the page's
+ * bottom (the Completed bar) instead of covering it. The snackbar rises with it.
+ */
 @Composable
-private fun PaddingValues.clearOfAddButton(): PaddingValues = PaddingValues(
-    top = calculateTopPadding(),
-    bottom = calculateBottomPadding() + AddButtonClearance,
-)
+internal fun LiftAddButton(by: Dp) {
+    val lift = LocalAddButtonLift.current
+    DisposableEffect(lift, by) {
+        lift.value = by
+        onDispose { lift.value = 0.dp }
+    }
+}
 
 /** Quick exits and fades: the + button, the add bar leaving, the selection bar. */
 private const val QUICK_MS = 150
 
-/** Room left under a screen's content so its last rows can scroll clear of the round add button. */
-internal val AddButtonClearance = 80.dp
+/** The 56 dp + button with 16 dp over and under it: what a page's last row scrolls clear of. */
+internal val AddButtonClearance = 88.dp
 
 /** What the screens need from the shell. */
 private class Screens(
@@ -392,7 +465,10 @@ private fun RouteContent(route: String, s: Screens, padding: PaddingValues) {
             onGone = s.nav::back,
         )
 
-        route == Route.TODAY -> TodayContent(s.tasks, s.ctx, padding)
+        route == Route.TODAY -> TodayContent(s.tasks, s.ctx, padding) {
+            s.upcoming.home()
+            s.nav.tab(Route.UPCOMING)
+        }
 
         route == Route.UPCOMING -> UpcomingContent(s.tasks, s.ctx, s.upcoming, padding)
 
@@ -428,6 +504,7 @@ private fun BottomBars(
     picking: Boolean,
     onTab: (String) -> Unit,
     nowFocusing: (@Composable () -> Unit)?,
+    selecting: (@Composable () -> Unit)?,
     addBar: @Composable () -> Unit,
 ) {
     val typing = WindowInsets.isImeVisible
@@ -443,14 +520,18 @@ private fun BottomBars(
     }
     Column(room?.let { Modifier.windowInsetsPadding(it) } ?: Modifier) {
         val raised = typing || held
-        val focusing = nowFocusing.takeIf { !showAdd && !raised }
+        // While picking tasks their actions take the tabs' place, on every screen.
+        val actions = selecting.takeIf { !raised }
+        val focusing = nowFocusing.takeIf { !showAdd && !raised && actions == null }
         AnimatedVisibility(
             visible = showAdd,
             enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
             exit = shrinkVertically(tween(QUICK_MS), shrinkTowards = Alignment.Bottom) + fadeOut(tween(QUICK_MS)),
         ) { addBar() }
         focusing?.invoke()
-        if (route in Route.top && !raised) {
+        if (actions != null) {
+            actions()
+        } else if (route in Route.top && !raised) {
             TabBar(route, onTab)
         } else if (showAdd || focusing != null) {
             Spacer(Modifier.navigationBarsPadding())
@@ -477,8 +558,7 @@ private fun UndoSnackbars(tasks: TasksViewModel, host: SnackbarHostState) {
     val undoLabel = stringResource(R.string.action_undo)
     LaunchedEffect(tasks) {
         tasks.undo.collectLatest { event ->
-            val message = resources.getQuantityString(event.message, event.count, event.count)
-            val result = host.showSnackbar(Notice(message, actionLabel = undoLabel))
+            val result = host.showSnackbar(Notice(event.text(resources), actionLabel = undoLabel))
             if (result == SnackbarResult.ActionPerformed) event.undo()
         }
     }
@@ -538,39 +618,28 @@ private fun AddBar(tasks: TasksViewModel, state: QuickAddState, route: String, c
     )
 }
 
+/**
+ * [route]'s header: the large title over its subtitle (the date on Today, the open count in a list),
+ * folding with [collapse]. Tabs carry search and settings; pushed pages a back arrow, a list its menu.
+ * The timer has only the back arrow: the task's own title heads its page.
+ */
 @Composable
-private fun TopBar(route: String, tasks: TasksViewModel, onBack: () -> Unit, onOpen: (String) -> Unit) {
-    val now by tasks.now.collectAsStateWithLifecycle()
+private fun TopBar(route: String, collapse: HeaderCollapse, tasks: TasksViewModel, nav: Navigation) {
     val lists by tasks.lists.collectAsStateWithLifecycle()
     val list = route.listId()?.let { id -> lists.firstOrNull { it.id == id } }
     var renaming by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
-    val title = list?.name ?: stringResource(titleOf(route))
     val top = route in Route.top
-    // A list is a place of its own, so it gets the same large title as the tabs.
-    val large = top || list != null
-    val headroom = if (large) titleHeadroom(windowHeight()) else 0.dp
-    // Opaque up to the screen's top edge, so rows scrolled up pass under it instead of showing through.
-    Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(
-            start = if (top) 16.dp else 4.dp,
-            end = 4.dp,
-            top = 8.dp + headroom,
-            bottom = 4.dp,
-        ),
-        verticalAlignment = Alignment.CenterVertically,
+    val timer = route.focusTaskId() != null
+    LargeHeader(
+        title = if (timer) "" else list?.name ?: stringResource(titleOf(route)),
+        subtitle = subtitleOf(route, tasks),
+        collapse = collapse,
+        large = !timer,
+        navigation = if (top) null else ({ BackButton(nav::back) }),
     ) {
-        if (!top) {
-            IconButton(onClick = onBack) { Icon(AppIcons.Back, stringResource(R.string.action_back)) }
-        }
-        TitleBlock(
-            title = title,
-            subtitle = longDateLabel(now.toLocalDate()).takeIf { route == Route.TODAY },
-            large = large,
-            modifier = Modifier.weight(1f),
-        )
         if (list != null) ListMenu(list, onRename = { renaming = true }) { deleting = true }
-        if (top) TopActions(onOpen)
+        if (top) TopActions(nav::open)
     }
     if (renaming && list != null) {
         RenameDialog(list.name, onDismiss = { renaming = false }) { tasks.renameList(list.id, it) }
@@ -578,15 +647,42 @@ private fun TopBar(route: String, tasks: TasksViewModel, onBack: () -> Unit, onO
     if (deleting && list != null) {
         DeleteListDialog(list.name, onDismiss = { deleting = false }) {
             tasks.deleteList(list.id)
-            onBack()
+            nav.back()
         }
     }
 }
 
-/** The icons at the right of a top-level title: search and settings. */
+/** The line under a large title: the long date on Today, "5 open" in a list, nothing elsewhere. */
+@Composable
+private fun subtitleOf(route: String, tasks: TasksViewModel): String? {
+    val listId = route.listId()
+    return when {
+        route == Route.TODAY -> {
+            val now by tasks.now.collectAsStateWithLifecycle()
+            longDateLabel(now.toLocalDate())
+        }
+
+        listId != null -> {
+            val counts by tasks.listCounts.collectAsStateWithLifecycle()
+            val open = counts[listId] ?: 0
+            pluralStringResource(R.plurals.list_open_count, open, open)
+        }
+
+        else -> null
+    }
+}
+
+@Composable
+private fun BackButton(onBack: () -> Unit) {
+    IconButton(onClick = onBack) {
+        Icon(AppIcons.Back, stringResource(R.string.action_back), tint = MaterialTheme.tokens.ink)
+    }
+}
+
+/** The icons at the right of a tab's header: search and settings. */
 @Composable
 private fun TopActions(onOpen: (String) -> Unit) {
-    val tint = MaterialTheme.colorScheme.onSurfaceVariant
+    val tint = MaterialTheme.tokens.ink
     IconButton(onClick = { onOpen(Route.SEARCH) }) {
         Icon(AppIcons.Search, stringResource(R.string.search_title), tint = tint)
     }
@@ -601,7 +697,7 @@ private fun ListMenu(list: TaskList, onRename: () -> Unit, onDelete: () -> Unit)
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
-            Icon(AppIcons.More, stringResource(R.string.action_more), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(AppIcons.More, stringResource(R.string.action_more), tint = MaterialTheme.tokens.ink)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
@@ -648,39 +744,6 @@ private fun DeleteListDialog(name: String, onDismiss: () -> Unit, onDelete: () -
     )
 }
 
-@Composable
-private fun TitleBlock(title: String, subtitle: String?, large: Boolean, modifier: Modifier) {
-    Column(modifier) {
-        Text(
-            title,
-            style = if (large) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (subtitle != null) {
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun windowHeight(): Dp = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
-
-/**
- * Space above a large title, so on a tall phone the first rows sit lower, nearer the thumb. Nothing on a
- * short screen; it grows with the height and stops at [MAX_HEADROOM].
- */
-internal fun titleHeadroom(windowHeight: Dp): Dp =
-    ((windowHeight - SHORT_SCREEN) * HEADROOM_SHARE).coerceIn(0.dp, MAX_HEADROOM)
-
-private val SHORT_SCREEN = 640.dp
-private const val HEADROOM_SHARE = 0.16f
-private val MAX_HEADROOM = 48.dp
-
 private fun titleOf(route: String): Int = when (route) {
     Route.TODAY -> R.string.today_title
     Route.UPCOMING -> R.string.upcoming_title
@@ -708,80 +771,4 @@ private fun RenameDialog(current: String, onDismiss: () -> Unit, onRename: (Stri
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
-}
-
-@Composable
-private fun SelectionBar(selection: Selection, tasks: TasksViewModel, onReschedule: (Collection<String>) -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Row(
-        Modifier.fillMaxWidth().background(
-            scheme.primaryContainer,
-        ).statusBarsPadding().padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(
-            onClick = selection::clear,
-        ) { Icon(AppIcons.Close, stringResource(R.string.action_cancel), tint = scheme.onPrimaryContainer) }
-        Text(
-            pluralStringResource(R.plurals.selected_count, selection.ids.size, selection.ids.size),
-            style = MaterialTheme.typography.titleMedium,
-            color = scheme.onPrimaryContainer,
-            modifier = Modifier.weight(1f).padding(start = 8.dp),
-        )
-        IconButton(onClick = {
-            onReschedule(selection.ids)
-            selection.clear()
-        }) { Icon(AppIcons.Reschedule, stringResource(R.string.action_reschedule), tint = scheme.onPrimaryContainer) }
-        IconButton(onClick = {
-            tasks.setDone(selection.ids, done = true)
-            selection.clear()
-        }) { Icon(AppIcons.Check, stringResource(R.string.action_complete), tint = scheme.onPrimaryContainer) }
-        IconButton(onClick = {
-            tasks.delete(selection.ids)
-            selection.clear()
-        }) { Icon(AppIcons.Delete, stringResource(R.string.action_delete), tint = scheme.onPrimaryContainer) }
-    }
-}
-
-@Composable
-private fun TabBar(route: String, onTab: (String) -> Unit) {
-    val items = listOf(
-        Triple(Route.TODAY, AppIcons.Today, R.string.today_title),
-        Triple(Route.UPCOMING, AppIcons.Upcoming, R.string.upcoming_title),
-        Triple(Route.CALENDAR, AppIcons.Calendar, R.string.calendar_title),
-        Triple(Route.LISTS, AppIcons.Lists, R.string.lists_title),
-    )
-    Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)
-            .topHairline(MaterialTheme.tokens.divider).navigationBarsPadding().padding(vertical = 2.dp),
-    ) {
-        items.forEach { (target, icon, label) ->
-            Tab(icon, stringResource(label), selected = route == target) { onTab(target) }
-        }
-    }
-}
-
-@Composable
-private fun RowScope.Tab(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val tint by animateColorAsState(if (selected) scheme.secondary else scheme.onSurfaceVariant, label = "tab")
-    val text = tint
-    Column(
-        Modifier.weight(1f).clickable(role = Role.Tab, onClick = onClick).padding(top = 8.dp, bottom = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.height(3.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            color = text,
-        )
-    }
-}
-
-/** A hairline along the top edge. */
-private fun Modifier.topHairline(color: Color): Modifier = drawBehind {
-    drawLine(color, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx() / 2)
 }

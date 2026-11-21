@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -25,14 +26,15 @@ class QuickAddParserTableTest(private val row: Row) {
         val list: String? = null,
         val dayFirst: Boolean = true,
         val newList: Boolean = false,
+        val weekStart: DayOfWeek = DayOfWeek.MONDAY,
     ) {
-        override fun toString() = "\"$input\""
+        override fun toString() = "\"$input\"" + if (weekStart == DayOfWeek.MONDAY) "" else " ($weekStart)"
     }
 
     @Test
     fun parses() {
         val result = QuickAddParser.parse(
-            QuickAddInput(row.input, NOW, listNames = LISTS, dayFirst = row.dayFirst),
+            QuickAddInput(row.input, NOW, listNames = LISTS, dayFirst = row.dayFirst, weekStart = row.weekStart),
         )
         val expected = listOf(row.title, row.date?.let(LocalDate::parse), row.time?.let(LocalTime::parse))
         val actual = listOf(result.title, result.date, result.time)
@@ -46,6 +48,7 @@ class QuickAddParserTableTest(private val row: Row) {
         val NOW: LocalDateTime = LocalDateTime.of(2026, 11, 18, 10, 30)
         val LISTS = listOf("Daily", "Groceries", "Events", "Weekend chores")
         private const val TODAY = "2026-11-18"
+        private const val YESTERDAY = "2026-11-17"
         private const val TOMORROW = "2026-11-19"
         private const val FRIDAY = "2026-11-20"
 
@@ -53,7 +56,8 @@ class QuickAddParserTableTest(private val row: Row) {
 
         @JvmStatic
         @Parameterized.Parameters(name = "{0}")
-        fun rows(): List<Row> = relativeDays + weekdays + dates + times + dayParts + offsets + tags + mixed + sentences
+        fun rows(): List<Row> =
+            relativeDays + nextWeek + weekdays + dates + times + dayParts + offsets + tags + mixed + sentences
 
         private val relativeDays = listOf(
             Row("Call bank tomorrow", "Call bank", TOMORROW),
@@ -78,6 +82,26 @@ class QuickAddParserTableTest(private val row: Row) {
             none("tomorrow"),
             none("tonight"),
             none("Tomorrowland tickets"),
+            Row("Call bank yesterday", "Call bank", YESTERDAY),
+            Row("Call bank by yesterday", "Call bank", YESTERDAY),
+            Row("yesterday call bank", "call bank", YESTERDAY),
+            Row("Call bank yesterday 4pm", "Call bank", YESTERDAY, "16:00"),
+            none("Read Yesterday book"),
+            none("yesterday"),
+        )
+
+        /** "next week" is the start of next week, the same day as the date sheet's Next week. */
+        private val nextWeek = listOf(
+            Row("Plan trip next week", "Plan trip", "2026-11-23"),
+            Row("Plan trip by next week", "Plan trip", "2026-11-23"),
+            Row("next week plan trip", "plan trip", "2026-11-23"),
+            Row("Plan trip next week 9am", "Plan trip", "2026-11-23", "09:00"),
+            Row("Plan trip next week #events", "Plan trip", "2026-11-23", list = "Events"),
+            Row("Plan trip next week", "Plan trip", "2026-11-22", weekStart = DayOfWeek.SUNDAY),
+            Row("Plan trip next week", "Plan trip", "2026-11-21", weekStart = DayOfWeek.SATURDAY),
+            none("Read Next Week magazine"),
+            none("Plan trip next weekend"),
+            none("next week"),
         )
 
         private val weekdays = listOf(

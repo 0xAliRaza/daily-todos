@@ -307,7 +307,7 @@ complete and delete; drag to reorder inside a section; new tasks go to the botto
 Rescheduling lives in the task sheet's date row, the multi-select Reschedule button and Today's overdue
 header.
 
-Design: tokens in one file; one ink-blue accent on plain neutrals, red kept for overdue, P1 and deleting, signal colours for priority; light and dark; no wallpaper-based dynamic
+Design: tokens in one file; one accent (ink blue, violet, teal or graphite) on plain neutrals, chrome only, red kept for overdue and deleting, signal colours for priority; a black background option for the dark theme; light and dark; no wallpaper-based dynamic
 colour; system font; edge-to-edge; start/end layout only (right-to-left safe); works at 200% font size;
 TalkBack labels; respects the system's animation-off setting; designed empty states. The palette in
 `ui/theme/ColorTokens.kt` (red on white, chosen by the owner on 2026-11-18, replacing the first rose palette);
@@ -441,10 +441,36 @@ the same wall-clock time. It errs towards an extra reminder, never a missed one;
 The focus timer adds its own check in M6: the end signal sounds three times at a focus end and twice at a
 break end (or buzzes 3 + 3 and 2 + 2 when vibrate-only), then stops, in each of the three signal modes.
 
+## 10a. Design refresh (2026-11-21)
+
+The approved design boards (kept outside the repo) replaced the first look. Decisions, delegated by the
+owner:
+
+1. Accents ink blue (default), violet, teal and graphite; rose and orange clash with the signal colours.
+   A "Black background" switch applies only in dark. Settings fields `accent` and `blackBackground`
+   (database version 6, optional backup fields with defaults, so backups stay version 2).
+2. The accent is chrome only. "Today" in a row is ink at weight 600; a time passed today stays grey.
+3. Ticking: the ring flashes the accent at 1.12× for 180 ms and settles to done grey at 600 ms; no scale
+   with reduced motion.
+4. Sub-tasks folded by default; adding them happens in the task sheet only.
+5. Upcoming: seven days by day, empty runs folded into one line, then "Later".
+6. Calendar Day, 3-day and Week get a "No time" row for date-only tasks.
+7. Multi-select: rounded-square markers, accent-container rows, a bottom bar with Complete, Reschedule,
+   Move and Delete, and Select all.
+8. No list sorting. Pause on the focus bar, Skip on the break bar, "See tomorrow" on All done.
+9. Notifications: title = task, body = when · list, Complete and Snooze (10 min).
+10. "today 11:30" after 11:30 stays 23:30 (section 7.4); the Date chip now shows the resolved time.
+11. The parser learns "yesterday" and "next week".
+12. The test reminder no longer adds a task; it goes through the one scheduling path.
+13. Reminder history shows titles looked up live; the log still stores none.
+14. "Week starts on" offers Phone, Monday and Sunday, with the phone's day in the hint.
+15. The new launcher icon is the through-ring on solid #2563EB, with a matching status-bar icon.
+
 ## 11. Open decisions for the owner
 
 1. **Alarm icon.** Settled 2026-11-18: no icon shows on the A54, so it stays as built.
-2. **Planner defaults**, changeable on request: snooze lengths (10 min, 1 hour); named times of day
+2. **Planner defaults**, changeable on request: snooze length (10 min; the 1-hour snooze was dropped in the
+   2026-11-21 design refresh); named times of day
    (section 7); the timer waiting for a tap after each focus and each break (section 6); overdue
    reminders repeating every day at 09:00 until the task is done (section 4); the timer's end signal
    sounding three times at a focus end and twice at a break end (section 6); the timer presets (15, 25,

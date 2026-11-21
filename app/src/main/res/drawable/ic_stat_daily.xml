@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Status-bar and notification icon: the through-ring, cropped to its middle and scaled to 24 dp with a
+  heavier stroke so it holds up at status-bar size. White on transparent, one colour.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.375"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M20.97,11.22A9,9 0,1 1,13.56 3.14" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.375"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7.13,11.44l3.56,3.56 9.38,-10.13" />
+</vector>
